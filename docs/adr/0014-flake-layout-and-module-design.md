@@ -1,6 +1,6 @@
 # 0014. Flake layout and module design
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-07-13
 
 ## Context
