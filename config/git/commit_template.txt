@@ -1,0 +1,5 @@
+# <type>: <subject> (50 chars max)
+
+# <body> - Explain what and why, not how (wrap at 72 chars)
+
+# Type: feat, fix, docs, style, refactor, test, chore

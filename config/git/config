@@ -1,0 +1,29 @@
+[filter "lfs"]
+	clean = git-lfs clean -- %f
+	smudge = git-lfs smudge -- %f
+	process = git-lfs filter-process
+	required = true
+[user]
+	name = shinokun
+	email = hypatia.tile02021@gmail.com
+[init]
+	defaultBranch = "main"
+[core]
+	editor = nvim
+  pager = delta
+
+[interactive]
+    diffFilter = delta --color-only
+
+[delta]
+	dark = true
+	navigate = true
+
+[merge]
+    conflictStyle = zdiff3
+
+[ghq]
+	root = ~/ghqrepo
+
+[commit]
+	template = "/Users/kazukishinohara/.config/git/commit_template.txt"
