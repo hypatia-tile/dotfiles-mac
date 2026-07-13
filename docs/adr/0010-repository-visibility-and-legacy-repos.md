@@ -1,6 +1,6 @@
 # 0010. Repository stays public; legacy repos archived after stability
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-07-13
 
 ## Context

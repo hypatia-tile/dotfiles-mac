@@ -1,6 +1,6 @@
 # 0009. Secrets never enter the repository
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-07-13
 
 ## Context

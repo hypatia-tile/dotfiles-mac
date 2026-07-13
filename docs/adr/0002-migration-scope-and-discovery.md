@@ -1,6 +1,6 @@
 # 0002. Migration scope and discovery process
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-07-13
 
 ## Context

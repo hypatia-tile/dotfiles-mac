@@ -1,6 +1,6 @@
 # 0004. Hostname-keyed configurations with shared modules
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-07-13
 
 ## Context

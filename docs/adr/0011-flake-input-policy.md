@@ -1,6 +1,6 @@
 # 0011. Flake inputs: nixpkgs-unstable, lock frozen until cutover
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-07-13
 
 ## Context

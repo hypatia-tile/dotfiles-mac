@@ -1,6 +1,6 @@
 # 0012. CI: everything that fits runs in GitHub Actions, as required checks
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-07-13
 
 ## Context
