@@ -119,4 +119,7 @@ jobs:
       - name: shellcheck
         uses: ludeeus/action-shellcheck@2.0.0
         with:
-          ignore_paths: .git
+          # config/ holds vendored dotfile payloads (zsh scripts among them);
+          # shellcheck does not support zsh (SC1071), and payloads are data,
+          # not repository scripts.
+          ignore_paths: .git config
