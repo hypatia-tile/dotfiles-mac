@@ -1,6 +1,6 @@
 # 0006. Boundary rule: user-facing goes to Home Manager
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-07-13
 
 ## Context

@@ -1,6 +1,6 @@
 # 0008. Git workflow: short-lived branches, Conventional Commits
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-07-13
 
 ## Context

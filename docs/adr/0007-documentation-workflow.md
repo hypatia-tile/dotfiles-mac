@@ -1,6 +1,6 @@
 # 0007. Documentation workflow: MADR-lite ADRs plus a requirements file
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-07-13
 
 ## Context

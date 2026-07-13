@@ -1,6 +1,6 @@
 # 0003. Safety boundary: build-only until a manual cutover
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-07-13
 
 ## Context

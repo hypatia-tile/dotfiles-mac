@@ -1,6 +1,6 @@
 # 0001. Consolidate into a single, fully store-managed flake
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-07-13
 
 ## Context

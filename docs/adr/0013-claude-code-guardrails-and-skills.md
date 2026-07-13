@@ -1,6 +1,6 @@
 # 0013. Claude Code guardrails and skills
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-07-13
 
 ## Context
