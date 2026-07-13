@@ -1,0 +1,8 @@
+{
+  // Line length: prose in ADRs and inventory tables regularly exceeds 80.
+  "MD013": false,
+  // Inline HTML: allowed for occasional table formatting.
+  "MD033": false,
+  // First line heading: skill files start with YAML frontmatter.
+  "MD041": false
+}

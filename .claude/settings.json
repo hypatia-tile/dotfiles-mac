@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "deny": [
+      "Bash(darwin-rebuild switch:*)",
+      "Bash(darwin-rebuild activate:*)",
+      "Bash(sudo darwin-rebuild:*)",
+      "Bash(git push:*)",
+      "Bash(nix flake update:*)",
+      "Edit(//Users/kazukishinohara/github/dotfiles/**)",
+      "Write(//Users/kazukishinohara/github/dotfiles/**)",
+      "Edit(//Users/kazukishinohara/github/nix-darwin/**)",
+      "Write(//Users/kazukishinohara/github/nix-darwin/**)"
+    ],
+    "ask": [
+      "Bash(git commit:*)"
+    ],
+    "allow": [
+      "Bash(nix flake check:*)",
+      "Bash(nix build:*)",
+      "Bash(nix eval:*)",
+      "Bash(nix store diff-closures:*)",
+      "Bash(darwin-rebuild build:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git ls-files:*)",
+      "Bash(git branch:*)",
+      "Bash(brew list:*)",
+      "Bash(brew leaves:*)",
+      "Bash(brew info:*)"
+    ]
+  }
+}

@@ -1,0 +1,32 @@
+# Weekly flake.lock update PRs (ADR 0011, ADR 0012).
+#
+# DISABLED UNTIL CUTOVER: the lock is frozen during the migration, so this
+# workflow has no schedule trigger yet. After cutover completes, uncomment
+# the `schedule` block below. Merging the opened PRs is always manual.
+
+name: Update flake.lock
+
+on:
+  workflow_dispatch:
+  # schedule:
+  #   - cron: '0 21 * * 5' # Saturdays 06:00 JST
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-lock:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+
+      - name: Update flake.lock and open PR
+        uses: DeterminateSystems/update-flake-lock@v24
+        with:
+          pr-title: 'chore(deps): update flake.lock'
+          pr-labels: dependencies
+          commit-msg: 'chore(deps): update flake.lock'
