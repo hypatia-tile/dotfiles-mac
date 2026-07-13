@@ -1,0 +1,11 @@
+function repos() {
+  local base_dir="$(ghq root)"
+  if [[ -n "${base_dir}" ]] && [ -d "${base_dir}" ]; then
+    local targetrepo=$(ghq list --full-path \
+      | fzf)
+    cd $targetrepo
+  else
+    echo "ghq root directory not found." >&2
+    return 1
+  fi
+}

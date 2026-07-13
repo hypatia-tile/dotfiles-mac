@@ -1,0 +1,10 @@
+# Git utilities
+# Provides utility functions for git
+# Usage: source this file in your .zshrc or .zprofile
+
+gcwb() {
+  git checkout -b "work/$(date +%Y%m%d_%H%M%S)"
+  if [[ $? -ne 0 ]]; then
+    echo "Error: Failed to create and checkout new branch." >&2
+  fi
+}
