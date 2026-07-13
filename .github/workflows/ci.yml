@@ -1,0 +1,122 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  flake:
+    name: Flake check & system closure build
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Detect flake
+        id: has-flake
+        run: |
+          if [ -f flake.nix ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "No flake.nix yet - skipping (bootstrap phase)."
+          fi
+
+      - name: Install Nix
+        if: steps.has-flake.outputs.present == 'true'
+        uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            extra-substituters = https://nix-community.cachix.org
+            extra-trusted-public-keys = nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs=
+
+      - name: Restore and save Nix store
+        if: steps.has-flake.outputs.present == 'true'
+        uses: nix-community/cache-nix-action@v6
+        with:
+          primary-key: nix-${{ runner.os }}-${{ hashFiles('flake.lock') }}
+          restore-prefixes-first-match: nix-${{ runner.os }}-
+          gc-max-store-size-macos: 4G
+
+      - name: Flake check (frozen lock)
+        if: steps.has-flake.outputs.present == 'true'
+        run: nix flake check --no-update-lock-file -L
+
+      - name: Build all darwin configurations (never switch)
+        if: steps.has-flake.outputs.present == 'true'
+        run: |
+          hosts=$(nix eval .#darwinConfigurations --apply builtins.attrNames --json | jq -r '.[]')
+          for host in $hosts; do
+            echo "::group::build $host"
+            nix build ".#darwinConfigurations.${host}.system" --no-update-lock-file -L
+            echo "::endgroup::"
+          done
+
+  nix-lint:
+    name: Nix format & lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Detect nix files
+        id: has-nix
+        run: |
+          if find . -name '*.nix' -not -path './.git/*' | grep -q .; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "No .nix files yet - skipping (bootstrap phase)."
+          fi
+
+      - name: Install Nix
+        if: steps.has-nix.outputs.present == 'true'
+        uses: cachix/install-nix-action@v31
+
+      - name: nixfmt (check only)
+        if: steps.has-nix.outputs.present == 'true'
+        run: |
+          find . -name '*.nix' -not -path './.git/*' -print0 \
+            | xargs -0 nix run nixpkgs#nixfmt-rfc-style -- --check
+
+      - name: statix
+        if: steps.has-nix.outputs.present == 'true'
+        run: nix run nixpkgs#statix -- check .
+
+      - name: deadnix
+        if: steps.has-nix.outputs.present == 'true'
+        run: nix run nixpkgs#deadnix -- --fail .
+
+  secrets:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  hygiene:
+    name: Docs & commit hygiene
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: markdownlint
+        uses: DavidAnson/markdownlint-cli2-action@v19
+        with:
+          globs: '**/*.md'
+
+      - name: commitlint
+        uses: wagoid/commitlint-github-action@v6
+
+      - name: shellcheck
+        uses: ludeeus/action-shellcheck@2.0.0
+        with:
+          ignore_paths: .git

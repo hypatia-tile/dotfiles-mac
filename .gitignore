@@ -1,0 +1,22 @@
+# Nix build outputs
+result
+result-*
+
+# macOS noise
+.DS_Store
+
+# direnv
+.direnv/
+
+# Claude Code local overrides
+.claude/settings.local.json
+
+# Secret guards (ADR 0009): these must never be committed
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+*.token
+.env
+.env.*
+!.env.example
