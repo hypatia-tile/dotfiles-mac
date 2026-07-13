@@ -20,7 +20,7 @@ the only new entry is `nvim-config`.
 
 ## 2. Layout
 
-```
+```text
 flake.nix
 flake.lock
 hosts/
