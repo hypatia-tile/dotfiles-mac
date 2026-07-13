@@ -29,6 +29,7 @@ by filename and never read (ADR 0009).
 | `.envrc` (in `$HOME`) | dot-link symlink; rebuilds PATH (duplicates HM/nix-darwin `sessionPath`) and hardcodes a `/nix/store/...` JAVA_HOME | exclude the mechanism; carry `NVIM_FLOATING_MEMO_DIR` and a nixpkgs-referenced `JAVA_HOME` into HM `home.sessionVariables` | exclude (vars → HM) |
 | `.hammerspoon/init.lua` | dot-link symlink; an HM launchd agent (`org.nix-community.home.hammerspoon`) already exists | migrate | migrate |
 | `.emacs.d/` | dot-link symlink | **exclude** (Emacs out of scope, fixed decision) | excluded |
+| `~/.zshenv` (A-14, design-phase addendum) | **unmanaged hand-written file** (35 bytes, 2026-01-04) setting `ZDOTDIR=$HOME/.config/zsh` — the bootstrap the zsh setup depends on; missed by the original scan | migrate (`home.file.".zshenv"` via HM) | migrate |
 | repo-root `.gitignore`, `.gitmodules`, `bin/dot-link.sh`, `bin/*.txt`, `CLAUDE.md`, `README.md`, `LICENSE` | repo housekeeping | exclude — dot-link mechanism is retired by ADR 0001 | exclude |
 
 ## B. Legacy `~/github/nix-darwin` (flake)
