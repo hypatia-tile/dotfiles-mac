@@ -1,4 +1,4 @@
-{ inputs, ... }:
+{ inputs, pkgs, ... }:
 {
   home.file = {
     # ZDOTDIR bootstrap — the whole zsh setup depends on it (inventory A-14).
@@ -31,4 +31,10 @@
     # means pushing to hypatia-tile/nvim-config and bumping the pin.
     "nvim".source = inputs.nvim-config;
   };
+
+  # SKK L dictionary for skkeleton in Neovim (inventory C-6: provided from
+  # nixpkgs instead of vendoring). The nvim config reads it from
+  # ~/.local/share/skk; the writable user dictionary lives in nvim's own
+  # data dir and is not managed here.
+  xdg.dataFile."skk/SKK-JISYO.L".source = "${pkgs.skkDictionaries.l}/share/skk/SKK-JISYO.L";
 }
