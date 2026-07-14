@@ -41,3 +41,5 @@ and `docs/adr/` for the governing decisions.
 - `docs/discovery/` — read-only inventory of the current machine state,
   with per-item migration verdicts made by the owner
 - `docs/runbook.md` — cutover and rollback procedures
+- `docs/operations.md` — post-cutover operations guide (change workflow,
+  HM placement semantics, CI behavior, known quirks)
