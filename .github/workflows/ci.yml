@@ -9,9 +9,31 @@ permissions:
   contents: read
 
 jobs:
+  # Docs-only changes skip the expensive macOS build job below. The job is
+  # skipped (not absent), so it still satisfies the required status check.
+  changes:
+    name: Detect closure-affecting changes
+    runs-on: ubuntu-latest
+    outputs:
+      build: ${{ steps.filter.outputs.build }}
+    steps:
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            build:
+              - '**/*.nix'
+              - 'flake.lock'
+              - 'config/**'
+              - '.github/workflows/ci.yml'
+
   flake:
     name: Flake check & system closure build
     runs-on: macos-15
+    needs: changes
+    # Always build on pushes to main (keeps the Nix cache warm); on PRs,
+    # only when the closure can actually change.
+    if: github.event_name == 'push' || needs.changes.outputs.build == 'true'
     steps:
       - uses: actions/checkout@v4
 
