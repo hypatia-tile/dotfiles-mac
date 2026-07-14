@@ -1,6 +1,6 @@
 # 0015. Cutover to the consolidated flake
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-07-14
 
 ## Context
@@ -33,8 +33,8 @@ rollback material only.
 
 Sign-off recorded by accepting this ADR:
 
-- diff-closures review: _TBD (owner initials + date at acceptance)_
-- runbook §1 pass on the cutover commit: _TBD (commit hash)_
+- diff-closures review: signed off by shinokun, 2026-07-14
+- runbook §1 pass on the cutover commit: `16e03d3`
 
 ## Consequences
 
