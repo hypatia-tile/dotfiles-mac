@@ -30,6 +30,9 @@ and `docs/adr/` for the governing decisions.
   `Status: Proposed`; only the owner promotes them to Accepted. Use the
   `adr-new` skill.
 - Verification uses the `migration-check` skill (build-only, never switches).
+- Other repository skills: `ops-qa` (answer operations questions from the
+  docs), `ship-pr` (push-wait → PR → CI watch), `nvim-bump` (nvim-config
+  edit + pinned-input bump per ADR 0014).
 - `flake.lock` stays frozen during the migration: always pass
   `--no-update-lock-file`; `nix flake update` is denied until cutover
   (ADR 0011).

@@ -17,6 +17,9 @@ result-*
 .claude/skills/*
 !.claude/skills/adr-new
 !.claude/skills/migration-check
+!.claude/skills/ops-qa
+!.claude/skills/ship-pr
+!.claude/skills/nvim-bump
 .agents/
 skills-lock.json
 
