@@ -1,8 +1,5 @@
 # Runbook: verification, cutover, rollback
 
-Skeleton — sections marked _TBD_ are completed before the cutover ADR can be
-accepted (ADR 0003 makes this a hard precondition).
-
 ## 1. Pre-cutover verification (repeatable, non-destructive)
 
 Run via the `migration-check` skill, or manually:
@@ -23,13 +20,78 @@ off in the cutover ADR.
 
 ## 2. Cutover procedure (owner only)
 
-_TBD in detail. Outline:_
+Every step below is run manually by the owner; nothing here is automated
+(ADR 0003).
 
-1. Confirm the cutover ADR is Accepted and this runbook is complete.
-2. Note the current generation: `darwin-rebuild --list-generations`.
-3. Run `darwin-rebuild switch --flake .#Kazukis-MacBook-Air` manually.
-4. Smoke test: new shell (zsh), tmux, Neovim, git identity, kitty/alacritty
-   launch, aerospace/hammerspoon running, brew cleanup output reviewed.
+### 2.1 Preconditions
+
+1. The cutover ADR (0015) is Accepted and its diff-closures sign-off is
+   recorded.
+2. Section 1 of this runbook passed on the exact commit being switched to,
+   on `main`, with `flake.lock` unchanged.
+3. A current Time Machine (or equivalent) backup exists.
+
+### 2.2 Pre-switch snapshot
+
+Record the state needed for rollback and for judging the switch:
+
+1. `darwin-rebuild --list-generations | tail -5` — note the current
+   generation number.
+2. `brew list --cask && brew leaves` — expected cleanup removals are the
+   cask `aquaskk` and formulas `libidn2`, `nettle`, `p11-kit`; anything
+   else appearing in the cleanup output is a stop signal.
+3. `ls -l ~/.zshenv ~/.hammerspoon ~/.config/{zsh,git,tmux,kitty,alacritty,aerospace,nvim,nix,lazygit}`
+   — the known collision set: eight dot-link symlinks, the hand-written
+   `~/.zshenv`, and two real directories.
+
+### 2.3 Prepare collision targets
+
+Home Manager backs up regular files and foreign symlinks in its way as
+`*.hm-bak` (`backupFileExtension`). Directory targets are less predictable,
+so move the two real directories aside explicitly:
+
+```sh
+mv ~/.config/nix ~/.config/nix.pre-cutover
+mv ~/.config/lazygit ~/.config/lazygit.pre-cutover
+```
+
+Their contents are already vendored in `config/`; the `.pre-cutover` copies
+are deleted in step 2.6.
+
+### 2.4 Switch
+
+```sh
+darwin-rebuild switch --flake .#Kazukis-MacBook-Air
+```
+
+Review the activation output in full, in particular the Homebrew cleanup
+lines (expected removals per 2.2) and every `hm-bak` backup message.
+
+### 2.5 Smoke test
+
+| Area | Check |
+| --- | --- |
+| zsh | open a **new** terminal: prompt renders, `echo $ZDOTDIR` → `~/.config/zsh`, history writes (`fc -l` after a command), abbreviations expand on space |
+| PATH/env | `echo $EDITOR` → `nvim`; `echo $JAVA_HOME` → a `/nix/store` path; `echo $NVIM_FLOATING_MEMO_DIR` |
+| git | `git config user.name` → `shinokun`; `git commit` shows the template; delta renders a diff |
+| nvim | launch; config comes from the store (`:echo stdpath('config')` resolves through `~/.config/nvim`) |
+| tmux | prefix `C-q` works, pane navigation with `C-hjkl` |
+| terminals | kitty and alacritty launch with fonts/colors |
+| WM | aerospace responds to `cmd-hjkl`; hammerspoon shows "config loaded" alert (or `cmd-alt-R`) |
+| brew | `brew list --cask` no longer shows `aquaskk`; `emacs-app` still installed |
+| nix | `nix flake metadata ~/ghqrepo/github.com/hypatia-tile/dotfiles-mac` works (flakes still enabled via the HM-managed nix.conf) |
+
+Any failed check → decide immediately: fix forward only for trivial,
+config-content issues; otherwise roll back (section 3) and reassess.
+
+### 2.6 Post-switch cleanup (only after 2.5 fully passes)
+
+1. Inventory the backups: `find ~ -maxdepth 3 -name '*.hm-bak' 2>/dev/null`.
+   Each one must correspond to a known collision from 2.2; investigate any
+   surprise before deleting.
+2. Delete the `*.hm-bak` files and the two `*.pre-cutover` directories.
+3. Do **not** touch the legacy repositories — they stay intact for the
+   stability window (section 4).
 
 ## 3. Rollback
 
