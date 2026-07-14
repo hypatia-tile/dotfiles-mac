@@ -11,6 +11,15 @@ result-*
 # Claude Code local overrides
 .claude/settings.local.json
 
+# Claude Code skills: only repository-workflow skills are tracked
+# (allowlist below); personal skills live in user scope (~/.claude/skills),
+# and skill-manager artifacts (vendored copies, lockfile) stay out.
+.claude/skills/*
+!.claude/skills/adr-new
+!.claude/skills/migration-check
+.agents/
+skills-lock.json
+
 # Secret guards (ADR 0009): these must never be committed
 *.pem
 *.key
