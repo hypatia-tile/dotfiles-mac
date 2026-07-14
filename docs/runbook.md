@@ -38,17 +38,33 @@ Record the state needed for rollback and for judging the switch:
 1. `darwin-rebuild --list-generations | tail -5` — note the current
    generation number.
 2. `brew list --cask && brew leaves` — expected cleanup removals are the
-   cask `aquaskk` and formulas `libidn2`, `nettle`, `p11-kit`; anything
-   else appearing in the cleanup output is a stop signal.
+   cask `aquaskk` and formulas `libidn2`, `nettle`, `p11-kit`, plus
+   whatever dependency orphans `brew autoremove` takes with them
+   (observed: `gettext`, `gmp`, `libtasn1`, `libunistring`); any removal
+   that is not one of these or a dependency of one is a stop signal.
 3. `ls -l ~/.zshenv ~/.hammerspoon ~/.config/{zsh,git,tmux,kitty,alacritty,aerospace,nvim,nix,lazygit}`
    — the known collision set: eight dot-link symlinks, the hand-written
    `~/.zshenv`, and two real directories.
 
 ### 2.3 Prepare collision targets
 
-Home Manager backs up regular files and foreign symlinks in its way as
-`*.hm-bak` (`backupFileExtension`). Directory targets are less predictable,
-so move the two real directories aside explicitly:
+Home Manager's `backupFileExtension` only backs up **regular files**.
+Directories — and symlinks to directories, which is what the dot-link
+links are — abort the activation with "would be clobbered" instead
+(observed at the 2026-07-14 cutover). Worse, a directory target linked
+file-by-file (zsh) is inspected *through* an existing symlink, so the
+`*.hm-bak` renames would land inside the read-only legacy repository.
+
+Therefore remove every dot-link symlink first (they are plain symlinks;
+the real files stay in the legacy repository, and `dot-link.sh` can
+recreate them for rollback):
+
+```sh
+rm ~/.hammerspoon ~/.config/zsh ~/.config/git ~/.config/tmux \
+   ~/.config/kitty ~/.config/alacritty ~/.config/aerospace ~/.config/nvim
+```
+
+Then move the two real directories aside:
 
 ```sh
 mv ~/.config/nix ~/.config/nix.pre-cutover
@@ -58,11 +74,19 @@ mv ~/.config/lazygit ~/.config/lazygit.pre-cutover
 Their contents are already vendored in `config/`; the `.pre-cutover` copies
 are deleted in step 2.6.
 
+Note: moving `~/.config/nix` disables flakes until Home Manager places the
+managed `nix.conf`, so run the switch with the feature flags supplied
+explicitly (2.4).
+
 ### 2.4 Switch
 
 ```sh
-darwin-rebuild switch --flake .#Kazukis-MacBook-Air
+sudo NIX_CONFIG="experimental-features = nix-command flakes" \
+  darwin-rebuild switch --flake .#Kazukis-MacBook-Air
 ```
+
+(The `NIX_CONFIG` prefix is only needed while the user `nix.conf` from 2.3
+is moved aside; subsequent rebuilds don't need it.)
 
 Review the activation output in full, in particular the Homebrew cleanup
 lines (expected removals per 2.2) and every `hm-bak` backup message.
@@ -71,7 +95,7 @@ lines (expected removals per 2.2) and every `hm-bak` backup message.
 
 | Area | Check |
 | --- | --- |
-| zsh | open a **new** terminal: prompt renders, `echo $ZDOTDIR` → `~/.config/zsh`, history writes (`fc -l` after a command), abbreviations expand on space |
+| zsh | open a **new** terminal: prompt renders, `echo $ZDOTDIR` → `~/.config/zsh`, history writes (`fc -l` after a command), abbreviations expand on space. Note: `HISTFILE` is `~/.zsh_history`, not `$ZDOTDIR/history` — nix-darwin's `/etc/zshrc` overrides the user `.zprofile`; this predates the migration |
 | PATH/env | `echo $EDITOR` → `nvim`; `echo $JAVA_HOME` → a `/nix/store` path; `echo $NVIM_FLOATING_MEMO_DIR` |
 | git | `git config user.name` → `shinokun`; `git commit` shows the template; delta renders a diff |
 | nvim | launch; config comes from the store (`:echo stdpath('config')` resolves through `~/.config/nvim`) |
@@ -90,7 +114,11 @@ config-content issues; otherwise roll back (section 3) and reassess.
    Each one must correspond to a known collision from 2.2; investigate any
    surprise before deleting.
 2. Delete the `*.hm-bak` files and the two `*.pre-cutover` directories.
-3. Do **not** touch the legacy repositories — they stay intact for the
+3. `rm ~/.envrc` — the dot-link symlink to the retired direnv mechanism
+   (inventory A-13). It is not a Home Manager target, so activation leaves
+   it behind, and while present direnv keeps overriding `JAVA_HOME` with
+   the stale hardcoded store path (observed at the 2026-07-14 cutover).
+4. Do **not** touch the legacy repositories — they stay intact for the
    stability window (section 4).
 
 ## 3. Rollback
