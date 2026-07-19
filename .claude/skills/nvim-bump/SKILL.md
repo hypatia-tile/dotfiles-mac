@@ -18,20 +18,33 @@ operation.
      `stdpath("data")` (e.g. the skkeleton user dictionary). Anything the
      flake should **provide** (dictionaries, binaries) belongs in
      dotfiles-mac, referenced by a stable `~/.local/share/...` path.
-2. **Commit there** (Conventional Commits, English, only on explicit
+2. **Verify the working tree** in the clone before landing it:
+   - `bin/check` — headless load: `Lazy! restore` to `lazy-lock.json`,
+     then a clean startup; any stderr output fails it. If it refreshes
+     `lazy-lock.json`, that diff belongs in the same commit as the change
+     that caused it.
+   - `bin/nvim-dev` — interactive run of the tree under
+     `NVIM_APPNAME=nvim-dev` (isolated data/state/cache); use it to
+     exercise the behavior change itself, since `bin/check` proves
+     startup only, not lazy-loaded plugins.
+3. **Commit there** (Conventional Commits, English, only on explicit
    instruction) and ask the owner to push and land it on `main` — e.g.
    `! cd ~/ghqrepo/github.com/hypatia-tile/nvim-config && git push ...`.
    Wait until the commit is an ancestor of the remote `main`.
-3. **Bump the pin** in dotfiles-mac on a feature branch:
+4. **Bump the pin** in dotfiles-mac on a feature branch:
    `nix flake lock --update-input nvim-config` — as a **dedicated commit**
    (ADR 0011). Verify the lock diff touches only the `nvim-config` node.
    Never `nix flake update`.
-4. **Verify**: build the closure with `--no-update-lock-file` and check the
+5. **Verify**: build the closure with `--no-update-lock-file` and check the
    changed file is present in the built generation's home-files under
    `.config/nvim/`. Run migration-check if anything beyond the pin moved.
-5. Hand over to the `ship-pr` flow; after merge the owner applies with
-   `sudo darwin-rebuild switch --flake .#Kazukis-MacBook-Air` and verifies
-   the behavior change in nvim.
+6. Hand over to the `ship-pr` flow; after merge the owner applies with
+   `sudo darwin-rebuild switch --flake .#Kazukis-MacBook-Air`.
+7. **Post-switch check** (owner, in the live nvim — name these in the
+   ship-pr report): no startup errors; `:echo stdpath('config')` resolves
+   through `~/.config/nvim` to the new store path; `:Lazy` shows plugins
+   clean against the shipped `lazy-lock.json`; the behavior change that
+   motivated the bump is observable.
 
 ## Rules
 
