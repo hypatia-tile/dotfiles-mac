@@ -22,11 +22,22 @@ until it is run, so merged-but-not-switched is a normal intermediate state.
 The nvim config is the pinned non-flake input `nvim-config`, placed
 read-only from the store (ADR 0014). The proven loop:
 
-1. Edit in the clone at `~/ghqrepo/github.com/hypatia-tile/nvim-config`,
-   commit, push, land on its `main`.
+1. Edit in the clone at `~/ghqrepo/github.com/hypatia-tile/nvim-config`.
+   Verify the working tree there before landing it: `bin/check` runs a
+   headless load (`Lazy! restore` to `lazy-lock.json`, then a clean
+   startup — a refreshed `lazy-lock.json` belongs in the same commit);
+   `bin/nvim-dev` opens the tree interactively under
+   `NVIM_APPNAME=nvim-dev`, isolated from the live config. Note the limit:
+   a clean `bin/check` proves startup, not lazy-loaded plugins. Commit,
+   push, land on its `main`.
 2. In this repo: `nix flake lock --update-input nvim-config` — as a
    **dedicated commit** (ADR 0011). Only the `nvim-config` node may change.
 3. PR, merge, switch.
+4. Post-switch check: launch `nvim` — no startup errors,
+   `:echo stdpath('config')` resolves through `~/.config/nvim` to the new
+   store path, `:Lazy` shows plugins clean against the shipped
+   `lazy-lock.json`, and the behavior change that motivated the bump is
+   actually observable.
 
 Anything nvim must **write** cannot live in the config dir (it is a
 read-only store path). Use `stdpath("data")` — e.g. the skkeleton user
