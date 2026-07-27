@@ -131,6 +131,14 @@ dictionary is supplied by this flake at `~/.local/share/skk/SKK-JISYO.L`
   `homebrew.extraEnv` to trust the tap in every `brew bundle` phase — but
   `HOMEBREW_ALLOWED_TAPS` may forbid the other non-official taps
   (`olets/tap`, `nikitabobko/tap`), so it needs checking before adoption.
+- **emacs-plus builds `Emacs.app` in its Cellar, not `/Applications`.** As a
+  formula (not a cask) it does not install a GUI app the way `emacs-app` did,
+  and a symlink into `/Applications` integrates poorly with Spotlight /
+  Launchpad / Dock. Copy the apps in with `bin/link-emacs-plus-app.sh` (it
+  `cp -R`s `Emacs.app` and `Emacs Client.app` from
+  `$(brew --prefix)/opt/emacs-plus@30` over any stale entry). The copy is
+  version-pinned, so **re-run the script after every
+  `brew reinstall emacs-plus@30`**.
 - **Check a formula's real option set before passing `args`.** `brew install`
   aborts on the first invalid option (e.g. `emacs-plus@30` has no
   `--with-native-comp` — it always builds `--with-native-compilation=aot` —
