@@ -24,12 +24,11 @@
       "cmake"
       "olets/tap/zsh-abbr"
       {
+        # emacs-plus@30 enables native-compilation (aot) unconditionally, so
+        # there is no --with-native-comp option; --with-poll does not exist on
+        # @30 either. Only imagemagick is a valid extra option here.
         name = "emacs-plus@30";
-        args = [
-          "with-native-comp"
-          "with-imagemagick"
-          "with-poll"
-        ];
+        args = [ "with-imagemagick" ];
         link = true;
       }
     ];
