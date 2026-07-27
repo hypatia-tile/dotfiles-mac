@@ -119,6 +119,16 @@ dictionary is supplied by this flake at `~/.local/share/skk/SKK-JISYO.L`
   and no `--with-poll`). Read the tapped `.rb` to see the valid options:
   `$(brew --repository)/Library/Taps/<user>/homebrew-<repo>/Formula/<name>.rb`.
   For `emacs-plus@30` the only extra option we pass is `with-imagemagick`.
+- **A formula's *optional* dependencies must be declared, or cleanup removes
+  them.** `emacs-plus@30 --with-imagemagick` links `libMagickWand`/`Core` and
+  `libtiff.6.dylib`, but `imagemagick` is only an optional dependency of the
+  formula, so `onActivation.cleanup = "uninstall"` uninstalled it (and its
+  `libtiff`) as "undeclared" — leaving Emacs to abort at launch with
+  `Library not loaded: …/libtiff.6.dylib`. Add such libraries to `brews`
+  (declaring `imagemagick` keeps `libtiff` too, as its dependency). General
+  rule: whatever a `with-*` option pulls in must be declared alongside the
+  formula. Symptom to recognize: the build/link succeeds but the program
+  aborts on a missing dylib under `/opt/homebrew/opt/<lib>`.
 - The eval warning `nixfmt-rfc-style is now the same as pkgs.nixfmt` is a
   rename alias in the pinned nixpkgs; harmless until the package is renamed
   at the first post-window lock update.

@@ -23,6 +23,13 @@
       "make"
       "cmake"
       "olets/tap/zsh-abbr"
+      # emacs-plus@30 links against imagemagick (and its libtiff dependency)
+      # because of --with-imagemagick below, but imagemagick is only an
+      # *optional* dependency of the formula. Declare it explicitly so
+      # onActivation.cleanup does not uninstall it (which left Emacs unable
+      # to load libtiff.6.dylib at runtime). Declaring imagemagick also keeps
+      # libtiff, since libtiff is a dependency of imagemagick.
+      "imagemagick"
       {
         # emacs-plus@30 enables native-compilation (aot) unconditionally, so
         # there is no --with-native-comp option; --with-poll does not exist on
