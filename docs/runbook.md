@@ -102,7 +102,7 @@ lines (expected removals per 2.2) and every `hm-bak` backup message.
 | tmux | prefix `C-q` works, pane navigation with `C-hjkl` |
 | terminals | kitty and alacritty launch with fonts/colors |
 | WM | aerospace responds to `cmd-hjkl`; hammerspoon shows "config loaded" alert (or `cmd-alt-R`) |
-| brew | `brew list --cask` no longer shows `aquaskk`; `emacs-app` still installed |
+| brew | `brew list --cask` no longer shows `aquaskk` or `emacs-app`; `brew list --formula` shows `emacs-plus@30` and `emacs --version` reports the native-comp build |
 | nix | `nix flake metadata ~/ghqrepo/github.com/hypatia-tile/dotfiles-mac` works (flakes still enabled via the HM-managed nix.conf) |
 
 Any failed check → decide immediately: fix forward only for trivial,
