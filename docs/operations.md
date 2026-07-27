@@ -105,6 +105,20 @@ dictionary is supplied by this flake at `~/.local/share/skk/SKK-JISYO.L`
   `.zshrc` instead.
 - `brew` cleanup on activation also autoremoves dependency orphans of
   whatever it uninstalls — expected, not a stop signal.
+- **Non-official Homebrew taps must be declared `trusted = true`.** Homebrew
+  6.0.0 enabled `HOMEBREW_REQUIRE_TAP_TRUST`, so activation aborts with
+  "Refusing to load formula … from untrusted tap" for any non-official tap
+  unless it is trusted. Set it on the `homebrew.taps` entry
+  (`{ name = "…"; trusted = true; }`) — declarative and rebuild-safe — not via
+  imperative `brew trust`. Formula-level `trusted` only takes effect for
+  fully-qualified names, so for a bare name like `emacs-plus@30` the trust
+  must come from the containing `d12frosted/emacs-plus` tap.
+- **Check a formula's real option set before passing `args`.** `brew install`
+  aborts on the first invalid option (e.g. `emacs-plus@30` has no
+  `--with-native-comp` — it always builds `--with-native-compilation=aot` —
+  and no `--with-poll`). Read the tapped `.rb` to see the valid options:
+  `$(brew --repository)/Library/Taps/<user>/homebrew-<repo>/Formula/<name>.rb`.
+  For `emacs-plus@30` the only extra option we pass is `with-imagemagick`.
 - The eval warning `nixfmt-rfc-style is now the same as pkgs.nixfmt` is a
   rename alias in the pinned nixpkgs; harmless until the package is renamed
   at the first post-window lock update.
