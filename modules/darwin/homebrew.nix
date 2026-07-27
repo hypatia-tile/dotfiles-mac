@@ -9,7 +9,13 @@
     onActivation.cleanup = "uninstall"; # declared-only; "zap" deferred
 
     taps = [
-      "d12frosted/emacs-plus"
+      # Non-official tap: must be trusted for activation to load its formulae
+      # (Homebrew 6.0.0 enabled HOMEBREW_REQUIRE_TAP_TRUST). emacs-plus@30 is
+      # not a fully-qualified name, so trust must come from the tap itself.
+      {
+        name = "d12frosted/emacs-plus";
+        trusted = true;
+      }
     ];
 
     brews = [
