@@ -113,6 +113,24 @@ dictionary is supplied by this flake at `~/.local/share/skk/SKK-JISYO.L`
   imperative `brew trust`. Formula-level `trusted` only takes effect for
   fully-qualified names, so for a bare name like `emacs-plus@30` the trust
   must come from the containing `d12frosted/emacs-plus` tap.
+- **The Brewfile `trusted:` marker only covers `brew bundle` (activation).**
+  Direct maintenance commands (`brew reinstall`/`link`/`options` on the tap
+  formula) still hit the trust guard and are refused. For a one-off, prefix
+  with `HOMEBREW_NO_REQUIRE_TAP_TRUST=1` rather than running `brew trust`
+  (which writes imperative state that diverges from the declarative setup),
+  e.g. `HOMEBREW_NO_REQUIRE_TAP_TRUST=1 brew reinstall emacs-plus@30 --with-imagemagick`.
+- **First activation on a fresh machine can strip an untrusted-tap formula's
+  dependencies.** If cleanup runs before the tap's trust is established, it
+  cannot resolve the untrusted formula's dependency tree and uninstalls *all*
+  of it — the formula builds, but the binary then aborts on missing dylibs
+  (we hit this: `emacs-plus@30` built while `cairo`/`gnutls`/`librsvg`/`jpeg`/…
+  were removed). Recover by reinstalling once so the deps come back and relink:
+  `HOMEBREW_NO_REQUIRE_TAP_TRUST=1 brew reinstall emacs-plus@30 --with-imagemagick`;
+  a subsequent cleanup keeps them (verified with `brew bundle cleanup --file=…`
+  dry-run: nothing removed). Candidate hardening (deferred, unverified): set
+  `homebrew.extraEnv` to trust the tap in every `brew bundle` phase — but
+  `HOMEBREW_ALLOWED_TAPS` may forbid the other non-official taps
+  (`olets/tap`, `nikitabobko/tap`), so it needs checking before adoption.
 - **Check a formula's real option set before passing `args`.** `brew install`
   aborts on the first invalid option (e.g. `emacs-plus@30` has no
   `--with-native-comp` — it always builds `--with-native-compilation=aot` —
