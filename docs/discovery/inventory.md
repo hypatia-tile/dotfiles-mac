@@ -75,7 +75,7 @@ Declared in legacy `macos.nix` — brews: `llvm`, `make`, `cmake`,
 | brews `llvm`, `make`, `cmake`, `zsh-abbr` | declared + installed | keep declared (llvm justifies the brew exception lane, ADR 0005) | migrate (keep declared) |
 | leaves `libidn2`, `nettle`, `p11-kit` | **undeclared** orphaned dependencies | remove — `onActivation.cleanup` will purge them; confirm nothing needs them | exclude (cleanup removes) |
 | cask `aquaskk` | **undeclared — will be uninstalled by cleanup at first activation** | declare it (Japanese input method presumably in daily use) | exclude — owner confirmed it is unused; cleanup removal accepted |
-| cask `emacs-app` | installed name differs from declared `emacs` | declare the actually-installed `emacs-app` (Emacs *config* stays out of scope; the cask must still be declared to survive cleanup) | migrate (declare `emacs-app`) |
+| cask `emacs-app` | installed name differs from declared `emacs` | declare the actually-installed `emacs-app` (Emacs *config* stays out of scope; the cask must still be declared to survive cleanup) | migrate (declare `emacs-app`) — **superseded 2026-07-27:** replaced by the `d12frosted/emacs-plus` tap's `emacs-plus@30` formula; see `modules/darwin/homebrew.nix` |
 | masApps | none declared, none required so far | keep empty | keep empty |
 
 ## E. `~/Library/LaunchAgents`
