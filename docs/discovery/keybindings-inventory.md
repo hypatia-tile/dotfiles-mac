@@ -35,13 +35,13 @@ lower confidence.
 > **Mechanism finding (2026-07-29):** nix-darwin writes this as
 > `defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys '<whole dict>'`,
 > which **replaces the entire dictionary** — it does not merge. So the declared
-> dict must be the *complete* current state, or any omitted ID reverts to its
-> macOS built-in default on activation. Consequence: the still-enabled IDs are
-> pinned verbatim (`declare-on`) alongside the disabled ones, purely to avoid
-> clobbering them; the keep-vs-disable decision on them remains open.
+> dict must be the *complete* set, or any omitted ID reverts to its macOS
+> built-in default on activation. The first pass pinned the still-enabled IDs
+> verbatim; a follow-up owner decision (2026-07-29) then disabled them too, so
+> every ID is now declared with `enabled = 0`.
 >
-> **Status:** implemented in `modules/darwin/macos.nix` (Layer 1 only,
-> greenlit 2026-07-29). Build-only verified. Layers 2–4 held.
+> **Status:** implemented in `modules/darwin/macos.nix` (Layer 1 only). All 29
+> IDs disabled per owner decision. Build-only verified. Layers 2–4 held.
 
 ### Already disabled (`enabled = 0`) — captured as `declare-off` ✅ implemented
 
@@ -68,23 +68,27 @@ lower confidence.
 | 61 | Select **next** input source (⌃⌥Space) | off | declare-off | |
 | 164 | Newer feature ? (value = no key) | off | declare-off | uncertain name |
 
-### Still enabled — pinned `declare-on` at current values (decision still open)
+### Formerly enabled — now disabled by owner decision (2026-07-29)
 
-| ID | Feature | Current key | Verdict | Rationale / conflict |
+All nine were pinned verbatim in the first pass; the owner then chose to disable
+the lot, so `macos.nix` now sets `enabled = 0` for every ID (whole set off).
+
+| ID | Feature | Key | Verdict | Rationale |
 |---|---|---|---|---|
-| 32 | Mission Control (All Windows) | F9 | keep | legacy F-key; on MBA needs Fn, low conflict. No aerospace clash (aerospace = cmd-hjkl / cmd-1..9). |
-| 33 | Application Windows (App Exposé) | F8 | keep | same |
-| 34 | All Windows (slow) | ⇧F8 | disable? | slow-motion variant, rarely wanted |
-| 36 | Show Desktop | F7 | keep | |
-| 37 | Show Desktop (slow) | ⇧F7 | disable? | slow-motion variant |
-| 79 | Move left a space | ⌃← | keep | **redundant** with aerospace workspaces, but no key clash (aerospace uses cmd/alt). Optional disable. |
-| 80 | Move left a space (paired) | ⌃← | keep | " |
-| 81 | Move right a space | ⌃→ | keep | " |
-| 82 | Move right a space (paired) | ⌃→ | keep | " |
+| 32 | Mission Control (All Windows) | Fn+F9 | disable | legacy F-key binding; Mission Control still on F3 / trackpad |
+| 33 | Application Windows (App Exposé) | Fn+F8 | disable | legacy F-key binding, redundant |
+| 34 | All Windows (slow) | ⇧Fn+F8 | disable | slow-motion novelty variant |
+| 36 | Show Desktop | Fn+F7 | disable | legacy F-key binding |
+| 37 | Show Desktop (slow) | ⇧Fn+F7 | disable | slow-motion novelty variant |
+| 79 | Move left a space | ⌃← | disable | redundant with aerospace; frees ⌃← |
+| 80 | Move left a space (paired) | ⌃← | disable | " |
+| 81 | Move right a space | ⌃→ | disable | redundant with aerospace; frees ⌃→ |
+| 82 | Move right a space (paired) | ⌃→ | disable | " |
 
-> **Owner decisions needed:** (a) keep vs disable the slow-motion variants
-> (34, 37); (b) whether to disable native Space switching (79–82) since
-> aerospace owns window/workspace movement.
+> **Note:** disabling 32/33/36 only drops the Fn+F-key bindings — Mission
+> Control, App Windows, and Show Desktop remain reachable via the F3 feature key
+> and trackpad gestures. Disabling 79–82 frees ⌃←/⌃→; only relevant if native
+> macOS Spaces are also used (aerospace owns workspaces here).
 
 ---
 
@@ -153,9 +157,9 @@ neutralize.
 
 ## Summary of what starts where
 
-- **Layer 1** is the bulk of concrete work and is *pre-fillable*: 20 already-off
-  IDs pinned (`declare-off`) + 9 still-enabled IDs pinned verbatim
-  (`declare-on`, keep/disable still open). All implemented.
+- **Layer 1** is fully implemented: all 29 `AppleSymbolicHotKeys` IDs declared
+  `enabled = 0` — the 20 already-off IDs pinned, plus the 9 formerly-enabled
+  IDs disabled by owner decision (2026-07-29).
 - **Layers 2–4** are empty today; each needs an explicit owner target list
   before implementation (mechanism will be wired regardless).
 - No secrets encountered. No file contents beyond keybinding settings were read.
