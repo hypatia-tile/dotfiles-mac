@@ -127,6 +127,17 @@ the complete current set.
   `.zshrc` instead.
 - `brew` cleanup on activation also autoremoves dependency orphans of
   whatever it uninstalls — expected, not a stop signal.
+- **`brew` cleanup's `Uninstalled N formulae` summary is cosmetic when it is
+  preceded by `Error: Refusing to uninstall … because they are required by
+  emacs-plus@30`.** The "Refusing" line means cleanup tried to remove
+  emacs-plus@30's dependency tree and Homebrew *protected* it (tap trust
+  working — the healthy path, the opposite of the first-activation dep loss
+  below); the formulae it names stay installed. The trailing count reflects
+  what cleanup *evaluated*, not what was removed, so it can overlap the
+  protected set and look alarming. Verify on-disk reality instead of trusting
+  the count: e.g. `brew list --versions cairo gnutls librsvg jpeg` and
+  `emacs --version`. Only treat it as breakage if a dep is actually gone or
+  Emacs aborts on a missing dylib.
 - **Non-official Homebrew taps must be declared `trusted = true`.** Homebrew
   6.0.0 enabled `HOMEBREW_REQUIRE_TAP_TRUST`, so activation aborts with
   "Refusing to load formula … from untrusted tap" for any non-official tap
