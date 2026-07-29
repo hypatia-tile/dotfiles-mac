@@ -45,6 +45,28 @@ dictionary is at `~/.local/share/nvim/skk/user-dict`, and the SKK L
 dictionary is supplied by this flake at `~/.local/share/skk/SKK-JISYO.L`
 (`pkgs.skkDictionaries.l` — the pinned nixpkgs has no `skk-dicts` attr).
 
+### Verifying keybinding changes
+
+macOS keybindings (ADR 0017) are build-only verifiable for *content*, never for
+runtime behavior, so confirm them manually after the switch. For the
+`system.defaults` layer (`com.apple.symbolichotkeys`, in
+`modules/darwin/macos.nix`):
+
+1. The write lands at activation but the WindowServer only re-reads it on the
+   next login. Force it without logging out:
+   `/System/Library/PrivateFrameworks/SystemAdministration.framework/Resources/activateSettings -u`.
+2. Confirm the live dict matches the declared one:
+   `defaults read com.apple.symbolichotkeys AppleSymbolicHotKeys` — every ID and
+   `enabled` value should equal `macos.nix`.
+3. Behavior spot-check: a pinned-off shortcut does nothing (e.g. ⌃Space /
+   ⌃⌥Space no longer switch input source — IDs 60/61), and a pinned-on shortcut
+   still fires (e.g. Mission Control on F9, Space switching on ⌃←/⌃→).
+
+**Drift caveat:** the write **replaces the whole `AppleSymbolicHotKeys`
+dictionary** (it does not merge). Changing any shortcut in System Settings is
+therefore reverted on the next switch — edit `macos.nix` instead, and keep it
+the complete current set.
+
 ### Updating inputs
 
 `flake.lock` updates are manual, in dedicated commits (ADR 0011).
