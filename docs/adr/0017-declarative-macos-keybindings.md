@@ -1,6 +1,6 @@
 # 0017. Declarative macOS keybinding management
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-07-29
 
 ## Context
