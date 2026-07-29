@@ -128,30 +128,32 @@ bindings that annoy you.
 
 ---
 
-## Layer 4 — Option special characters (Karabiner-Elements)
+## Layer 4 — Option special characters — RESOLVED via aerospace (2026-07-30)
 
-Current state: Karabiner **not installed**, no `~/.config/karabiner/`. Target:
-neutralize Option-as-character-input (Option+, → ≤, accent dead keys) via a
-narrowly-scoped complex-modification.
+Originally scoped for Karabiner-Elements to neutralize Option-as-character-input.
+The real investigation of the reported "`Option+,` cannot be typed anywhere"
+found a different, in-scope cause — **not a keyboard layer at all**:
 
-**Critical constraint:** Karabiner intercepts *below* aerospace/Hammerspoon, so
-any rule MUST NOT swallow the Option/Alt combos those tools bind, or it will
-silently break window management. Reserved (do not touch):
+- Symptom: `Option+.` produced `≥`, but `Option+,` produced nothing, even in
+  Spotlight (a Cocoa text field). Ruled out: layout (standard `ABC`),
+  `DefaultKeyBinding.dict` (absent), symbolichotkeys / NSUserKeyEquivalents /
+  Services / HID remap (none), Discord/Slack global keybinds (quit-tested, not
+  the cause).
+- **Cause: AeroSpace was running and binds `alt-comma` → `layout accordion`**
+  (`aerospace config --get mode.main.binding.alt-comma` confirmed live). Its
+  bindings are global, so it swallowed `Option+,` in every app — including
+  Emacs, so `M-,` never reached Emacs either. `Option+.` was free because
+  aerospace binds no `alt-period`. (Initial "aerospace not running" check was a
+  false negative: process is `AeroSpace`, not `aerospace`.)
+- **Fix (in scope):** removed the `alt-comma` binding from
+  `config/aerospace/aerospace.toml` (owner does not use the accordion toggle).
+  `Option+,` now passes through: `M-,` in Emacs, `≤` elsewhere.
 
-- aerospace: `alt-comma`, `alt-slash`, `alt-tab`, `alt-shift-tab`
-- Hammerspoon: `cmd-alt-*` (K, arrows, M, C, R), `cmd-alt-ctrl-*`
-
-Proposal: a targeted rule that suppresses special-character output for Option +
-*specific* keys the owner names (NOT a blanket "Option = plain modifier"), so
-tool chords stay intact.
-
-**Input required from owner:** the exact set of Option+<key> combos to
-neutralize.
-
-| Option + key | Default char | Desired | Verdict |
-|---|---|---|---|
-| Option + , | ≤ | *(awaiting owner)* | disable? |
-| *(awaiting owner targets)* | | | |
+Karabiner remains **not installed** — it was never the right tool here. On the
+Emacs side, GUI Emacs.app already treats Option as Meta by default (verified
+`mac-option-modifier = meta`), so nothing is needed there (and Emacs config is
+out of scope, ADR 0002). Sibling aerospace binds `alt-slash` (Option+/) and
+`alt-tab` (Option+Tab) are left as-is; revisit only if they also get in the way.
 
 ---
 
@@ -160,6 +162,8 @@ neutralize.
 - **Layer 1** is fully implemented: all 29 `AppleSymbolicHotKeys` IDs declared
   `enabled = 0` — the 20 already-off IDs pinned, plus the 9 formerly-enabled
   IDs disabled by owner decision (2026-07-29).
-- **Layers 2–4** are empty today; each needs an explicit owner target list
+- **Layer 4** is resolved by removing aerospace's `alt-comma` binding — the real
+  blocker of `Option+,`; Karabiner was dropped as unnecessary (2026-07-30).
+- **Layers 2–3** are empty today; each needs an explicit owner target list
   before implementation (mechanism will be wired regardless).
 - No secrets encountered. No file contents beyond keybinding settings were read.
