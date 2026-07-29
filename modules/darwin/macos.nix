@@ -14,14 +14,16 @@
 # IMPORTANT: nix-darwin writes this as
 #   defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys '<whole dict>'
 # which REPLACES the entire AppleSymbolicHotKeys dictionary — it does not merge.
-# Therefore the dict below must be the COMPLETE current state: any ID omitted
-# would revert to its macOS built-in default on activation. So both groups are
-# declared:
-#   * "disabled" — the imperatively-curated off state we are pinning
-#     (the actual goal: make it reproducible).
-#   * "enabled (pinned)" — still-on shortcuts captured verbatim at their current
-#     values purely to avoid clobbering them. Whether to keep or disable these
-#     is still open (see keybindings-inventory.md Layer 1 "still enabled").
+# Therefore the dict below must be the COMPLETE set: any ID omitted would revert
+# to its macOS built-in default on activation, so every ID is declared even
+# though all are now off.
+#
+# Per the owner decision of 2026-07-29 (keybindings-inventory.md Layer 1), ALL
+# of these shortcuts are disabled (enabled = 0) — including the formerly-enabled
+# Mission Control family (32/33/34/36/37) and native Space switching (79-82).
+# Disabling 32/33/36 only drops the legacy Fn+F9/F8/F7 bindings; Mission Control
+# stays reachable via the F3 feature key and the trackpad gesture. `value`
+# blocks are retained only to document which key each ID would otherwise use.
 {
   system.defaults.CustomUserPreferences."com.apple.symbolichotkeys" = {
     AppleSymbolicHotKeys = {
@@ -119,11 +121,11 @@
         };
       };
 
-      ## ---- enabled: pinned verbatim (keep/disable still open) ----
+      ## ---- formerly enabled, disabled by owner decision (2026-07-29) ----
 
       # Mission Control family on legacy F-keys.
       "32" = {
-        enabled = 1;
+        enabled = 0;
         value = {
           parameters = [
             65535
@@ -134,7 +136,7 @@
         };
       };
       "33" = {
-        enabled = 1;
+        enabled = 0;
         value = {
           parameters = [
             65535
@@ -145,7 +147,7 @@
         };
       };
       "34" = {
-        enabled = 1;
+        enabled = 0;
         value = {
           parameters = [
             65535
@@ -156,7 +158,7 @@
         };
       };
       "36" = {
-        enabled = 1;
+        enabled = 0;
         value = {
           parameters = [
             65535
@@ -167,7 +169,7 @@
         };
       };
       "37" = {
-        enabled = 1;
+        enabled = 0;
         value = {
           parameters = [
             65535
@@ -178,19 +180,19 @@
         };
       };
 
-      # Native Space switching (Ctrl+Arrow) — redundant with aerospace, but no
-      # key clash (aerospace uses cmd/alt). Left on for now.
+      # Native Space switching (Ctrl+Arrow) — redundant with aerospace; disabled
+      # to free Ctrl+Left/Right for terminal/editor word motion.
       "79" = {
-        enabled = 1;
+        enabled = 0;
       };
       "80" = {
-        enabled = 1;
+        enabled = 0;
       };
       "81" = {
-        enabled = 1;
+        enabled = 0;
       };
       "82" = {
-        enabled = 1;
+        enabled = 0;
       };
     };
   };
