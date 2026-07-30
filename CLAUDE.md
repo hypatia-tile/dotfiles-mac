@@ -29,10 +29,13 @@ and `docs/adr/` for the governing decisions.
 - ADRs live in `docs/adr/NNNN-slug.md` (MADR-lite). New ADRs always start with
   `Status: Proposed`; only the owner promotes them to Accepted. Use the
   `adr-new` skill.
-- Verification uses the `migration-check` skill (build-only, never switches).
+- Verification uses the `migration-check` skill: it mirrors the required CI
+  gates (nixfmt/statix/deadnix, markdownlint) and builds; never switches. Run
+  it before pushing.
 - Other repository skills: `ops-qa` (answer operations questions from the
   docs), `ship-pr` (push-wait → PR → CI watch), `nvim-bump` (nvim-config
-  edit + pinned-input bump per ADR 0014).
+  edit + pinned-input bump per ADR 0014), `keybinding-doctor` (diagnose a
+  macOS key/chord that is swallowed or misbehaving).
 - `flake.lock` stays frozen during the migration: always pass
   `--no-update-lock-file`; `nix flake update` is denied until cutover
   (ADR 0011).
