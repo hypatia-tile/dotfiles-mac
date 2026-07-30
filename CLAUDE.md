@@ -25,6 +25,9 @@ and `docs/adr/` for the governing decisions.
 
 ## Workflow
 
+- Cross-tool operational gotchas (run the CI lint gates locally before pushing,
+  the markdownlint MD060 false positive, verify runtime state empirically) live
+  in `AGENTS.md` — consult it alongside these rules.
 - Work on short-lived feature branches off `main`; Conventional Commits.
 - ADRs live in `docs/adr/NNNN-slug.md` (MADR-lite). New ADRs always start with
   `Status: Proposed`; only the owner promotes them to Accepted. Use the
