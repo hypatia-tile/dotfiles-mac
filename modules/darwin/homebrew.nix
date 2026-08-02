@@ -43,6 +43,12 @@
     casks = [
       "hammerspoon"
       "nikitabobko/tap/aerospace"
+      # Full macOS GUI Tailscale (Network Extension: MagicDNS, exit nodes,
+      # subnet routes at the OS level). The plain `tailscale` cask name now
+      # resolves to `tailscale-app`; the `tailscale` Homebrew *formula* is the
+      # CLI-only build, which is deliberately not used here (ADR 0005 keeps
+      # Homebrew to GUI casks).
+      "tailscale-app"
     ];
 
     masApps = { };
