@@ -119,11 +119,11 @@
     "nvim-config": {
       "flake": false,
       "locked": {
-        "lastModified": 1785815227,
-        "narHash": "sha256-VklVhFW1qn7Tyr0nZ8HICen4z3SEEaFkWtmoF2VWK+I=",
+        "lastModified": 1785842787,
+        "narHash": "sha256-GUqu4x97VapxYS+OCcYnsX/STvuCiJsHhWKRVic3hho=",
         "owner": "hypatia-tile",
         "repo": "nvim-config",
-        "rev": "e7c266ac73379b5fb605a0561a989c2f6ce28e44",
+        "rev": "f769434fa666dc929cf83fdacfe5e42ee9eabcbe",
         "type": "github"
       },
       "original": {
