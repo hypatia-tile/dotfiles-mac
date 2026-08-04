@@ -20,7 +20,8 @@ until it is run, so merged-but-not-switched is a normal intermediate state.
 ### Changing the Neovim config
 
 The nvim config is the pinned non-flake input `nvim-config`, placed
-read-only from the store (ADR 0014). The proven loop:
+read-only from the store (ADR 0014). The `nvim-bump` skill drives this loop
+and `bin/nvim-bump-check.sh` does the verification; the proven steps:
 
 1. Edit in the clone at `~/ghqrepo/github.com/hypatia-tile/nvim-config`.
    Verify the working tree there before landing it: `bin/check` runs a
@@ -32,8 +33,17 @@ read-only from the store (ADR 0014). The proven loop:
    push, land on its `main`.
 2. In this repo: `nix flake lock --update-input nvim-config` — as a
    **dedicated commit** (ADR 0011). Only the `nvim-config` node may change.
-3. PR, merge, switch.
-4. Post-switch check: launch `nvim` — no startup errors,
+3. Verify with `bin/nvim-bump-check.sh`: it builds the closure
+   (`--no-update-lock-file`, never switches), resolves what `.config/nvim`
+   now points at, prints the old→new pin, and asserts a path is present or
+   absent in the new tree (`--assert-present PATH` / `--assert-absent PATH`,
+   repeatable) — encode the behavior change as such an assertion. A non-zero
+   exit fails the bump.
+4. PR, merge, switch. For the PR body,
+   `bin/nvim-bump-check.sh --emit-pr-body` fills the old→new revs, the
+   nvim-config PR range, the change bullets, and the verification results
+   (`gh pr create --body-file`).
+5. Post-switch check: launch `nvim` — no startup errors,
    `:echo stdpath('config')` resolves through `~/.config/nvim` to the new
    store path, `:Lazy` shows plugins clean against the shipped
    `lazy-lock.json`, and the behavior change that motivated the bump is
