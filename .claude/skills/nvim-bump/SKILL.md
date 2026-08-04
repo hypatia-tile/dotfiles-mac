@@ -35,10 +35,18 @@ operation.
    `nix flake lock --update-input nvim-config` — as a **dedicated commit**
    (ADR 0011). Verify the lock diff touches only the `nvim-config` node.
    Never `nix flake update`.
-5. **Verify**: build the closure with `--no-update-lock-file` and check the
-   changed file is present in the built generation's home-files under
-   `.config/nvim/`. Run migration-check if anything beyond the pin moved.
-6. Hand over to the `ship-pr` flow; after merge the owner applies with
+5. **Verify** with `bin/nvim-bump-check.sh`: it builds the closure with
+   `--no-update-lock-file` (never switches), resolves what `.config/nvim`
+   now points at, prints the old→new pin, and asserts a path is present or
+   absent in the new tree — encode the behavior change as such an assertion:
+   `bin/nvim-bump-check.sh --assert-absent lua/snippets/lean.lua`
+   (repeatable; `--assert-present PATH` too). A non-zero exit fails the bump.
+   Run migration-check if anything beyond the pin moved.
+6. Hand over to the `ship-pr` flow. Its PR body comes from
+   `bin/nvim-bump-check.sh --emit-pr-body` (template:
+   `.claude/skills/nvim-bump/pr-body.md`), which fills the old→new revs, the
+   nvim-config PR range, the change bullets, and the verification results;
+   pipe it to `gh pr create --body-file`. After merge the owner applies with
    `sudo darwin-rebuild switch --flake .#Kazukis-MacBook-Air`.
 7. **Post-switch check** (owner, in the live nvim — name these in the
    ship-pr report): no startup errors; `:echo stdpath('config')` resolves
