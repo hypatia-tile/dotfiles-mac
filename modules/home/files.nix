@@ -22,6 +22,14 @@
     "aerospace".source = ../../config/aerospace;
     "lazygit".source = ../../config/lazygit;
 
+    # herdr: standalone trial as a tmux alternative. Only config.toml is linked,
+    # not the whole directory: herdr writes runtime state (sockets, logs,
+    # session.json, .plugins.lock) into ~/.config/herdr, so the directory must
+    # stay writable — same reasoning as the zsh ZDOTDIR case above. Dormant until
+    # cutover; the trial runs herdr via `nix run nixpkgs#herdr` against a
+    # hand-placed ~/.config/herdr/config.toml (backed up as .hm-bak on cutover).
+    "herdr/config.toml".source = ../../config/herdr/config.toml;
+
     # Effective Nix configuration: with nix.enable = false (Determinate
     # installer) the nix-darwin nix.settings module is inert, so the user
     # nix.conf is managed here instead (flake-design §4 note 2).

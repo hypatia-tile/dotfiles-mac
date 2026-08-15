@@ -1,0 +1,20 @@
+# Herdr configuration — standalone trial as a tmux alternative.
+#
+# Tracked here for history; not yet wired into the running system (cutover is
+# pending, ADR 0003). During the trial this file is also hand-placed at
+# ~/.config/herdr/config.toml so `herdr server reload-config` can pick it up
+# without a switch. Remove the hand-placed copy before cutover so Home Manager
+# can own the path.
+#
+# herdr binary is not declared in packages.nix yet; the trial runs it via
+# `nix run nixpkgs#herdr`. Promote to a declarative install only if adopted.
+
+[keys]
+# Match the current tmux prefix so muscle memory carries over.
+prefix = "ctrl+q"
+
+[ui]
+# Auto-copy mouse selections. Keyboard copy uses `prefix+e` (edit_scrollback),
+# which opens the pane scrollback in $EDITOR (nvim) for search/yank — herdr has
+# no tmux-style keyboard copy-mode.
+copy_on_select = true
