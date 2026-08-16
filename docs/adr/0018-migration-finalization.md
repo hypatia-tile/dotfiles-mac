@@ -1,7 +1,9 @@
 # 0018. Finalize the migration: archive legacy repos, unfreeze the lock, lift migration-era guardrails
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-08-16
+
+Promoted to Accepted by shinokun, 2026-08-16.
 
 ## Context
 
