@@ -82,7 +82,8 @@ the complete current set.
 `flake.lock` updates are manual, in dedicated commits (ADR 0011).
 `nix flake update` (update everything) stays denied in the guardrails; use
 `nix flake lock --update-input <name>` for targeted bumps. The weekly
-`update-flake-lock` workflow is enabled only after the stability window.
+`update-flake-lock` workflow is enabled (ADR 0018) and opens PRs on schedule;
+merging is always manual.
 
 ## 2. Home Manager placement semantics (hard-won)
 
@@ -201,7 +202,8 @@ the complete current set.
 - The eval warning `nixfmt-rfc-style is now the same as pkgs.nixfmt` is a
   rename alias in the pinned nixpkgs; harmless until the package is renamed
   at the first post-window lock update.
-- Deferred (candidates for their own PRs after the stability window):
-  archive the legacy repos (ADR 0010), enable `update-flake-lock` + first
-  manual update (ADR 0011), `system.defaults` phase (ADR 0002), `HISTFILE`
-  fix, `programs.git` conversion, zsh-abbr from brew to nixpkgs.
+- Finalization after the stability window (ADR 0018): `update-flake-lock`
+  enabled; archiving the legacy repos (ADR 0010) and the first manual
+  `nix flake update` (ADR 0011) are owner steps tracked in `runbook.md` §4.
+- Deferred (candidates for their own PRs): `system.defaults` phase (ADR 0002),
+  `HISTFILE` fix, `programs.git` conversion, zsh-abbr from brew to nixpkgs.

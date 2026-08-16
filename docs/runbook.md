@@ -137,8 +137,17 @@ Two independent layers:
 
 ## 4. Post-cutover
 
-1. Monitor for a 2–4 week stability window.
-2. Enable the `update-flake-lock` workflow schedule (ADR 0011).
+Finalization is tracked in ADR 0018 (started 2026-08-16, after the stability
+window elapsed).
+
+1. Monitor for a 2–4 week stability window. — done (cutover 2026-07-14).
+2. Enable the `update-flake-lock` workflow schedule (ADR 0011). — done
+   (schedule uncommented in `.github/workflows/update-flake-lock.yml`).
 3. Archive `hypatia-tile/dotfiles` and `hypatia-tile/nix-darwin` on GitHub
-   (ADR 0010).
-4. First manual `nix flake update` in a dedicated PR.
+   (ADR 0010). — owner step:
+   `gh repo archive hypatia-tile/dotfiles` and
+   `gh repo archive hypatia-tile/nix-darwin` (reversible; local clones remain).
+4. First manual `nix flake update` in a dedicated PR (ADR 0011). — owner step:
+   `nix flake update`, review the closure diff with `migration-check` (version
+   changes are now expected), merge the dedicated `chore(deps)` PR manually,
+   then apply with `darwin-rebuild switch`.
