@@ -7,6 +7,10 @@
     alacritty
     kitty
     tmux
+    # herdr: tmux-alternative, kept alongside tmux (do not nest one in the
+    # other — both use the C-q prefix). Config: config/herdr/config.toml
+    # (linked file-only via files.nix). Currently 0.8.0 from the pinned nixpkgs.
+    herdr
 
     # Shell utilities
     eza
