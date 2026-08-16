@@ -1,6 +1,6 @@
 ---
 name: migration-check
-description: Mirror the required CI gates locally before pushing — nixfmt/statix/deadnix, markdownlint, flake check, system closure build, closure diff against the running system, Home Manager collision check, and a secret scan. Use before merging flake changes or preparing cutover. Never switches or activates.
+description: Mirror the required CI gates locally before pushing — nixfmt/statix/deadnix, markdownlint, flake check, system closure build, closure diff against the running system, Home Manager collision check, and a secret scan. Use before merging any flake or config change. Never switches or activates.
 ---
 
 # migration-check
@@ -14,10 +14,10 @@ activating anything.
 
 ## Steps
 
-Run from the repository root. Always pass `--no-update-lock-file` (the lock
-is frozen during migration, ADR 0011 — a lock modification is itself a
-failure). Steps 1–2 mirror the CI lint jobs and are cheap, so run them first
-to fail fast.
+Run from the repository root. Always pass `--no-update-lock-file`: lock updates
+land as dedicated commits (ADR 0011), so a check or build must never mutate the
+lock — a lock modification here is itself a failure. Steps 1–2 mirror the CI
+lint jobs and are cheap, so run them first to fail fast.
 
 1. **Nix format & lint** (mirrors the CI *Nix format & lint* job). Skip if the
    change touches no `*.nix`.
@@ -41,9 +41,10 @@ to fail fast.
    `nix build .#darwinConfigurations.<host>.system --no-update-lock-file -o result`
 5. **Closure diff**
    `nix store diff-closures /run/current-system ./result`
-   Present the full diff. During migration any package *version* change is a
-   red flag (lock is frozen); additions/removals must map to inventory
-   verdicts.
+   Present the full diff. A package *version* change is expected only when
+   reviewing a deliberate `flake.lock` update PR; otherwise it is a red flag
+   (the check does not touch the lock). Additions/removals must map to the
+   change under review.
 6. **Collision check**
    Enumerate the files the built configuration will place in `$HOME`
    (e.g. via `nix eval` of `home-manager` file attrs, or by inspecting
@@ -59,6 +60,6 @@ to fail fast.
 ## Report
 
 End with a pass/fail table for the seven steps and an explicit statement of
-whether the tree meets the pre-cutover criteria in `docs/runbook.md`
-section 1. Never conclude with a recommendation to switch — cutover is the
-owner's manual decision.
+whether the tree meets the CI-gate, collision, and secret criteria. Never
+conclude with a recommendation to switch — applying is the owner's manual
+decision.
