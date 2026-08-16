@@ -1,15 +1,15 @@
-# Weekly flake.lock update PRs (ADR 0011, ADR 0012).
+# Weekly flake.lock update PRs (ADR 0011, ADR 0012, ADR 0018).
 #
-# DISABLED UNTIL CUTOVER: the lock is frozen during the migration, so this
-# workflow has no schedule trigger yet. After cutover completes, uncomment
-# the `schedule` block below. Merging the opened PRs is always manual.
+# Enabled post-cutover: opens a PR on schedule. Merging the opened PRs is
+# always manual, and applying the merged lock is the owner's manual
+# `darwin-rebuild switch`.
 
 name: Update flake.lock
 
 on:
   workflow_dispatch:
-  # schedule:
-  #   - cron: '0 21 * * 5' # Saturdays 06:00 JST
+  schedule:
+    - cron: '0 21 * * 5' # Saturdays 06:00 JST
 
 permissions:
   contents: write
