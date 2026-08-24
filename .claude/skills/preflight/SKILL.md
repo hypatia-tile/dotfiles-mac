@@ -1,9 +1,9 @@
 ---
-name: migration-check
+name: preflight
 description: Mirror the required CI gates locally before pushing — nixfmt/statix/deadnix, markdownlint, flake check, system closure build, closure diff against the running system, Home Manager collision check, and a secret scan. Use before merging any flake or config change. Never switches or activates.
 ---
 
-# migration-check
+# preflight
 
 Build-and-lint verification of this repository against the running system
 (ADR 0003), mirroring every required CI gate so failures are caught **before**
@@ -11,6 +11,9 @@ pushing (CI has round-tripped on format/lint that a local pass would have
 caught). **Under no circumstances run `darwin-rebuild switch`, any activation
 script, or `sudo`.** If a step fails, report and stop — do not "fix" by
 activating anything.
+
+This is the standing gate for every change; `config-change` and `nvim-bump`
+delegate their verification here rather than restating it (ADR 0019).
 
 ## Steps
 
@@ -29,10 +32,14 @@ lint jobs and are cheap, so run them first to fail fast.
    - `nix run nixpkgs#markdownlint-cli2 -- '**/*.md'` — the nixpkgs
      markdownlint is newer than CI's pinned `markdownlint-cli2-action@v19`, so
      it raises rules CI does not have (notably **MD060**). Treat MD060 as a
-     local-only false positive (`docs/operations.md` §4); a step is failing
-     only on rules CI's version would also raise.
+     local-only false positive; a step is failing only on rules CI's version
+     would also raise.
    - Commit messages must be Conventional Commits (CI runs commitlint against
-     `commitlint.config.mjs`).
+     `commitlint.config.mjs`):
+     `nix run nixpkgs#commitlint -- --from origin/main --to HEAD`
+   - The file-writing tool occasionally appends a stray closing tag to a file
+     it creates, which then breaks Nix evaluation or lint. Scan the changed
+     tree: `grep -rn '</content>' .`
 3. **Flake check**
    `nix flake check --no-update-lock-file`
 4. **Build every host closure**
@@ -41,9 +48,10 @@ lint jobs and are cheap, so run them first to fail fast.
    `nix build .#darwinConfigurations.<host>.system --no-update-lock-file -o result`
 5. **Closure diff**
    `nix store diff-closures /run/current-system ./result`
-   Present the full diff. A package *version* change is expected only when
-   reviewing a deliberate `flake.lock` update PR; otherwise it is a red flag
-   (the check does not touch the lock). Additions/removals must map to the
+   Present the full diff. A package *version* change is a red flag here: this
+   check does not touch the lock, so nothing should move. The one exception is
+   a deliberate `flake.lock` update, which is reviewed with the `lock-review`
+   skill and inverts this criterion. Additions and removals must map to the
    change under review.
 6. **Collision check**
    Enumerate the files the built configuration will place in `$HOME`
@@ -57,9 +65,17 @@ lint jobs and are cheap, so run them first to fail fast.
    (`BEGIN .* PRIVATE KEY`, `ghp_`, `github_pat_`, `AKIA[0-9A-Z]{16}`,
    `oauth_token`).
 
+## Scope shortcuts
+
+Steps 1, 3, 4, 5 and 6 all depend on `*.nix`, `flake.lock` or `config/**`
+having changed — the same paths CI's *Detect closure-affecting changes* job
+filters on. For a documentation-only change, run steps 2 and 7 and state that
+the rest do not apply; CI will report the build job as *skipping*, which still
+satisfies the required check.
+
 ## Report
 
-End with a pass/fail table for the seven steps and an explicit statement of
+End with a pass/fail table for the steps you ran and an explicit statement of
 whether the tree meets the CI-gate, collision, and secret criteria. Never
 conclude with a recommendation to switch — applying is the owner's manual
 decision.

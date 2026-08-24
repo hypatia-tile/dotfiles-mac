@@ -16,11 +16,13 @@ result-*
 # and skill-manager artifacts (vendored copies, lockfile) stay out.
 .claude/skills/*
 !.claude/skills/adr-new
-!.claude/skills/migration-check
+!.claude/skills/preflight
 !.claude/skills/ops-qa
 !.claude/skills/ship-pr
 !.claude/skills/nvim-bump
 !.claude/skills/keybinding-doctor
+!.claude/skills/config-change
+!.claude/skills/lock-review
 .agents/
 skills-lock.json
 
