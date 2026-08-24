@@ -41,7 +41,7 @@ operation.
    absent in the new tree — encode the behavior change as such an assertion:
    `bin/nvim-bump-check.sh --assert-absent lua/snippets/lean.lua`
    (repeatable; `--assert-present PATH` too). A non-zero exit fails the bump.
-   Run migration-check if anything beyond the pin moved.
+   Run `preflight` if anything beyond the pin moved.
 6. Hand over to the `ship-pr` flow. Its PR body comes from
    `bin/nvim-bump-check.sh --emit-pr-body` (template:
    `.claude/skills/nvim-bump/pr-body.md`), which fills the old→new revs, the
