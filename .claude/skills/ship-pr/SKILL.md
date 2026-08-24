@@ -21,7 +21,7 @@ between.
    - Title: the head commit's Conventional Commit subject (or a summary
      when the branch has several commits).
    - Body: `## Summary` (what and why, per commit), a `## Verification`
-     section stating what was checked (migration-check results, lint,
+     section stating what was checked (preflight results, lint,
      lock untouched), any owner-attention items, and the
      `🤖 Generated with [Claude Code](https://claude.com/claude-code)` footer.
    - If the change needs a post-merge `darwin-rebuild switch`, say so in
@@ -49,3 +49,5 @@ between.
   owner's (ADR 0003, ADR 0008).
 - One PR per concern; if unrelated changes are mixed on the branch, stop
   and say so instead of shipping them together.
+- A `chore(deps): update flake.lock` PR is opened by the weekly workflow, not
+  from a local branch — it is reviewed with `lock-review`, not shipped here.
