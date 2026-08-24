@@ -70,6 +70,8 @@
     copilot-language-server
     claude-code
     codex
+    # Reads GEMINI.md for repository rules; ours points at AGENTS.md (ADR 0019).
+    gemini-cli
 
     # zenn cli
     zenn-cli
