@@ -1,5 +1,13 @@
 # macOS keybinding inventory
 
+> **Historical record — the survey behind ADR 0017.** The declarative
+> keybinding phase it fed is complete (#27, #29), so the per-row proposals and
+> verdicts are spent and the observed values date from 2026-07-29. **One part
+> is still current:** the four-layer table below — which mechanism owns which
+> kind of shortcut, and where each is declared — remains the reference for
+> where a keybinding fix belongs, and the `keybinding-doctor` skill applies
+> it. Kept in place because ADR 0017 references this file by path (ADR 0019).
+
 Read-only discovery of macOS default key behavior, taken 2026-07-29 on
 `Kazukis-MacBook-Air`. Input for the declarative keybinding-management phase
 (its own ADR, per ADR 0002). Scope is **keybindings only**; the dock/finder/

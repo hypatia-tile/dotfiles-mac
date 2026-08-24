@@ -1,5 +1,11 @@
 # Discovery inventory
 
+> **Historical record — the 2026-07 migration.** Every row has the owner's
+> verdict and every verdict has been carried out. This is a snapshot of the
+> machine as it stood on 2026-07-13, **not maintained** and not a description
+> of the current system. Start at [`README.md`](README.md) instead. Kept in
+> place because ADR 0002 references it by path (ADR 0019).
+
 Read-only scan of the current machine and the two legacy repositories,
 performed 2026-07-13 on `Kazukis-MacBook-Air` (aarch64-darwin,
 macOS 26.5.1). Per ADR 0002, **every row needs an owner verdict before

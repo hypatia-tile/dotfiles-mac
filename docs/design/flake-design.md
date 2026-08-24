@@ -1,5 +1,20 @@
 # Flake design
 
+> **Historical record — the 2026-07 migration.** This is the design ADR 0014
+> adopted, and its §6 implementation phases are all merged. It is **not
+> maintained**, and parts of it are knowingly wrong now:
+>
+> - **§5's Homebrew module no longer matches
+>   `modules/darwin/homebrew.nix`.** It passes `with-native-comp` and
+>   `with-poll`, which do not exist on `emacs-plus@30` and abort the install
+>   (fixed in #22), and omits `imagemagick` (#24), `tailscale-app` (#33) and
+>   the tap `trusted` flag (#21). Read the module, not this block.
+> - **§3's note about converting git to `programs.git` was withdrawn** by
+>   ADR 0020, which makes plain files the default form.
+>
+> For the current layout start at [`README.md`](README.md). Kept in place
+> because ADR 0014 delegates its content to this file by path (ADR 0019).
+
 Design for the dotfiles-mac flake, derived from the accepted ADRs and the
 completed inventory verdicts. Implementation follows the phases in §6; each
 phase is one PR verified by `migration-check`.
