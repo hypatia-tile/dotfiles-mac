@@ -1,7 +1,9 @@
 # 0020. Plain files are the default form for user-facing configuration
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-08-24
+
+Promoted to Accepted by shinokun, 2026-08-24.
 
 ## Context
 
