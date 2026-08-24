@@ -1,5 +1,15 @@
 # Runbook: verification, cutover, rollback
 
+> **Historical record — the 2026-07 migration.** This is the pre-cutover
+> verification (§1), the cutover executed on 2026-07-14 (§2), the rollback
+> layers as they stood then (§3), and the post-cutover checklist (§4). All of
+> it is complete. The document is **not maintained** and does not describe the
+> current system; the skill names in it are the ones in use at the time.
+>
+> For today's procedures start at [`README.md`](README.md). For recovery use
+> [`rollback.md`](rollback.md), which supersedes §3. Kept in place because
+> ADRs 0003, 0015 and 0018 reference it by path (ADR 0019).
+
 ## 1. Pre-cutover verification (repeatable, non-destructive)
 
 Run via the `migration-check` skill, or manually:
@@ -123,17 +133,23 @@ config-content issues; otherwise roll back (section 3) and reassess.
 
 ## 3. Rollback
 
-Two independent layers:
+Two independent layers were available at the cutover.
 
-- **Generation rollback** (first resort):
-  `darwin-rebuild rollback`, or
-  `darwin-rebuild switch --switch-generation <N>` with the number recorded in
-  step 2.2. This restores the previous system + HM generation.
-- **Legacy restore** (last resort): the legacy repos remain intact and
+- **Generation rollback** (first resort) — superseded by
+  [`rollback.md`](rollback.md), which is the current procedure. What stood
+  here recorded the invocation as `darwin-rebuild rollback`; that is not
+  valid — `--rollback` is a flag on `switch`, not a subcommand.
+- **Legacy restore** (last resort): the legacy repositories remain intact and
   read-only. Re-running `~/github/dotfiles/bin/dot-link.sh` restores the
   symlink regime (warning: it force-removes targets first), and
   `darwin-rebuild switch` from `~/github/nix-darwin` restores the old system
   closure. Files HM backed up as `*.hm-bak` can be restored by renaming.
+
+  **This layer has aged.** Both repositories were archived on GitHub and were
+  last updated in early July 2026. Restoring them returns the machine to the
+  regime this flake replaced on 2026-07-14 and discards everything merged
+  since — it is not a way to undo a recent change. Exhaust generation
+  rollback first.
 
 ## 4. Post-cutover
 
@@ -144,10 +160,10 @@ window elapsed).
 2. Enable the `update-flake-lock` workflow schedule (ADR 0011). — done
    (schedule uncommented in `.github/workflows/update-flake-lock.yml`).
 3. Archive `hypatia-tile/dotfiles` and `hypatia-tile/nix-darwin` on GitHub
-   (ADR 0010). — owner step:
-   `gh repo archive hypatia-tile/dotfiles` and
-   `gh repo archive hypatia-tile/nix-darwin` (reversible; local clones remain).
-4. First manual `nix flake update` in a dedicated PR (ADR 0011). — owner step:
-   `nix flake update`, review the closure diff with `migration-check` (version
-   changes are now expected), merge the dedicated `chore(deps)` PR manually,
-   then apply with `darwin-rebuild switch`.
+   (ADR 0010). — done (both are archived; reversible, and the local clones
+   remain as rollback material).
+4. First manual `nix flake update` in a dedicated PR (ADR 0011). — done
+   (PR #41, merged 2026-08-16, as a dedicated `chore(deps)` commit).
+
+The checklist is complete; the recurring successor to item 4 is the weekly
+workflow, reviewed with the `lock-review` skill.

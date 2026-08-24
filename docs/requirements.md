@@ -1,5 +1,13 @@
 # Requirements
 
+> **Historical record — the 2026-07 migration.** R-01 through R-20 are all
+> satisfied; the migration completed at the 2026-07-14 cutover (ADR 0015) and
+> was finalized by ADR 0018. This is the requirement set of a finished
+> project, **not maintained** and not a description of the current system —
+> and the skill names in it are the ones in use at the time. Start at
+> [`README.md`](README.md) instead. Kept in place because ADR 0007 references
+> it by path (ADR 0019).
+
 Requirements for migrating the macOS configuration from
 `~/github/dotfiles` and `~/github/nix-darwin` into this repository.
 Decided in the grilling session of 2026-07-13. Each requirement references

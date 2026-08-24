@@ -1,81 +1,51 @@
 # Operations guide
 
-Working knowledge for operating this repository after the cutover
-(2026-07-14). The runbook covers cutover and rollback; this covers
-day-to-day changes and the sharp edges discovered while migrating.
+Working knowledge for operating this repository: the semantics, the sharp
+edges, and the things that are true about this machine rather than about any
+one procedure. **Procedures themselves live in skills** (ADR 0019) — see
+[`README.md`](README.md) for which skill covers what.
 
 ## 1. Changing configuration
 
 Every change follows the same loop:
 
-1. Branch off `main`, edit, and verify with the `migration-check` skill
+1. Branch off `main`, edit, and verify with the `preflight` skill
    (build-only — nothing here ever switches).
 2. PR with Conventional Commits; all CI checks are required; self-merge
    when green.
 3. Apply manually: `sudo darwin-rebuild switch --flake .#Kazukis-MacBook-Air`.
 
-The switch is always the owner's manual step. Nothing lands on the machine
-until it is run, so merged-but-not-switched is a normal intermediate state.
+The `config-change` skill drives that loop and decides which layer a change
+belongs in. The switch is always the owner's manual step: nothing lands on the
+machine until it is run, so merged-but-not-switched is a normal intermediate
+state.
 
 ### Changing the Neovim config
 
-The nvim config is the pinned non-flake input `nvim-config`, placed
-read-only from the store (ADR 0014). The `nvim-bump` skill drives this loop
-and `bin/nvim-bump-check.sh` does the verification; the proven steps:
+The nvim config is the pinned non-flake input `nvim-config`, placed read-only
+from the store (ADR 0014), so changing it is a two-repository operation. The
+procedure is the `nvim-bump` skill, verified by `bin/nvim-bump-check.sh`.
 
-1. Edit in the clone at `~/ghqrepo/github.com/hypatia-tile/nvim-config`.
-   Verify the working tree there before landing it: `bin/check` runs a
-   headless load (`Lazy! restore` to `lazy-lock.json`, then a clean
-   startup — a refreshed `lazy-lock.json` belongs in the same commit);
-   `bin/nvim-dev` opens the tree interactively under
-   `NVIM_APPNAME=nvim-dev`, isolated from the live config. Note the limit:
-   a clean `bin/check` proves startup, not lazy-loaded plugins. Commit,
-   push, land on its `main`.
-2. In this repo: `nix flake lock --update-input nvim-config` — as a
-   **dedicated commit** (ADR 0011). Only the `nvim-config` node may change.
-3. Verify with `bin/nvim-bump-check.sh`: it builds the closure
-   (`--no-update-lock-file`, never switches), resolves what `.config/nvim`
-   now points at, prints the old→new pin, and asserts a path is present or
-   absent in the new tree (`--assert-present PATH` / `--assert-absent PATH`,
-   repeatable) — encode the behavior change as such an assertion. A non-zero
-   exit fails the bump.
-4. PR, merge, switch. For the PR body,
-   `bin/nvim-bump-check.sh --emit-pr-body` fills the old→new revs, the
-   nvim-config PR range, the change bullets, and the verification results
-   (`gh pr create --body-file`).
-5. Post-switch check: launch `nvim` — no startup errors,
-   `:echo stdpath('config')` resolves through `~/.config/nvim` to the new
-   store path, `:Lazy` shows plugins clean against the shipped
-   `lazy-lock.json`, and the behavior change that motivated the bump is
-   actually observable.
+What is a property of the setup rather than a step, and therefore lives here:
+**anything nvim must *write* cannot live in the config dir**, because it is a
+read-only store path. Use `stdpath("data")` — the skkeleton user dictionary is
+at `~/.local/share/nvim/skk/user-dict`, and the SKK L dictionary is supplied
+by this flake at `~/.local/share/skk/SKK-JISYO.L` (`pkgs.skkDictionaries.l` —
+the pinned nixpkgs has no `skk-dicts` attr).
 
-Anything nvim must **write** cannot live in the config dir (it is a
-read-only store path). Use `stdpath("data")` — e.g. the skkeleton user
-dictionary is at `~/.local/share/nvim/skk/user-dict`, and the SKK L
-dictionary is supplied by this flake at `~/.local/share/skk/SKK-JISYO.L`
-(`pkgs.skkDictionaries.l` — the pinned nixpkgs has no `skk-dicts` attr).
+Note the limit of the verification: a clean `bin/check` in the nvim-config
+clone proves startup, not lazy-loaded plugins.
 
-### Verifying keybinding changes
+### macOS keybindings
 
-macOS keybindings (ADR 0017) are build-only verifiable for *content*, never for
-runtime behavior, so confirm them manually after the switch. For the
-`system.defaults` layer (`com.apple.symbolichotkeys`, in
-`modules/darwin/macos.nix`):
+Keybindings (ADR 0017) are build-only verifiable for *content*, never for
+runtime behavior, so they are always confirmed by hand after the switch; the
+`config-change` skill carries the steps.
 
-1. The write lands at activation but the WindowServer only re-reads it on the
-   next login. Force it without logging out:
-   `/System/Library/PrivateFrameworks/SystemAdministration.framework/Resources/activateSettings -u`.
-2. Confirm the live dict matches the declared one:
-   `defaults read com.apple.symbolichotkeys AppleSymbolicHotKeys` — every ID and
-   `enabled` value should equal `macos.nix`.
-3. Behavior spot-check: a pinned-off shortcut does nothing (e.g. ⌃Space /
-   ⌃⌥Space no longer switch input source — IDs 60/61), and a pinned-on shortcut
-   still fires (e.g. Mission Control on F9, Space switching on ⌃←/⌃→).
-
-**Drift caveat:** the write **replaces the whole `AppleSymbolicHotKeys`
-dictionary** (it does not merge). Changing any shortcut in System Settings is
-therefore reverted on the next switch — edit `macos.nix` instead, and keep it
-the complete current set.
+**Drift caveat:** the `system.defaults` write **replaces the whole
+`AppleSymbolicHotKeys` dictionary** rather than merging into it. Changing any
+shortcut in System Settings is therefore reverted on the next switch — edit
+`modules/darwin/macos.nix` instead, and keep it the complete current set.
 
 ### Updating inputs
 
@@ -83,7 +53,7 @@ the complete current set.
 `nix flake update` (update everything) stays denied in the guardrails; use
 `nix flake lock --update-input <name>` for targeted bumps. The weekly
 `update-flake-lock` workflow is enabled (ADR 0018) and opens PRs on schedule;
-merging is always manual.
+merging is always manual, and reviewing one is the `lock-review` skill.
 
 ## 2. Home Manager placement semantics (hard-won)
 
@@ -130,12 +100,14 @@ merging is always manual.
 - Transient GitHub "Service Unavailable" failures in job *setup* are
   infrastructure, not code: rerun the failed job.
 
-## 5. Known quirks and deferred cleanups
+## 5. Known quirks
+
+Knowledge that does not expire. Work that is merely *not done yet* is not
+here — it is filed as a GitHub issue (`gh issue list`, ADR 0019).
 
 - `HISTFILE` is `~/.zsh_history`, not `$ZDOTDIR/history`: nix-darwin's
   `/etc/zshrc` runs after the user `.zprofile` and overrides it. This
-  predates the migration; fix (if desired) by setting `HISTFILE` in
-  `.zshrc` instead.
+  predates the migration.
 - `brew` cleanup on activation also autoremoves dependency orphans of
   whatever it uninstalls — expected, not a stop signal.
 - **`brew` cleanup's `Uninstalled N formulae` summary is cosmetic when it is
@@ -171,10 +143,7 @@ merging is always manual.
   were removed). Recover by reinstalling once so the deps come back and relink:
   `HOMEBREW_NO_REQUIRE_TAP_TRUST=1 brew reinstall emacs-plus@30 --with-imagemagick`;
   a subsequent cleanup keeps them (verified with `brew bundle cleanup --file=…`
-  dry-run: nothing removed). Candidate hardening (deferred, unverified): set
-  `homebrew.extraEnv` to trust the tap in every `brew bundle` phase — but
-  `HOMEBREW_ALLOWED_TAPS` may forbid the other non-official taps
-  (`olets/tap`, `nikitabobko/tap`), so it needs checking before adoption.
+  dry-run: nothing removed).
 - **emacs-plus builds `Emacs.app` in its Cellar, not `/Applications`.** As a
   formula (not a cask) it does not install a GUI app the way `emacs-app` did,
   and a symlink into `/Applications` integrates poorly with Spotlight /
@@ -200,10 +169,6 @@ merging is always manual.
   formula. Symptom to recognize: the build/link succeeds but the program
   aborts on a missing dylib under `/opt/homebrew/opt/<lib>`.
 - The eval warning `nixfmt-rfc-style is now the same as pkgs.nixfmt` is a
-  rename alias in the pinned nixpkgs; harmless until the package is renamed
-  at the first post-window lock update.
-- Finalization after the stability window (ADR 0018): `update-flake-lock`
-  enabled; archiving the legacy repos (ADR 0010) and the first manual
-  `nix flake update` (ADR 0011) are owner steps tracked in `runbook.md` §4.
-- Deferred (candidates for their own PRs): `system.defaults` phase (ADR 0002),
-  `HISTFILE` fix, `programs.git` conversion, zsh-abbr from brew to nixpkgs.
+  rename alias in the pinned nixpkgs; harmless until the attribute is actually
+  renamed upstream, at which point `modules/home/packages.nix` needs the new
+  name. Watch for it when reviewing a lock update (`lock-review`).
