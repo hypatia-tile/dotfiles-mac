@@ -17,7 +17,6 @@ in
   home.file = {
     # ZDOTDIR bootstrap — the whole zsh setup depends on it (inventory A-14).
     ".zshenv".source = link "config/zshenv";
-    ".hammerspoon".source = link "config/hammerspoon";
   };
 
   xdg.configFile = {
@@ -33,26 +32,13 @@ in
     "zsh/complete".source = link "config/zsh/complete";
     "zsh/functions".source = link "config/zsh/functions";
 
-    # `git` is not here: it is the first payload projected read-only by
-    # bin/project.sh (ADR 0026, modules/payloads.nix). Home Manager must not
-    # declare it, or the path would have two owners — declaring without
-    # placing is not possible, which is why the projector's declaration lives
-    # outside this file.
-    "tmux".source = link "config/tmux";
-    "kitty".source = link "config/kitty";
-    "alacritty".source = link "config/alacritty";
-    "aerospace".source = link "config/aerospace";
-    "lazygit".source = link "config/lazygit";
-
-    # herdr writes runtime state (sockets, logs, session.json, .plugins.lock)
-    # into ~/.config/herdr, so only config.toml is linked — the same reasoning
-    # as the zsh ZDOTDIR case above.
-    "herdr/config.toml".source = link "config/herdr/config.toml";
-
-    # Effective Nix configuration: with nix.enable = false (Determinate
-    # installer) the nix-darwin nix.settings module is inert, so the user
-    # nix.conf is managed here instead (flake-design §4 note 2).
-    "nix".source = link "config/nix";
+    # Most payloads are no longer here: they are projected read-only by
+    # bin/project.sh from modules/payloads.nix (ADR 0026). Home Manager must
+    # not declare those, or the path would have two owners — declaring
+    # without placing is not possible, which is why the projector's
+    # declaration lives outside this file. What remains below is what has not
+    # been migrated yet; zsh is last because a broken shell cannot be
+    # repaired from, and a generation rollback does not undo a projection.
 
     # Neovim is a payload of this repository since the import (ADR 0021,
     # ADR 0023). The directory is linked whole, which makes lazy-lock.json

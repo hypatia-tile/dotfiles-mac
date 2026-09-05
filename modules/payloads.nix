@@ -27,4 +27,45 @@
     source = "config/git";
     mode = "copy";
   };
+  ".config/tmux" = {
+    source = "config/tmux";
+    mode = "copy";
+  };
+  ".config/kitty" = {
+    source = "config/kitty";
+    mode = "copy";
+  };
+  ".config/alacritty" = {
+    source = "config/alacritty";
+    mode = "copy";
+  };
+  ".config/aerospace" = {
+    source = "config/aerospace";
+    mode = "copy";
+  };
+  ".config/lazygit" = {
+    source = "config/lazygit";
+    mode = "copy";
+  };
+  # Effective Nix configuration: with nix.enable = false (Determinate
+  # installer) the nix-darwin nix.settings module is inert, so the user
+  # nix.conf is managed here instead (flake-design §4 note 2).
+  ".config/nix" = {
+    source = "config/nix";
+    mode = "copy";
+  };
+  # Not under ~/.config: Hammerspoon reads ~/.hammerspoon, and the launchd
+  # agent in modules/home/base.nix starts the app that reads it.
+  ".hammerspoon" = {
+    source = "config/hammerspoon";
+    mode = "copy";
+  };
+
+  # herdr writes logs, session.json, sessions/ and .plugins.lock into its
+  # config directory, so only the file this repository owns is projected —
+  # the same reasoning that kept it a single-file link under ADR 0021.
+  ".config/herdr/config.toml" = {
+    source = "config/herdr/config.toml";
+    mode = "copy";
+  };
 }
