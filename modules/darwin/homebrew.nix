@@ -10,8 +10,8 @@
 
     taps = [
       # Non-official tap: must be trusted for activation to load its formulae
-      # (Homebrew 6.0.0 enabled HOMEBREW_REQUIRE_TAP_TRUST). emacs-plus@30 is
-      # not a fully-qualified name, so trust must come from the tap itself.
+      # (Homebrew 6.0.0 enabled HOMEBREW_REQUIRE_TAP_TRUST). Tap-level trust
+      # covers the formula regardless of how the brews entry names it.
       {
         name = "d12frosted/emacs-plus";
         trusted = true;
@@ -30,10 +30,17 @@
       # libtiff, since libtiff is a dependency of imagemagick.
       "imagemagick"
       {
+        # Fully qualified on purpose. `brew bundle cleanup` builds its keep-set
+        # by matching each Brewfile entry against the installed formulae's
+        # `full_name`; a bare "emacs-plus@30" never matches
+        # "d12frosted/emacs-plus/emacs-plus@30", so cleanup walked none of this
+        # formula's dependencies and proposed deleting its whole runtime tree
+        # (40 formulae — gcc, gnutls, librsvg, cairo, sqlite, …). See issue #57.
+        #
         # emacs-plus@30 enables native-compilation (aot) unconditionally, so
         # there is no --with-native-comp option; --with-poll does not exist on
         # @30 either. Only imagemagick is a valid extra option here.
-        name = "emacs-plus@30";
+        name = "d12frosted/emacs-plus/emacs-plus@30";
         args = [ "with-imagemagick" ];
         link = true;
       }
