@@ -110,40 +110,62 @@ here — it is filed as a GitHub issue (`gh issue list`, ADR 0019).
   predates the migration.
 - `brew` cleanup on activation also autoremoves dependency orphans of
   whatever it uninstalls — expected, not a stop signal.
-- **`brew` cleanup's `Uninstalled N formulae` summary is cosmetic when it is
-  preceded by `Error: Refusing to uninstall … because they are required by
-  emacs-plus@30`.** The "Refusing" line means cleanup tried to remove
-  emacs-plus@30's dependency tree and Homebrew *protected* it (tap trust
-  working — the healthy path, the opposite of the first-activation dep loss
-  below); the formulae it names stay installed. The trailing count reflects
-  what cleanup *evaluated*, not what was removed, so it can overlap the
-  protected set and look alarming. Verify on-disk reality instead of trusting
-  the count: e.g. `brew list --versions cairo gnutls librsvg jpeg` and
-  `emacs --version`. Only treat it as breakage if a dep is actually gone or
-  Emacs aborts on a missing dylib.
+- **`brew` cleanup's `Uninstalled N formulae` summary reports what it
+  *evaluated*, not what it removed — and a failed uninstall is invisible.**
+  Cleanup passes every candidate to a single `brew uninstall --formula
+  --force` and then prints the count unconditionally; the exit status is
+  discarded (`Kernel.system` in Homebrew's `bundle/subcommand/cleanup.rb`), so
+  `brew bundle` still exits 0 and activation continues. When the line
+  `Error: Refusing to uninstall … because they are required by emacs-plus@30`
+  precedes it, that is `brew uninstall` protecting an installed formula's
+  dependencies — the default behaviour that `--ignore-dependencies` switches
+  off — and **the whole batch failed, so nothing was removed**, not just the
+  named formulae. Never read the count as a fact. Verify on disk instead:
+  `brew list --versions cairo gnutls librsvg jpeg` and `emacs --version`.
 - **Non-official Homebrew taps must be declared `trusted = true`.** Homebrew
   6.0.0 enabled `HOMEBREW_REQUIRE_TAP_TRUST`, so activation aborts with
   "Refusing to load formula … from untrusted tap" for any non-official tap
   unless it is trusted. Set it on the `homebrew.taps` entry
   (`{ name = "…"; trusted = true; }`) — declarative and rebuild-safe — not via
-  imperative `brew trust`. Formula-level `trusted` only takes effect for
-  fully-qualified names, so for a bare name like `emacs-plus@30` the trust
-  must come from the containing `d12frosted/emacs-plus` tap.
+  imperative `brew trust`. Tap-level trust covers the tap's formulae however
+  the `brews` entry names them; formula-level `trusted` additionally requires
+  a fully-qualified name. Declare tap formulae fully-qualified anyway — see
+  the cleanup keep-set entry below.
 - **The Brewfile `trusted:` marker only covers `brew bundle` (activation).**
   Direct maintenance commands (`brew reinstall`/`link`/`options` on the tap
   formula) still hit the trust guard and are refused. For a one-off, prefix
   with `HOMEBREW_NO_REQUIRE_TAP_TRUST=1` rather than running `brew trust`
   (which writes imperative state that diverges from the declarative setup),
   e.g. `HOMEBREW_NO_REQUIRE_TAP_TRUST=1 brew reinstall emacs-plus@30 --with-imagemagick`.
-- **First activation on a fresh machine can strip an untrusted-tap formula's
-  dependencies.** If cleanup runs before the tap's trust is established, it
-  cannot resolve the untrusted formula's dependency tree and uninstalls *all*
-  of it — the formula builds, but the binary then aborts on missing dylibs
-  (we hit this: `emacs-plus@30` built while `cairo`/`gnutls`/`librsvg`/`jpeg`/…
-  were removed). Recover by reinstalling once so the deps come back and relink:
-  `HOMEBREW_NO_REQUIRE_TAP_TRUST=1 brew reinstall emacs-plus@30 --with-imagemagick`;
-  a subsequent cleanup keeps them (verified with `brew bundle cleanup --file=…`
-  dry-run: nothing removed).
+  The mechanism is a path split: Homebrew reads
+  `${XDG_CONFIG_HOME}/homebrew/trust.json` when that variable is set and
+  `~/.homebrew/trust.json` otherwise. Activation goes through `sudo`, which
+  drops `XDG_CONFIG_HOME` and so writes and reads the latter; an interactive
+  shell has `XDG_CONFIG_HOME` (`xdg.enable = true`) and reads the former,
+  which does not exist. To inspect Homebrew exactly as activation sees it,
+  prefix with `env -u XDG_CONFIG_HOME` — that reproduces the real view rather
+  than bypassing the guard.
+- **Declare a tap formula by its fully-qualified name, or cleanup marks its
+  whole dependency tree for deletion.** `brew bundle cleanup` builds its
+  keep-set by matching each Brewfile entry against the installed formulae's
+  `full_name`, and skips an entry it cannot match — dependencies included. A
+  bare `emacs-plus@30` never matches the installed
+  `d12frosted/emacs-plus/emacs-plus@30`, so cleanup walked none of its
+  dependencies and proposed removing all 40 of them. A core formula is
+  unaffected because its `full_name` *is* its bare name, which is why
+  `imagemagick` never showed the problem. Do not shorten the name in
+  `modules/darwin/homebrew.nix`.
+
+  This cost two incidents. At the 2026-07-14 cutover the formula was still
+  being built, so no installed dependent existed to trigger the protection
+  above and the batch succeeded — `emacs-plus@30` built while
+  `cairo`/`gnutls`/`librsvg`/`jpeg`/… were removed, and the binary aborted on a
+  missing dylib. The second time the protection was bypassed by hand with
+  `brew uninstall --ignore-dependencies`, with the same result: that flag turns
+  off the one thing standing between a stale removal list and a broken Emacs,
+  so do not reach for it to force a cleanup through. Recovery either way is to
+  put the dependencies back — `brew install <the missing formulae>` is enough
+  and much cheaper than a source rebuild; `otool -L` on the binary names them.
 - **emacs-plus builds `Emacs.app` in its Cellar, not `/Applications`.** As a
   formula (not a cask) it does not install a GUI app the way `emacs-app` did,
   and a symlink into `/Applications` integrates poorly with Spotlight /
