@@ -11,5 +11,10 @@
   // file does not work either — that is markdownlint-cli v1. Rule
   // configuration stays in `.markdownlint.jsonc`; markdownlint-cli2 reads both
   // and merges them.
-  "ignores": ["result/**", "result-*/**"]
+  // config/nvim is an imported payload (ADR 0021, ADR 0023) that carries its
+  // own conventions. ADR 0022 names its tests as stylua and the headless
+  // startup check; this repository's prose lint is not among them, and
+  // reformatting imported files would make the import unfaithful to the
+  // archived original.
+  "ignores": ["result/**", "result-*/**", "config/nvim/**"]
 }

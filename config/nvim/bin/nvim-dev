@@ -1,0 +1,18 @@
+#!/bin/sh
+# Launch Neovim on this working tree, isolated from the real environment
+# (see CLAUDE.md, "Trying the config from this repo"). Uses
+# NVIM_APPNAME=nvim-dev, so data/state/cache live under *-dev directories
+# and the first launch installs all plugins.
+set -eu
+
+repo=$(cd "$(dirname "$0")/.." && pwd)
+link="${XDG_CONFIG_HOME:-$HOME/.config}/nvim-dev"
+
+if [ ! -e "$link" ]; then
+  ln -s "$repo" "$link"
+elif [ "$(readlink "$link" || true)" != "$repo" ]; then
+  echo "error: $link exists but does not point to $repo" >&2
+  exit 1
+fi
+
+exec env NVIM_APPNAME=nvim-dev nvim "$@"

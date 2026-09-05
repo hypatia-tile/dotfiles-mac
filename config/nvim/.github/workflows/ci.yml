@@ -1,0 +1,107 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  stylua:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: stylua --check
+        uses: JohnnyMorganz/stylua-action@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          version: latest
+          args: --check lua/ after/ ftplugin/ init.lua
+
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Neovim
+        uses: rhysd/action-setup-vim@v1
+        with:
+          neovim: true
+          version: stable
+
+      - name: Install Deno
+        # Needed by denops.vim / skkeleton at startup.
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Cache plugins
+        # bin/check restores plugins into the nvim-dev data dir to match
+        # lazy-lock.json; cache it so runs after the first are a no-op.
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/nvim-dev
+          key: nvim-dev-plugins-${{ hashFiles('lazy-lock.json') }}
+          restore-keys: nvim-dev-plugins-
+
+      - name: Headless load check
+        run: bin/check
+
+  typecheck:
+    # Required status check on main (branch protection), alongside stylua and
+    # check.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Neovim
+        uses: rhysd/action-setup-vim@v1
+        with:
+          neovim: true
+          version: stable
+
+      - name: Install Deno
+        # denops.vim / skkeleton may touch Deno during the restore startup.
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Cache plugins
+        # Shares the key with the `check` job so plugins are installed once.
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/nvim-dev
+          key: nvim-dev-plugins-${{ hashFiles('lazy-lock.json') }}
+          restore-keys: nvim-dev-plugins-
+
+      - name: Restore plugins (no startup check)
+        # Populate the nvim-dev data dir so plugin type definitions are on disk;
+        # bin/check's full startup check is redundant here.
+        run: |
+          ln -sfn "$GITHUB_WORKSPACE" "$HOME/.config/nvim-dev" 2>/dev/null || {
+            mkdir -p "$HOME/.config" && ln -sfn "$GITHUB_WORKSPACE" "$HOME/.config/nvim-dev"
+          }
+          NVIM_APPNAME=nvim-dev nvim --headless "+Lazy! restore" +qa
+
+      - name: Install lua-language-server
+        run: |
+          ver=3.18.2
+          url="https://github.com/LuaLS/lua-language-server/releases/download/${ver}/lua-language-server-${ver}-linux-x64.tar.gz"
+          mkdir -p "$HOME/luals"
+          curl -fsSL "$url" | tar -xz -C "$HOME/luals"
+          echo "$HOME/luals/bin" >> "$GITHUB_PATH"
+
+      - name: Build CI luarc (inject library paths)
+        # LuaLS luarc cannot expand env vars, so resolve $VIMRUNTIME and the
+        # installed plugin lua dirs here and write the effective .luarc.json.
+        # This mirrors what lazydev supplies in-editor.
+        run: |
+          vimruntime="$(nvim --headless --clean -c 'lua io.write(vim.env.VIMRUNTIME)' -c 'qa' 2>/dev/null)"
+          libs="$(printf '%s\n' "$vimruntime" "$HOME"/.local/share/nvim-dev/lazy/*/lua | jq -R . | jq -s .)"
+          jq --argjson libs "$libs" '. + {"workspace.library": $libs}' .github/luarc.ci.json > .luarc.json
+          echo "Effective .luarc.json:"; cat .luarc.json
+
+      - name: lua-language-server --check
+        # --check prints diagnostics and exits non-zero when problems are
+        # found, so the exit code is the signal (this version writes no
+        # check.json).
+        run: lua-language-server --check . --checklevel Warning --logpath /tmp/luals-log
