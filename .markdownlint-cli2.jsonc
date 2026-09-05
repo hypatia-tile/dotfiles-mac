@@ -1,0 +1,15 @@
+{
+  // Exclude the Nix build-output symlinks. `preflight` runs markdownlint
+  // (step 2) after a closure build (steps 3-4) has created `result`, and the
+  // '**/*.md' glob otherwise descends into the closure and lints vendored
+  // Markdown — Flutter engine licences, the Dart SDK readme — burying the
+  // repository's own findings. CI never sees this (a fresh checkout has no
+  // `result`), so the glob alone looked correct.
+  //
+  // This belongs here rather than in `.markdownlint.jsonc`: `ignores` is only
+  // read from a `.markdownlint-cli2.*` config file. A `.markdownlintignore`
+  // file does not work either — that is markdownlint-cli v1. Rule
+  // configuration stays in `.markdownlint.jsonc`; markdownlint-cli2 reads both
+  // and merges them.
+  "ignores": ["result/**", "result-*/**"]
+}
