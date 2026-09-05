@@ -1,0 +1,41 @@
+#!/bin/sh
+# Headless load check for this working tree, run in CI (see
+# .github/workflows/ci.yml). Shares the nvim-dev app environment with bin/nvim-dev:
+# restores plugins to match lazy-lock.json (never updates them), then does
+# a plain headless startup. Any startup error or warning fails the check.
+#
+# Limits: lazy-loaded plugins triggered by events, keys, or filetypes are
+# not exercised — a clean check proves startup, not the whole config.
+set -eu
+
+repo=$(cd "$(dirname "$0")/.." && pwd)
+link="${XDG_CONFIG_HOME:-$HOME/.config}/nvim-dev"
+
+if [ ! -e "$link" ]; then
+  ln -s "$repo" "$link"
+elif [ "$(readlink "$link" || true)" != "$repo" ]; then
+  echo "error: $link exists but does not point to $repo" >&2
+  exit 1
+fi
+
+# 1. Sync plugins to lazy-lock.json. First run bootstraps lazy.nvim and
+#    installs everything, so it may take minutes; later runs are a no-op.
+if ! restore_out=$(NVIM_APPNAME=nvim-dev nvim --headless "+Lazy! restore" +qa 2>&1); then
+  printf '%s\n' "$restore_out" >&2
+  echo "check: FAILED ('Lazy! restore' exited non-zero)" >&2
+  exit 1
+fi
+
+# 2. Plain startup: anything printed to stderr is a finding.
+fail=0
+startup_out=$(NVIM_APPNAME=nvim-dev nvim --headless +qa 2>&1) || fail=1
+if [ -n "$startup_out" ]; then
+  printf '%s\n' "$startup_out" >&2
+  fail=1
+fi
+
+if [ "$fail" -ne 0 ]; then
+  echo "check: FAILED (startup produced errors, see above)" >&2
+  exit 1
+fi
+echo "check: OK"
