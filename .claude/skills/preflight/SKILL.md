@@ -40,26 +40,41 @@ lint jobs and are cheap, so run them first to fail fast.
    - The file-writing tool occasionally appends a stray closing tag to a file
      it creates, which then breaks Nix evaluation or lint. Scan the changed
      tree: `grep -rn '</content>' .`
-3. **Flake check**
+3. **Payload content checks** (mirrors the CI *zsh payload syntax* and *nvim*
+   jobs). Run the one matching what changed; skip if no payload changed.
+   - zsh: `for f in config/zshenv config/zsh/.zshrc config/zsh/.zprofile config/zsh/.zshenv config/zsh/abbr-definitions.zsh config/zsh/modules/*.zsh; do zsh -n "$f" || echo "FAIL $f"; done`
+   - nvim: `nix run nixpkgs#stylua -- --check config/nvim/lua/ config/nvim/after/ config/nvim/ftplugin/ config/nvim/init.lua`,
+     and `config/nvim/bin/check` for a headless startup (slow on a cold plugin
+     cache; it restores to `lazy-lock.json`).
+   These are the steps that carry the weight for a payload change, because
+   step 5 cannot see one — see the note there.
+
+4. **Flake check**
    `nix flake check --no-update-lock-file`
-4. **Build every host closure**
+5. **Build every host closure**
    For each attr in `darwinConfigurations` (currently
    `Kazukis-MacBook-Air`):
    `nix build .#darwinConfigurations.<host>.system --no-update-lock-file -o result`
-5. **Closure diff**
+6. **Closure diff**
    `nix store diff-closures /run/current-system ./result`
    Present the full diff. A package *version* change is a red flag here: this
    check does not touch the lock, so nothing should move. The one exception is
    a deliberate `flake.lock` update, which is reviewed with the `lock-review`
    skill and inverts this criterion. Additions and removals must map to the
    change under review.
-6. **Collision check**
+
+   **For a payload-only change the expected diff is empty, and that is the
+   check.** Since ADR 0021 a link target is a path string, so editing
+   `config/**` leaves the closure byte-identical. A closure that *does* move on
+   a payload-only change means something still copies that file into the store,
+   and is the finding. The verification for the content itself is step 3.
+7. **Collision check**
    Enumerate the files the built configuration will place in `$HOME`
    (e.g. via `nix eval` of `home-manager` file attrs, or by inspecting
    `./result`'s home-files). For each target that already exists in `$HOME`
    as a regular file or foreign symlink, report it. Verify
    `backupFileExtension` is configured before calling this step passed.
-7. **Secret scan**
+8. **Secret scan**
    `gitleaks detect --source . --no-banner` if gitleaks is available;
    otherwise grep the working tree for obvious patterns
    (`BEGIN .* PRIVATE KEY`, `ghp_`, `github_pat_`, `AKIA[0-9A-Z]{16}`,
@@ -67,11 +82,12 @@ lint jobs and are cheap, so run them first to fail fast.
 
 ## Scope shortcuts
 
-Steps 1, 3, 4, 5 and 6 all depend on `*.nix`, `flake.lock` or `config/**`
-having changed — the same paths CI's *Detect closure-affecting changes* job
-filters on. For a documentation-only change, run steps 2 and 7 and state that
-the rest do not apply; CI will report the build job as *skipping*, which still
-satisfies the required check.
+Steps 1, 4, 5, 6 and 7 depend on `*.nix` or `flake.lock` having changed —
+the same paths CI's *build* filter uses. Step 3 depends on `config/**`.
+`config/**` is deliberately **not** in the build filter (ADR 0022): payload
+content cannot move the closure, so a payload-only change runs steps 2, 3 and
+8, and CI reports the macOS build as *skipping*, which still satisfies the
+required check. For a documentation-only change, run steps 2 and 8 alone.
 
 ## Report
 

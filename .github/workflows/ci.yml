@@ -9,13 +9,24 @@ permissions:
   contents: read
 
 jobs:
-  # Docs-only changes skip the expensive macOS build job below. The job is
-  # skipped (not absent), so it still satisfies the required status check.
+  # Every job below is gated on what actually changed, so the test that runs
+  # is the one that can fail for the thing that moved (ADR 0022). Gated jobs
+  # report as *skipped* rather than being absent, so they still satisfy the
+  # required status checks of ADR 0012's ruleset.
+  #
+  # `config/**` is deliberately NOT closure-affecting. Since ADR 0021 the
+  # payloads are placed as working-tree symlinks, so a link target is a path
+  # string and editing a config file leaves the closure byte-identical —
+  # verified by building before and after an edit. Running the macOS build for
+  # those changes rebuilds the same closure, which is why they are tested by
+  # content instead.
   changes:
     name: Detect closure-affecting changes
     runs-on: ubuntu-latest
     outputs:
       build: ${{ steps.filter.outputs.build }}
+      zsh: ${{ steps.filter.outputs.zsh }}
+      nvim: ${{ steps.filter.outputs.nvim }}
     steps:
       - uses: dorny/paths-filter@v3
         id: filter
@@ -24,7 +35,13 @@ jobs:
             build:
               - '**/*.nix'
               - 'flake.lock'
-              - 'config/**'
+              - '.github/workflows/ci.yml'
+            zsh:
+              - 'config/zsh/**'
+              - 'config/zshenv'
+              - '.github/workflows/ci.yml'
+            nvim:
+              - 'config/nvim/**'
               - '.github/workflows/ci.yml'
 
   flake:
@@ -110,6 +127,151 @@ jobs:
       - name: deadnix
         if: steps.has-nix.outputs.present == 'true'
         run: nix run nixpkgs#deadnix -- --fail .
+
+  zsh-syntax:
+    name: zsh payload syntax
+    runs-on: ubuntu-latest
+    needs: changes
+    if: github.event_name == 'push' || needs.changes.outputs.zsh == 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install zsh
+        run: sudo apt-get update && sudo apt-get install -y zsh
+
+      - name: zsh -n
+        # The check the macOS closure build never performed: the build copied
+        # these files, it did not parse them. shellcheck cannot cover them
+        # either — it has no zsh support (SC1071), which is why the hygiene
+        # job below ignores `config`.
+        run: |
+          set -eu
+          # Not `status`: that name is read-only in zsh, so using it would make
+          # this loop untestable in the shell it is checking.
+          rc=0
+          for f in config/zshenv config/zsh/.zshrc config/zsh/.zprofile \
+                   config/zsh/.zshenv config/zsh/abbr-definitions.zsh \
+                   config/zsh/modules/*.zsh; do
+            [ -f "$f" ] || continue
+            if zsh -n "$f"; then
+              echo "ok   $f"
+            else
+              echo "FAIL $f"
+              rc=1
+            fi
+          done
+          exit "$rc"
+
+  nvim-stylua:
+    name: nvim stylua
+    runs-on: ubuntu-latest
+    needs: changes
+    if: github.event_name == 'push' || needs.changes.outputs.nvim == 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - name: stylua --check
+        uses: JohnnyMorganz/stylua-action@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          version: latest
+          args: --check config/nvim/lua/ config/nvim/after/ config/nvim/ftplugin/ config/nvim/init.lua
+
+  nvim-check:
+    name: nvim headless load check
+    runs-on: ubuntu-latest
+    needs: changes
+    if: github.event_name == 'push' || needs.changes.outputs.nvim == 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Neovim
+        uses: rhysd/action-setup-vim@v1
+        with:
+          neovim: true
+          version: stable
+
+      - name: Install Deno
+        # Needed by denops.vim / skkeleton at startup.
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Cache plugins
+        # config/nvim/bin/check restores plugins into the nvim-dev data dir to
+        # match lazy-lock.json; cache it so runs after the first are a no-op.
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/nvim-dev
+          key: nvim-dev-plugins-${{ hashFiles('config/nvim/lazy-lock.json') }}
+          restore-keys: nvim-dev-plugins-
+
+      - name: Headless load check
+        # The script resolves its own repo root, so it points ~/.config/nvim-dev
+        # at config/nvim without needing a working-directory.
+        run: config/nvim/bin/check
+
+  nvim-typecheck:
+    name: nvim LuaLS typecheck
+    runs-on: ubuntu-latest
+    needs: changes
+    if: github.event_name == 'push' || needs.changes.outputs.nvim == 'true'
+    defaults:
+      run:
+        working-directory: config/nvim
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Neovim
+        uses: rhysd/action-setup-vim@v1
+        with:
+          neovim: true
+          version: stable
+
+      - name: Install Deno
+        # denops.vim / skkeleton may touch Deno during the restore startup.
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Cache plugins
+        # Shares the key with nvim-check so plugins are installed once.
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/nvim-dev
+          key: nvim-dev-plugins-${{ hashFiles('config/nvim/lazy-lock.json') }}
+          restore-keys: nvim-dev-plugins-
+
+      - name: Restore plugins (no startup check)
+        # Populate the nvim-dev data dir so plugin type definitions are on disk;
+        # the full startup check is nvim-check's job.
+        run: |
+          mkdir -p "$HOME/.config"
+          ln -sfn "$GITHUB_WORKSPACE/config/nvim" "$HOME/.config/nvim-dev"
+          NVIM_APPNAME=nvim-dev nvim --headless "+Lazy! restore" +qa
+
+      - name: Install lua-language-server
+        run: |
+          ver=3.18.2
+          url="https://github.com/LuaLS/lua-language-server/releases/download/${ver}/lua-language-server-${ver}-linux-x64.tar.gz"
+          mkdir -p "$HOME/luals"
+          curl -fsSL "$url" | tar -xz -C "$HOME/luals"
+          echo "$HOME/luals/bin" >> "$GITHUB_PATH"
+
+      - name: Build CI luarc (inject library paths)
+        # LuaLS luarc cannot expand env vars, so resolve $VIMRUNTIME and the
+        # installed plugin lua dirs here and write the effective .luarc.json.
+        # This mirrors what lazydev supplies in-editor.
+        run: |
+          vimruntime="$(nvim --headless --clean -c 'lua io.write(vim.env.VIMRUNTIME)' -c 'qa' 2>/dev/null)"
+          libs="$(printf '%s\n' "$vimruntime" "$HOME"/.local/share/nvim-dev/lazy/*/lua | jq -R . | jq -s .)"
+          jq --argjson libs "$libs" '. + {"workspace.library": $libs}' .github/luarc.ci.json > .luarc.json
+          echo "Effective .luarc.json:"; cat .luarc.json
+
+      - name: lua-language-server --check
+        # --check prints diagnostics and exits non-zero when problems are
+        # found, so the exit code is the signal (this version writes no
+        # check.json).
+        run: lua-language-server --check . --checklevel Warning --logpath /tmp/luals-log
 
   secrets:
     name: Secret scan (gitleaks)
