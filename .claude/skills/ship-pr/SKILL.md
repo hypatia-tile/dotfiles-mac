@@ -26,9 +26,6 @@ between.
      `🤖 Generated with [Claude Code](https://claude.com/claude-code)` footer.
    - If the change needs a post-merge `darwin-rebuild switch`, say so in
      the body and name the behavioral check the owner should run.
-   - For an `nvim-config` pin bump, don't hand-write the body: generate it
-     with `bin/nvim-bump-check.sh --emit-pr-body` (see the `nvim-bump`
-     skill) and pass it via `gh pr create --body-file`.
 4. **Watch CI** with a background poll of
    `gh pr checks <n> --json name,bucket` until nothing is pending, then
    report every check's result.

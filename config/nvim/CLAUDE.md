@@ -29,17 +29,15 @@ This is a Neovim configuration based on [lazy.nvim](https://github.com/folke/laz
 ## Trying the config from this repo
 
 `~/.config/nvim` is a read-only Nix store copy of this repo, placed by
-[dotfiles-mac](https://github.com/hypatia-tile/dotfiles-mac) as a pinned
-non-flake input. Edits here take effect in the real environment only after
-pushing and bumping the pin. To verify the working tree directly:
+[dotfiles-mac](https://github.com/hypatia-tile/dotfiles-mac) at
+`config/nvim`, and `~/.config/nvim` is a symlink to it (ADR 0021). **Edits
+here take effect on save** — restart Neovim and they are live; there is
+nothing to push or bump.
 
-- `bin/nvim-dev` — launch Neovim on this working tree via
-  `NVIM_APPNAME=nvim-dev` (maintains a `~/.config/nvim-dev` symlink to this
-  repo; data/state/cache are isolated from the real environment, so the
-  first launch installs all plugins).
 - `bin/check` — headless load check: full startup including a
-  `lazy-lock.json`-faithful plugin restore, sharing the `nvim-dev` data dir.
-  Reports errors verbatim and exits non-zero on failure.
+  `lazy-lock.json`-faithful plugin restore, under `NVIM_APPNAME=nvim-dev` so
+  it does not disturb the real environment's data dir. Reports errors
+  verbatim and exits non-zero on failure.
 
 ## Formatting
 

@@ -14,7 +14,6 @@ agents can read the file directly.
 | Skill | Use it when |
 |---|---|
 | `config-change` | Installing or removing a package, adding or editing a tool's configuration, a Homebrew entry, an environment variable, a macOS default. **The default entry point.** |
-| `nvim-bump` | Anything under `~/.config/nvim` — a two-repository operation (ADR 0014) |
 | `lock-review` | A weekly `chore(deps): update flake.lock` PR is open |
 | `preflight` | Verifying a change against the CI gates before pushing |
 | `ship-pr` | A committed branch needs to become a green, mergeable PR |

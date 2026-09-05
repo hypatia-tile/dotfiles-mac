@@ -12,8 +12,8 @@ caught). **Under no circumstances run `darwin-rebuild switch`, any activation
 script, or `sudo`.** If a step fails, report and stop — do not "fix" by
 activating anything.
 
-This is the standing gate for every change; `config-change` and `nvim-bump`
-delegate their verification here rather than restating it (ADR 0019).
+This is the standing gate for every change; `config-change` delegates its
+verification here rather than restating it (ADR 0019).
 
 ## Steps
 

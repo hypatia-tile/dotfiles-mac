@@ -22,19 +22,26 @@ state.
 
 ### Changing the Neovim config
 
-The nvim config is the pinned non-flake input `nvim-config`, placed read-only
-from the store (ADR 0014), so changing it is a two-repository operation. The
-procedure is the `nvim-bump` skill, verified by `bin/nvim-bump-check.sh`.
+The nvim config is a payload of this repository at `config/nvim`, and
+`~/.config/nvim` is a symlink to it (ADR 0021). Edit it like any other payload:
+the change is live when Neovim restarts, with no switch, no PR and no pin to
+bump. It stopped being a two-repository operation when the config was imported
+(ADR 0023, ADR 0024); the history before the import is in the archived
+`hypatia-tile/nvim-config`.
 
 What is a property of the setup rather than a step, and therefore lives here:
-**anything nvim must *write* cannot live in the config dir**, because it is a
-read-only store path. Use `stdpath("data")` — the skkeleton user dictionary is
-at `~/.local/share/nvim/skk/user-dict`, and the SKK L dictionary is supplied
-by this flake at `~/.local/share/skk/SKK-JISYO.L` (`pkgs.skkDictionaries.l` —
-the pinned nixpkgs has no `skk-dicts` attr).
+**anything nvim must *write* still belongs outside the config dir**, in
+`stdpath("data")`. The directory is writable now, which is not an invitation to
+use it — a config directory that accumulates runtime state stops being
+reviewable, and the state would land in this repository's working tree. The
+deliberate exception is `lazy-lock.json`, which a lockfile wants to be: written
+by the editor *and* committed. The skkeleton user dictionary is at
+`~/.local/share/nvim/skk/user-dict`, and the SKK L dictionary is supplied by
+this flake at `~/.local/share/skk/SKK-JISYO.L` (`pkgs.skkDictionaries.l` — the
+pinned nixpkgs has no `skk-dicts` attr).
 
-Note the limit of the verification: a clean `bin/check` in the nvim-config
-clone proves startup, not lazy-loaded plugins.
+Note the limit of the verification: a clean `config/nvim/bin/check` proves
+startup, not lazy-loaded plugins.
 
 ### macOS keybindings
 

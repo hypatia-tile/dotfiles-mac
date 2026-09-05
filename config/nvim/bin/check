@@ -1,6 +1,7 @@
 #!/bin/sh
 # Headless load check for this working tree, run in CI (see
-# .github/workflows/ci.yml). Shares the nvim-dev app environment with bin/nvim-dev:
+# .github/workflows/ci.yml). Runs under NVIM_APPNAME=nvim-dev so its data dir
+# is isolated from the real environment's:
 # restores plugins to match lazy-lock.json (never updates them), then does
 # a plain headless startup. Any startup error or warning fails the check.
 #
