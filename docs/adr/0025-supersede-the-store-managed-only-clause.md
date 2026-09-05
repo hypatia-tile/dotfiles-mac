@@ -1,7 +1,9 @@
 # 0025. Supersede ADR 0001's store-managed-only clause
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-09-05
+
+Promoted to Accepted by shinokun, 2026-09-06.
 
 ## Context
 
