@@ -7,18 +7,46 @@ one procedure. **Procedures themselves live in skills** (ADR 0019) — see
 
 ## 1. Changing configuration
 
-Every change follows the same loop:
+Most changes need no switch at all. Payloads under `config/` are placed as
+symlinks into this checkout (ADR 0021), so editing one is live as soon as the
+program re-reads it — no build, no PR, no activation. What still needs a switch
+is a change to the Nix layer, or to *which* links exist rather than what is in
+them.
+
+For those, the loop is:
 
 1. Branch off `main`, edit, and verify with the `preflight` skill
-   (build-only — nothing here ever switches).
-2. PR with Conventional Commits; all CI checks are required; self-merge
+   (build-only — nothing in that skill ever switches).
+2. **Try it if you want to**: `sudo darwin-rebuild switch --flake .#Kazukis-MacBook-Air`
+   from the branch is allowed, including from a dirty working tree (ADR 0022).
+   Record the generation first — `docs/rollback.md` opens with why.
+3. PR with Conventional Commits; all CI checks are required; self-merge
    when green.
-3. Apply manually: `sudo darwin-rebuild switch --flake .#Kazukis-MacBook-Air`.
+4. Switch from `main` once it is merged.
 
-The `config-change` skill drives that loop and decides which layer a change
-belongs in. The switch is always the owner's manual step: nothing lands on the
-machine until it is run, so merged-but-not-switched is a normal intermediate
-state.
+Step 2 is optional and step 4 is not. The invariant is about where the machine
+comes to rest, not about how it got there: **once a change is merged, the
+machine runs `main`.** Iterating from a branch is expected; staying there is
+drift. `bin/running-main-check.sh` answers it in about seven seconds by
+building `main` and comparing with `/run/current-system`, and the `ship-pr`
+skill names it as the post-merge step.
+
+Step 4 is often already done by step 2, and the reason is worth knowing: **the
+closure is content-addressed, not commit-addressed.** A squash-merge rewrites
+the commit but not the tree, so building `main` afterwards yields the same
+store path the branch did, and the check passes without a second switch. It
+drifts only when the content genuinely differs — review edits on the PR, or
+`main` having moved ahead meanwhile. Verified rather than assumed: the machine
+switched from a branch, that branch was squash-merged, and the check reported
+PASS against the identical path.
+
+Nothing here changes who may switch. Claude never runs `darwin-rebuild switch`,
+any activation script, or `sudo` (ADR 0018); this is about *when the owner*
+may, which no ADR ever restricted — the earlier ordering was documentation
+rather than a decision.
+
+The `config-change` skill drives the loop and decides which layer a change
+belongs in.
 
 ### Changing the Neovim config
 
