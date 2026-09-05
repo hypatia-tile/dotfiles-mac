@@ -62,7 +62,7 @@ that check is how they know it took.
 | Editing an existing tool's configuration | the file under `config/<tool>/` | ADR 0020 |
 | Environment variable, `PATH` entry, launchd agent | `modules/home/base.nix` | ADR 0006 |
 | macOS system default or keybinding | `modules/darwin/macos.nix` | ADR 0017 |
-| Neovim configuration | **not here** — use `nvim-bump` | ADR 0014 |
+| Neovim configuration | the files under `config/nvim/` | ADR 0021 |
 | `flake.lock` | **not here** — use `lock-review` | ADR 0011 |
 
 Everything user-facing belongs to Home Manager; the darwin layer holds only
@@ -111,7 +111,6 @@ Name the applicable one in the PR body. "It built" is not one of these.
   Applying is the owner's manual step (ADR 0003, ADR 0015).
 - **Never commit or push automatically.** Prepare the change and a proposed
   Conventional Commit message; commit only when told to, and never push.
-- A Neovim change is a two-repository operation — stop and use `nvim-bump`.
 - If the change turns out to need a new decision rather than an application of
   an existing one, stop and raise an ADR with `adr-new` instead of deciding it
   inside a configuration commit.

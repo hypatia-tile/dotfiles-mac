@@ -116,29 +116,12 @@
         "type": "github"
       }
     },
-    "nvim-config": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1785842787,
-        "narHash": "sha256-GUqu4x97VapxYS+OCcYnsX/STvuCiJsHhWKRVic3hho=",
-        "owner": "hypatia-tile",
-        "repo": "nvim-config",
-        "rev": "f769434fa666dc929cf83fdacfe5e42ee9eabcbe",
-        "type": "github"
-      },
-      "original": {
-        "owner": "hypatia-tile",
-        "repo": "nvim-config",
-        "type": "github"
-      }
-    },
     "root": {
       "inputs": {
         "home-manager": "home-manager",
         "neovim-nightly-overlay": "neovim-nightly-overlay",
         "nix-darwin": "nix-darwin",
         "nixpkgs": "nixpkgs",
-        "nvim-config": "nvim-config",
         "rust-overlay": "rust-overlay"
       }
     },

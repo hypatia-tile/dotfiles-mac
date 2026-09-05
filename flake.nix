@@ -19,12 +19,6 @@
       url = "github:oxalica/rust-overlay";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    # Neovim configuration, pinned as a non-flake input and placed by
-    # Home Manager (inventory A-7, ADR 0014).
-    nvim-config = {
-      url = "github:hypatia-tile/nvim-config";
-      flake = false;
-    };
   };
 
   outputs =
