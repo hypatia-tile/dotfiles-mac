@@ -24,6 +24,12 @@
     sqlite
     ghq
     delta
+    # zsh abbreviation plugin, sourced by config/zsh/modules/abbr.zsh from
+    # the per-user profile. nixpkgs marks it unfree (CC-BY-NC-SA-4.0 and
+    # HL3), which allowUnfree in modules/darwin/nix.nix already covers; the
+    # licence is the upstream project's and applied equally to the Homebrew
+    # build this replaces.
+    zsh-abbr
 
     # Git utilities
     git-filter-repo
