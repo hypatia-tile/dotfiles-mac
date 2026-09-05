@@ -1,8 +1,11 @@
 #!/usr/bin/env zsh
 
-# Load the zsh-abbr plugin from its Homebrew installation
-# (olets/tap/zsh-abbr, declared in modules/darwin/homebrew.nix)
-source /opt/homebrew/share/zsh-abbr/zsh-abbr.zsh
+# Load the zsh-abbr plugin from the Home Manager profile
+# (zsh-abbr in modules/home/packages.nix). Note the path differs from the
+# Homebrew layout this replaced: share/zsh/zsh-abbr, not share/zsh-abbr.
+# The plugin resolves its own directory with ${0:A:h}, so sourcing through
+# the profile symlink still finds the zsh-job-queue it bundles.
+source /etc/profiles/per-user/$USER/share/zsh/zsh-abbr/zsh-abbr.zsh
 
 # Function to load/reload abbreviation definitions
 abbr-reload() {

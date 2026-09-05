@@ -21,7 +21,6 @@
     brews = [
       "make"
       "cmake"
-      "olets/tap/zsh-abbr"
       # emacs-plus@30 links against imagemagick (and its libtiff dependency)
       # because of --with-imagemagick below, but imagemagick is only an
       # *optional* dependency of the formula. Declare it explicitly so
