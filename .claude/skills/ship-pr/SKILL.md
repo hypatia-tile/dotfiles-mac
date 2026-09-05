@@ -39,6 +39,13 @@ between.
    (or `--rebase` when separate commits should survive, e.g. a dedicated
    input-update commit per ADR 0011), and name any post-merge owner step
    (switch, verification).
+   - When the change needs a switch, name `bin/running-main-check.sh` as the
+     way to confirm the machine came to rest on `main`. If the owner already
+     switched from the branch (ADR 0022), that usually satisfies the invariant
+     on its own: the closure is content-addressed, so a squash-merge of an
+     unchanged tree produces the identical store path. It drifts when the tree
+     really differs — review edits on the PR, or `main` having moved ahead —
+     which is exactly when it is worth knowing.
 
 ## Rules
 
