@@ -33,7 +33,11 @@ in
     "zsh/complete".source = link "config/zsh/complete";
     "zsh/functions".source = link "config/zsh/functions";
 
-    "git".source = link "config/git";
+    # `git` is not here: it is the first payload projected read-only by
+    # bin/project.sh (ADR 0026, modules/payloads.nix). Home Manager must not
+    # declare it, or the path would have two owners — declaring without
+    # placing is not possible, which is why the projector's declaration lives
+    # outside this file.
     "tmux".source = link "config/tmux";
     "kitty".source = link "config/kitty";
     "alacritty".source = link "config/alacritty";

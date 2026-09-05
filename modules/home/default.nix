@@ -5,5 +5,6 @@
     ./packages.nix
     ./programs.nix
     ./files.nix
+    ./projection.nix
   ];
 }
