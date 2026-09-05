@@ -33,6 +33,15 @@ manifest="${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles-mac/projected"
 check_only=false
 [ "${1:-}" = "--check" ] && check_only=true
 
+# Paths this script needs in order to run at all, and therefore cannot place.
+# ~/.config/nix is the one that proved this: `nix eval` reads the declaration
+# below, and the experimental features it needs are enabled by the user
+# nix.conf. Projecting it made this script unable to read its own declaration —
+# and the failure arrives *after* Home Manager has released the path, so the
+# payload ends up neither placed nor linked. Refusing here rather than in a
+# comment, because a comment cannot fail a build.
+SELF_DEPENDENCIES=".config/nix"
+
 [ -f "$decl" ] || { echo "project: no declaration at $decl" >&2; exit 2; }
 
 # `target<TAB>source<TAB>mode`, one payload per line.
@@ -40,7 +49,22 @@ declared=$(
   nix eval --json -f "$decl" 2>/dev/null |
     jq -r 'to_entries[] | "\(.key)\t\(.value.source)\t\(.value.mode)"' |
     sort
-) || { echo "project: cannot evaluate $decl" >&2; exit 2; }
+) || {
+  echo "project: cannot evaluate $decl" >&2
+  echo "  If nix reports that 'nix-command' is disabled, ~/.config/nix/nix.conf" >&2
+  echo "  is missing. Recover with:" >&2
+  echo "    NIX_CONFIG='experimental-features = nix-command flakes' $0" >&2
+  exit 2
+}
+
+for self in $SELF_DEPENDENCIES; do
+  if printf '%s\n' "$declared" | cut -f1 | grep -qxF "$self"; then
+    echo "project: refusing to project $self — this script depends on it" >&2
+    echo "  Placing it would make this script unable to run, at the point where" >&2
+    echo "  Home Manager has already released the path. Keep it in files.nix." >&2
+    exit 2
+  fi
+done
 
 placed=""
 [ -f "$manifest" ] && placed=$(sort "$manifest")
@@ -54,6 +78,15 @@ note() { if $check_only; then echo "DRIFT: $*"; else echo "$*"; fi; }
 while IFS= read -r target; do
   [ -n "$target" ] || continue
   if ! printf '%s\n' "$declared" | cut -f1 | grep -qxF "$target"; then
+    # A payload can leave the declaration two ways: retired, or handed back to
+    # Home Manager. In the second case Home Manager has already placed a store
+    # symlink at the target by the time this runs (the activation hook is
+    # ordered after linkGeneration), and deleting it would undo a placement
+    # this script does not own. Drop it from the manifest instead.
+    if readlink "$HOME/$target" 2>/dev/null | grep -q '^/nix/store/'; then
+      note "release $target (Home Manager owns it again)"
+      continue
+    fi
     drift=1
     note "prune $target (left the declaration)"
     if ! $check_only; then

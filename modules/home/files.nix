@@ -40,6 +40,14 @@ in
     # been migrated yet; zsh is last because a broken shell cannot be
     # repaired from, and a generation rollback does not undo a projection.
 
+    # Stays with Home Manager, permanently: `nix eval` needs the experimental
+    # features this file enables, and bin/project.sh reads its declaration with
+    # `nix eval`. Projecting it makes the projector unable to run — and the
+    # failure arrives after Home Manager has released the path, so nothing
+    # places it. The projector refuses this entry rather than relying on the
+    # comment (ADR 0026, issue #85).
+    "nix".source = link "config/nix";
+
     # Neovim is a payload of this repository since the import (ADR 0021,
     # ADR 0023). The directory is linked whole, which makes lazy-lock.json
     # writable so the editor can record plugin updates — but writes still

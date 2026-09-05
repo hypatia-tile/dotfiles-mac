@@ -9,6 +9,12 @@
 # Read with `nix eval -f`, which costs 0.15s and needs neither the flake nor
 # Home Manager.
 #
+# A payload the projector itself depends on cannot be listed here. ~/.config/nix
+# is the case that proved it: `nix eval` needs the experimental features the
+# user nix.conf enables, so projecting it made the projector unable to read this
+# file — and the failure lands exactly when Home Manager has already released
+# the path. bin/project.sh refuses such entries; see SELF_DEPENDENCIES there.
+#
 #   <target relative to $HOME> = {
 #     source = <path relative to the checkout>;
 #     mode   = "copy" | "link";
@@ -45,13 +51,6 @@
   };
   ".config/lazygit" = {
     source = "config/lazygit";
-    mode = "copy";
-  };
-  # Effective Nix configuration: with nix.enable = false (Determinate
-  # installer) the nix-darwin nix.settings module is inert, so the user
-  # nix.conf is managed here instead (flake-design §4 note 2).
-  ".config/nix" = {
-    source = "config/nix";
     mode = "copy";
   };
   # Not under ~/.config: Hammerspoon reads ~/.hammerspoon, and the launchd
