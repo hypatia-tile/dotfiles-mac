@@ -19,7 +19,6 @@
     ];
 
     brews = [
-      "llvm"
       "make"
       "cmake"
       "olets/tap/zsh-abbr"

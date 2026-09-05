@@ -13,7 +13,6 @@ in
       "${common.homeDirectory}/.nix-profile/bin"
       "/etc/profiles/per-user/${common.username}/bin"
       "/run/current-system/sw/bin"
-      "/opt/homebrew/opt/llvm/bin"
       "/opt/homebrew/bin"
       "/opt/homebrew/sbin"
       "/nix/var/nix/profiles/default/bin"
