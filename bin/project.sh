@@ -3,7 +3,7 @@
 #
 # `~/.config` is a projection of this repository, not an editing surface: each
 # declared payload is copied in and made read-only, so a change can only be
-# made here. What the declaration says lives in modules/payloads.nix.
+# made here. What the declaration says lives in modules/payloads.tsv.
 #
 # Two dispositions:
 #   copy  a read-only copy — the default, and what provides the prevention
@@ -27,35 +27,39 @@
 set -euo pipefail
 
 repo_root=$(cd "$(dirname "$0")/.." && pwd)
-decl="$repo_root/modules/payloads.nix"
+decl="$repo_root/modules/payloads.tsv"
 manifest="${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles-mac/projected"
 
 check_only=false
 [ "${1:-}" = "--check" ] && check_only=true
 
 # Paths this script needs in order to run at all, and therefore cannot place.
-# ~/.config/nix is the one that proved this: `nix eval` reads the declaration
-# below, and the experimental features it needs are enabled by the user
-# nix.conf. Projecting it made this script unable to read its own declaration —
-# and the failure arrives *after* Home Manager has released the path, so the
-# payload ends up neither placed nor linked. Refusing here rather than in a
-# comment, because a comment cannot fail a build.
+# ~/.config/nix is the one that proved this (#85): the declaration used to be a
+# Nix file, `nix eval` needs the experimental features the user nix.conf
+# enables, and projecting that payload left the machine with nothing placed —
+# the failure arriving *after* Home Manager had released the path.
+#
+# The declaration is now read without a parser, so nix is no longer among this
+# script's needs and that particular cycle cannot recur. The entry stays: the
+# repository still declares config/nix in files.nix, and the guard is what
+# stops someone moving it back without knowing why it is there. Refusing here
+# rather than in a comment, because a comment cannot fail a build.
 SELF_DEPENDENCIES=".config/nix"
 
 [ -f "$decl" ] || { echo "project: no declaration at $decl" >&2; exit 2; }
 
-# `target<TAB>source<TAB>mode`, one payload per line.
-declared=$(
-  nix eval --json -f "$decl" 2>/dev/null |
-    jq -r 'to_entries[] | "\(.key)\t\(.value.source)\t\(.value.mode)"' |
-    sort
-) || {
-  echo "project: cannot evaluate $decl" >&2
-  echo "  If nix reports that 'nix-command' is disabled, ~/.config/nix/nix.conf" >&2
-  echo "  is missing. Recover with:" >&2
-  echo "    NIX_CONFIG='experimental-features = nix-command flakes' $0" >&2
-  exit 2
-}
+# `target<TAB>source<TAB>mode`, one payload per line; `#` comments and blank
+# lines dropped. No parser on purpose — see SELF_DEPENDENCIES above.
+declared=$(sed -e 's/#.*//' -e '/^[[:space:]]*$/d' "$decl" | sort)
+
+while IFS=$'\t' read -r t sc m; do
+  [ -n "$t" ] || continue
+  if [ -z "$sc" ] || [ -z "$m" ]; then
+    echo "project: malformed line in $decl (expected three tab-separated fields):" >&2
+    echo "  $t" >&2
+    exit 2
+  fi
+done <<< "$declared"
 
 for self in $SELF_DEPENDENCIES; do
   if printf '%s\n' "$declared" | cut -f1 | grep -qxF "$self"; then

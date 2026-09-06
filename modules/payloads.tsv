@@ -1,0 +1,42 @@
+# Payloads projected into $HOME by bin/project.sh (ADR 0026).
+#
+# Deliberately outside modules/home/files.nix: a payload declared there is
+# *placed* by Home Manager, and there is no declare-without-placing. Keeping
+# the two lists disjoint is what stops a path acquiring two owners — the
+# constraint ADR 0001 was written to establish.
+#
+# Deliberately not a Nix file either, and not JSON. The projector reads this
+# with `while read`, so it needs no parser at all. That is not a preference:
+# the previous form was `nix eval`-ed, which made the projector depend on
+# ~/.config/nix/nix.conf — a payload — and projecting that payload left the
+# machine with nothing placed (#85). A declaration a parser must read can
+# always acquire that shape; one the shell reads cannot.
+#
+# Format: three tab-separated fields, `#` comments, blank lines ignored.
+#
+#   <target relative to $HOME>	<source relative to the checkout>	copy|link
+#
+# copy  a read-only copy. The default disposition, and what makes ~/.config a
+#       projection rather than an editing surface.
+# link  a symlink to the working tree, for a file the tool must write *back
+#       into the repository*. A writable copy cannot serve: it diverges from
+#       the repository instead of updating it. Declare per path, never per
+#       payload, so each exception stays visible.
+#
+# ~/.config/nix is absent on purpose and must stay absent: see SELF_DEPENDENCIES
+# in bin/project.sh.
+
+.config/git	config/git	copy
+.config/tmux	config/tmux	copy
+.config/kitty	config/kitty	copy
+.config/alacritty	config/alacritty	copy
+.config/aerospace	config/aerospace	copy
+.config/lazygit	config/lazygit	copy
+
+# Not under ~/.config: Hammerspoon reads ~/.hammerspoon, and the launchd agent
+# in modules/home/base.nix starts the app that reads it.
+.hammerspoon	config/hammerspoon	copy
+
+# herdr writes logs, session.json, sessions/ and .plugins.lock into its config
+# directory, so only the file this repository owns is projected.
+.config/herdr/config.toml	config/herdr/config.toml	copy
