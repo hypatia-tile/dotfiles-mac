@@ -300,6 +300,29 @@ jobs:
       - name: commitlint
         uses: wagoid/commitlint-github-action@v6
 
+      - name: Paths the nvim projection hook depends on still exist
+        # The hook returns early when it cannot find what it names, which is
+        # correct for another repository and invisible when the path is simply
+        # stale — it shipped dead twice that way (#87). This runs in the
+        # always-on job on purpose: the rename that broke it last time was
+        # under modules/, which does not trigger the nvim filter.
+        run: |
+          set -eu
+          rc=0
+          hook=config/nvim/lua/autocmds.lua
+          # Every `root .. "/..."` in the hook is a path it expects to find.
+          # A for-loop rather than a pipeline: rc set inside a `while read`
+          # pipeline is lost with the subshell.
+          for p in $(grep -oE 'root \.\. "/[^"]+"' "$hook" | sed -e 's/.*"\///' -e 's/"$//' | sort -u); do
+            if [ -e "$p" ]; then
+              echo "ok      $p"
+            else
+              echo "MISSING $p — the hook names it and it is not there"
+              rc=1
+            fi
+          done
+          exit "$rc"
+
       - name: shellcheck
         uses: ludeeus/action-shellcheck@2.0.0
         with:
