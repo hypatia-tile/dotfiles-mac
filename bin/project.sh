@@ -70,8 +70,17 @@ for self in $SELF_DEPENDENCIES; do
   fi
 done
 
+# Manifest lines are `<target>` or `<target><TAB>pending`. A bare line is a
+# path currently placed; `pending` means it left the declaration on an earlier
+# run and was reported rather than deleted (see the two-phase prune below).
+# Manifests written before that distinction existed are all bare lines, which
+# read correctly as "placed" — no migration needed.
 placed=""
 [ -f "$manifest" ] && placed=$(sort "$manifest")
+# Membership tests must compare the target field alone: a `pending` line is
+# still a path this script placed, and comparing whole lines would call it
+# foreign and back it up.
+placed_targets=$(printf '%s\n' "$placed" | cut -f1)
 
 drift=0
 note() { if $check_only; then echo "DRIFT: $*"; else echo "$*"; fi; }
@@ -79,24 +88,41 @@ note() { if $check_only; then echo "DRIFT: $*"; else echo "$*"; fi; }
 # --- remove what left the declaration ---------------------------------------
 # Only paths this script recorded. Anything else in those directories was put
 # there by something else and is none of our business.
-while IFS= read -r target; do
+carried=""
+while IFS=$'\t' read -r target state; do
   [ -n "$target" ] || continue
-  if ! printf '%s\n' "$declared" | cut -f1 | grep -qxF "$target"; then
-    # A payload can leave the declaration two ways: retired, or handed back to
-    # Home Manager. In the second case Home Manager has already placed a store
-    # symlink at the target by the time this runs (the activation hook is
-    # ordered after linkGeneration), and deleting it would undo a placement
-    # this script does not own. Drop it from the manifest instead.
-    if readlink "$HOME/$target" 2>/dev/null | grep -q '^/nix/store/'; then
-      note "release $target (Home Manager owns it again)"
-      continue
-    fi
+  if printf '%s\n' "$declared" | cut -f1 | grep -qxF "$target"; then
+    continue
+  fi
+
+  # A payload leaves the declaration two ways: retired, or handed back to
+  # another owner. Home Manager places a store symlink at the target when it
+  # takes one back, and deleting that would undo a placement this script does
+  # not own, so release the entry untouched.
+  if readlink "$HOME/$target" 2>/dev/null | grep -q '^/nix/store/'; then
+    note "release $target (owned by Home Manager again)"
+    continue
+  fi
+
+  # Two-phase prune (#85). Before the new owner has placed anything, a hand-back
+  # is indistinguishable from a retirement, and deleting on that first run is
+  # what nearly destroyed ~/.config/nix: the entry was gone from the
+  # declaration, Home Manager had not switched yet, and the editor hook would
+  # have run this without anyone asking. So the first run reports and keeps the
+  # entry; only a second run deletes. The delay costs one cycle on a deliberate
+  # retirement, and buys the window back on every hand-back.
+  if [ "$state" != "pending" ]; then
     drift=1
-    note "prune $target (left the declaration)"
-    if ! $check_only; then
-      chmod -R u+w "$HOME/$target" 2>/dev/null || true
-      rm -rf "${HOME:?}/$target"
-    fi
+    note "pending $target (left the declaration; will be removed on the next run)"
+    $check_only || carried+="$target"$'\t'"pending"$'\n'
+    continue
+  fi
+
+  drift=1
+  note "prune $target (left the declaration on an earlier run)"
+  if ! $check_only; then
+    chmod -R u+w "$HOME/$target" 2>/dev/null || true
+    rm -rf "${HOME:?}/$target"
   fi
 done <<< "$(printf '%s\n' "$placed")"
 
@@ -112,7 +138,7 @@ while IFS=$'\t' read -r target source mode; do
 
   # A target we did not place is never overwritten. Back it up and say so.
   if [ -e "$dst" ] || [ -L "$dst" ]; then
-    if ! printf '%s\n' "$placed" | grep -qxF "$target"; then
+    if ! printf '%s\n' "$placed_targets" | grep -qxF "$target"; then
       drift=1
       note "backup $dst (exists but was not placed by this script)"
       if ! $check_only; then
@@ -174,6 +200,6 @@ if $check_only; then
 fi
 
 mkdir -p "$(dirname "$manifest")"
-printf '%s' "$new_manifest" | sed '/^$/d' | sort > "$manifest"
+printf '%s%s' "$new_manifest" "$carried" | sed '/^$/d' | sort > "$manifest"
 [ "$drift" -eq 0 ] && echo "project: already in sync"
 exit 0
