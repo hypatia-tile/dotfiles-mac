@@ -3,7 +3,7 @@
 #
 # `~/.config` is a projection of this repository, not an editing surface: each
 # declared payload is copied in and made read-only, so a change can only be
-# made here. What the declaration says lives in modules/payloads.nix.
+# made here. What the declaration says lives in modules/payloads.tsv.
 #
 # Two dispositions:
 #   copy  a read-only copy — the default, and what provides the prevention
@@ -27,20 +27,48 @@
 set -euo pipefail
 
 repo_root=$(cd "$(dirname "$0")/.." && pwd)
-decl="$repo_root/modules/payloads.nix"
+decl="$repo_root/modules/payloads.tsv"
 manifest="${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles-mac/projected"
 
 check_only=false
 [ "${1:-}" = "--check" ] && check_only=true
 
+# Paths this script needs in order to run at all, and therefore cannot place.
+# ~/.config/nix is the one that proved this (#85): the declaration used to be a
+# Nix file, `nix eval` needs the experimental features the user nix.conf
+# enables, and projecting that payload left the machine with nothing placed —
+# the failure arriving *after* Home Manager had released the path.
+#
+# The declaration is now read without a parser, so nix is no longer among this
+# script's needs and that particular cycle cannot recur. The entry stays: the
+# repository still declares config/nix in files.nix, and the guard is what
+# stops someone moving it back without knowing why it is there. Refusing here
+# rather than in a comment, because a comment cannot fail a build.
+SELF_DEPENDENCIES=".config/nix"
+
 [ -f "$decl" ] || { echo "project: no declaration at $decl" >&2; exit 2; }
 
-# `target<TAB>source<TAB>mode`, one payload per line.
-declared=$(
-  nix eval --json -f "$decl" 2>/dev/null |
-    jq -r 'to_entries[] | "\(.key)\t\(.value.source)\t\(.value.mode)"' |
-    sort
-) || { echo "project: cannot evaluate $decl" >&2; exit 2; }
+# `target<TAB>source<TAB>mode`, one payload per line; `#` comments and blank
+# lines dropped. No parser on purpose — see SELF_DEPENDENCIES above.
+declared=$(sed -e 's/#.*//' -e '/^[[:space:]]*$/d' "$decl" | sort)
+
+while IFS=$'\t' read -r t sc m; do
+  [ -n "$t" ] || continue
+  if [ -z "$sc" ] || [ -z "$m" ]; then
+    echo "project: malformed line in $decl (expected three tab-separated fields):" >&2
+    echo "  $t" >&2
+    exit 2
+  fi
+done <<< "$declared"
+
+for self in $SELF_DEPENDENCIES; do
+  if printf '%s\n' "$declared" | cut -f1 | grep -qxF "$self"; then
+    echo "project: refusing to project $self — this script depends on it" >&2
+    echo "  Placing it would make this script unable to run, at the point where" >&2
+    echo "  Home Manager has already released the path. Keep it in files.nix." >&2
+    exit 2
+  fi
+done
 
 placed=""
 [ -f "$manifest" ] && placed=$(sort "$manifest")
@@ -54,6 +82,15 @@ note() { if $check_only; then echo "DRIFT: $*"; else echo "$*"; fi; }
 while IFS= read -r target; do
   [ -n "$target" ] || continue
   if ! printf '%s\n' "$declared" | cut -f1 | grep -qxF "$target"; then
+    # A payload can leave the declaration two ways: retired, or handed back to
+    # Home Manager. In the second case Home Manager has already placed a store
+    # symlink at the target by the time this runs (the activation hook is
+    # ordered after linkGeneration), and deleting it would undo a placement
+    # this script does not own. Drop it from the manifest instead.
+    if readlink "$HOME/$target" 2>/dev/null | grep -q '^/nix/store/'; then
+      note "release $target (Home Manager owns it again)"
+      continue
+    fi
     drift=1
     note "prune $target (left the declaration)"
     if ! $check_only; then
