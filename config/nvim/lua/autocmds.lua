@@ -34,13 +34,20 @@ au.autocmd("BufWritePost", "Project config payloads after saving one", {
 
     -- The marker has to be a *direct child* of the directory being tested:
     -- vim.fs.root only inspects each ancestor's own entries, so a nested path
-    -- like modules/payloads.nix is never seen. flake.nix identifies the root,
+    -- like modules/payloads.tsv is never seen. flake.nix identifies the root,
     -- and the two nested paths then confirm it is this checkout.
+    --
+    -- Those two paths are a silent coupling: when the declaration was renamed
+    -- from .nix to .tsv this check kept naming the old one, so the hook
+    -- returned early on every save and projected nothing. A hook that does
+    -- nothing is indistinguishable from a hook with nothing to do, which is
+    -- why the loop is exercised end to end rather than read. Guarding the
+    -- coupling itself is #87.
     local root = vim.fs.root(file, "flake.nix")
     if
       not root
       or vim.fn.executable(root .. "/bin/project.sh") ~= 1
-      or vim.fn.filereadable(root .. "/modules/payloads.nix") ~= 1
+      or vim.fn.filereadable(root .. "/modules/payloads.tsv") ~= 1
     then
       return
     end
