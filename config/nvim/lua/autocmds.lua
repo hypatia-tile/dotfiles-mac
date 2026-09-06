@@ -34,21 +34,19 @@ au.autocmd("BufWritePost", "Project config payloads after saving one", {
 
     -- The marker has to be a *direct child* of the directory being tested:
     -- vim.fs.root only inspects each ancestor's own entries, so a nested path
-    -- like modules/payloads.tsv is never seen. flake.nix identifies the root,
-    -- and the two nested paths then confirm it is this checkout.
+    -- is never seen. flake.nix finds a flake root; bin/project.sh then says
+    -- whether it is one with a projector in it.
     --
-    -- Those two paths are a silent coupling: when the declaration was renamed
-    -- from .nix to .tsv this check kept naming the old one, so the hook
-    -- returned early on every save and projected nothing. A hook that does
-    -- nothing is indistinguishable from a hook with nothing to do, which is
-    -- why the loop is exercised end to end rather than read. Guarding the
-    -- coupling itself is #87.
+    -- Only that one path is checked, and the choice is deliberate (#87). This
+    -- hook previously also confirmed the declaration file by name, and when
+    -- that file was renamed the check kept naming the old one: the hook
+    -- returned early on every save and projected nothing, silently, while the
+    -- projector itself still worked. Coupling to bin/project.sh cannot fail
+    -- that way — if the path is wrong there is genuinely nothing to run, so
+    -- returning is the correct behaviour rather than a hidden one. Whether the
+    -- declaration exists is the projector's business, and it says so loudly.
     local root = vim.fs.root(file, "flake.nix")
-    if
-      not root
-      or vim.fn.executable(root .. "/bin/project.sh") ~= 1
-      or vim.fn.filereadable(root .. "/modules/payloads.tsv") ~= 1
-    then
+    if not root or vim.fn.executable(root .. "/bin/project.sh") ~= 1 then
       return
     end
     if not vim.startswith(file, root .. "/config/") then
