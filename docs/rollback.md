@@ -84,6 +84,45 @@ If Home Manager backed a file out of the way during the failed switch, it is
 next to the original with a `.hm-bak` suffix; restore it by renaming.
 `find ~ -maxdepth 3 -name '*.hm-bak'` finds them.
 
+## If the projection is missing: recovering from a bare shell
+
+A projection that fails mid-switch leaves payloads neither linked nor placed
+(#91). For the zsh payload that means `~/.config/zsh` is empty and the shell
+starts with none of its configuration: no prompt to speak of, no history, no
+completion, no abbreviations.
+
+**That shell is fully capable, and this is the paragraph to trust when it does
+not feel that way.** `PATH` comes from `/etc/zshrc`, which nix-darwin manages in
+the system layer — not a payload, not a Home Manager user file — so a projection
+failure cannot reach it. Measured with `ZDOTDIR` pointed at an empty directory,
+and again with `~/.zshenv` absent entirely:
+
+| | |
+|---|---|
+| `nix` | `/nix/var/nix/profiles/default/bin/nix` |
+| `git` | `/usr/bin/git` |
+| `nvim` | `/etc/profiles/per-user/$USER/bin/nvim` |
+
+So the repair is one command, and it needs nothing the bare shell lacks:
+
+```sh
+~/ghqrepo/github.com/hypatia-tile/dotfiles-mac/bin/project.sh
+```
+
+Type the absolute path — there is no `$PATH` entry for it and no abbreviation
+in this shell. Then open a new terminal; the configuration is back.
+
+The projector needs nothing beyond `bash` and the utilities in `/usr/bin`. It
+reads `modules/payloads.tsv` with `read`, so no parser and no `nix` are
+involved, and it copies from the working tree, not from the store — a store
+symlink is something it reads and defers to, never something it creates. Nor
+could it have removed `~/.config/nix`: it refuses to place that path at all
+(`SELF_DEPENDENCIES` in `bin/project.sh`, #85).
+
+This is not a rollback. The projection is not part of the closure, so
+`switch --rollback` does not restore it, and re-running the projector is the
+whole recovery.
+
 ## If generation rollback is not enough
 
 There is a second, much heavier layer: restoring the pre-cutover setup from
