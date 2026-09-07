@@ -22,8 +22,12 @@
 # Usage:
 #   bin/project.sh            place payloads, prune what left the declaration
 #   bin/project.sh --check    report drift and exit non-zero; changes nothing
+#   bin/project.sh --validate check the declaration alone; touches no $HOME path
 #
-# Exit: 0 in sync (or applied); 1 drift found in --check, or a refusal; 2 error.
+# Exit: 0 in sync (or applied, or sound); 1 drift found in --check; 2 a
+# declaration this script cannot act on, or any other error. The two are worth
+# keeping apart: on a migration drift is the *expected* state, so only 2 means
+# something is wrong.
 set -euo pipefail
 
 repo_root=$(cd "$(dirname "$0")/.." && pwd)
@@ -31,7 +35,16 @@ decl="$repo_root/modules/payloads.tsv"
 manifest="${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles-mac/projected"
 
 check_only=false
-[ "${1:-}" = "--check" ] && check_only=true
+validate_only=false
+case "${1:-}" in
+  --check) check_only=true ;;
+  --validate) validate_only=true ;;
+  # Rejected rather than ignored: a mistyped --chek used to fall through to a
+  # full placement, which is the one outcome someone reaching for a read-only
+  # mode does not want.
+  "") ;;
+  *) echo "project: unknown option '$1' (expected --check or --validate)" >&2; exit 2 ;;
+esac
 
 # Paths this script needs in order to run at all, and therefore cannot place.
 # ~/.config/nix is the one that proved this (#85): the declaration used to be a
@@ -52,23 +65,61 @@ SELF_DEPENDENCIES=".config/nix"
 # lines dropped. No parser on purpose — see SELF_DEPENDENCIES above.
 declared=$(sed -e 's/#.*//' -e '/^[[:space:]]*$/d' "$decl" | sort)
 
-while IFS=$'\t' read -r t sc m; do
-  [ -n "$t" ] || continue
-  if [ -z "$sc" ] || [ -z "$m" ]; then
-    echo "project: malformed line in $decl (expected three tab-separated fields):" >&2
-    echo "  $t" >&2
-    exit 2
-  fi
-done <<< "$declared"
+# --- validate the declaration -----------------------------------------------
+# Everything that can stop this script before it touches $HOME. All of it is a
+# property of the repository alone — no target, no manifest — which is what
+# makes it runnable in CI and in preflight rather than only at switch time.
+#
+# That earliness is the point (#91). The activation hook runs *after*
+# linkGeneration, so a projector that cannot run fails in the window where Home
+# Manager has released the payload and this script has not yet placed it,
+# leaving it neither linked nor placed. Every condition below is one that would
+# land there; found here, it is found while the old placement is still intact.
+#
+# Reports every problem rather than the first: a declaration is usually edited
+# in one sitting, and a gate that reveals one error per run wastes the trip.
+validate_declaration() {
+  local rc=0 t sc m self
+  while IFS=$'\t' read -r t sc m; do
+    [ -n "$t" ] || continue
 
-for self in $SELF_DEPENDENCIES; do
-  if printf '%s\n' "$declared" | cut -f1 | grep -qxF "$self"; then
-    echo "project: refusing to project $self — this script depends on it" >&2
-    echo "  Placing it would make this script unable to run, at the point where" >&2
-    echo "  Home Manager has already released the path. Keep it in files.nix." >&2
-    exit 2
-  fi
-done
+    if [ -z "$sc" ] || [ -z "$m" ]; then
+      echo "project: malformed line in $decl (expected three tab-separated fields):" >&2
+      echo "  $t" >&2
+      rc=1
+      continue
+    fi
+
+    case "$m" in
+      copy | link) ;;
+      *)
+        echo "project: unknown mode '$m' for $t (expected copy or link)" >&2
+        rc=1
+        ;;
+    esac
+
+    [ -e "$repo_root/$sc" ] || {
+      echo "project: missing source $repo_root/$sc, declared for $t" >&2
+      rc=1
+    }
+
+    for self in $SELF_DEPENDENCIES; do
+      [ "$t" = "$self" ] || continue
+      echo "project: refusing to project $t — this script depends on it" >&2
+      echo "  Placing it would make this script unable to run, at the point where" >&2
+      echo "  Home Manager has already released the path. Keep it in files.nix." >&2
+      rc=1
+    done
+  done <<< "$declared"
+  return "$rc"
+}
+
+validate_declaration || exit 2
+
+if $validate_only; then
+  echo "project --validate: declaration is sound"
+  exit 0
+fi
 
 # Manifest lines are `<target>` or `<target><TAB>pending`. A bare line is a
 # path currently placed; `pending` means it left the declaration on an earlier
@@ -134,8 +185,6 @@ while IFS=$'\t' read -r target source mode; do
   dst="$HOME/$target"
   new_manifest+="$target"$'\n'
 
-  [ -e "$src" ] || { echo "project: missing source $src" >&2; exit 2; }
-
   # A target we did not place is never overwritten. Back it up and say so.
   if [ -e "$dst" ] || [ -L "$dst" ]; then
     if ! printf '%s\n' "$placed_targets" | grep -qxF "$target"; then
@@ -184,6 +233,7 @@ while IFS=$'\t' read -r target source mode; do
       fi
       ;;
     *)
+      # Unreachable: validate_declaration rejects any other mode above.
       echo "project: unknown mode '$mode' for $target" >&2
       exit 2
       ;;

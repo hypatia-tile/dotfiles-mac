@@ -323,6 +323,24 @@ jobs:
           done
           exit "$rc"
 
+      - name: Payload declaration is one the projector can act on
+        # `--validate` reads modules/payloads.tsv and the sources it names, and
+        # nothing else — no $HOME, no manifest — which is what makes it
+        # runnable here rather than only on the machine.
+        #
+        # What it buys is earliness (#91). The activation hook runs *after*
+        # linkGeneration, so a projector that cannot run fails in the window
+        # where Home Manager has released the payload and bin/project.sh has
+        # not yet placed it, leaving it neither linked nor placed. Every
+        # condition --validate rejects is one that would land there; caught on
+        # the pull request, it is caught while the old placement is intact.
+        #
+        # Always-on rather than gated, for #89's reason: modules/payloads.tsv
+        # matches no filter in the `changes` job, and `config/**` reaches only
+        # the zsh and nvim filters, so a gated version would be blind to most
+        # of what it checks.
+        run: bin/project.sh --validate
+
       - name: shellcheck
         uses: ludeeus/action-shellcheck@2.0.0
         with:
