@@ -16,8 +16,15 @@
 # retired for `rm -rf` + `ln -s` (ADR 0001), and a target that exists without
 # being in the manifest is backed up rather than replaced. The manifest is also
 # what makes removal safe: only paths this script placed are ever deleted, so
-# runtime state living beside a payload — ~/.config/zsh/.zcompdump, herdr's
-# session files — is untouched by construction.
+# runtime state living *beside* a payload — herdr's logs next to the
+# config.toml this repository owns — is untouched by construction.
+#
+# Inside a declared directory it is not, and the sentence above used to claim
+# otherwise. Replacing a directory payload takes the whole target, so whatever
+# the tool wrote there goes with it (#94). The rule that prevents this lives
+# with the declaration in modules/payloads.tsv, because it is a property of
+# what is declared rather than of this script. What this script owes it is to
+# stop being silent: every entry a replacement would remove is reported.
 #
 # Usage:
 #   bin/project.sh            place payloads, prune what left the declaration
@@ -136,6 +143,42 @@ placed_targets=$(printf '%s\n' "$placed" | cut -f1)
 drift=0
 note() { if $check_only; then echo "DRIFT: $*"; else echo "$*"; fi; }
 
+# Say what a replacement would delete (#94). Placing over a directory is
+# `rm -rf` plus a fresh copy, so every entry the target has and the source does
+# not is about to go, and until now the run named none of them: the output was
+# the same whether it removed nothing or a year of shell history.
+#
+# Reports rather than refuses, deliberately. A file deleted from the repository
+# and a file the tool wrote are indistinguishable by looking at the filesystem,
+# so refusing would block every intentional deletion. Under --check this lands
+# before a switch, which is where it is worth reading.
+#
+# Called only for a target this script placed. One it did not place is moved
+# aside whole by the backup above, so nothing is removed and saying otherwise
+# would be a lie in the one direction that matters.
+report_removals() {
+  local src=$1 dst=$2 gone
+  # Only a real directory can be hiding anything: a file target is replaced
+  # whole, and a symlink target holds nothing of its own.
+  { [ -d "$dst" ] && [ ! -L "$dst" ]; } || return 0
+
+  if [ -d "$src" ]; then
+    # `Only in <dir>: <name>` names what one side has and the other does not.
+    # Keeping the target's side gives exactly what `rm -rf` would take, and
+    # names the top-most entry rather than every file beneath it.
+    while IFS= read -r gone; do
+      case "$gone" in "$dst"/*) note "  removes $gone" ;; esac
+    done <<< "$(diff -rq "$src" "$dst" 2>/dev/null |
+      sed -n 's|^Only in \(.*\): \(.*\)$|\1/\2|p' || true)"
+  else
+    # A directory about to become a single file or a symlink: all of it goes.
+    while IFS= read -r gone; do
+      [ -n "$gone" ] || continue
+      note "  removes $dst/$gone"
+    done <<< "$(ls -A "$dst" 2>/dev/null || true)"
+  fi
+}
+
 # --- remove what left the declaration ---------------------------------------
 # Only paths this script recorded. Anything else in those directories was put
 # there by something else and is none of our business.
@@ -185,9 +228,15 @@ while IFS=$'\t' read -r target source mode; do
   dst="$HOME/$target"
   new_manifest+="$target"$'\n'
 
+  # Whether this script placed the target decides both what happens to what is
+  # already there and whether report_removals has anything to say: a target we
+  # placed is replaced, and a target we did not is moved aside intact.
+  placed_before=false
+  printf '%s\n' "$placed_targets" | grep -qxF "$target" && placed_before=true
+
   # A target we did not place is never overwritten. Back it up and say so.
   if [ -e "$dst" ] || [ -L "$dst" ]; then
-    if ! printf '%s\n' "$placed_targets" | grep -qxF "$target"; then
+    if ! $placed_before; then
       drift=1
       note "backup $dst (exists but was not placed by this script)"
       if ! $check_only; then
@@ -201,6 +250,7 @@ while IFS=$'\t' read -r target source mode; do
       if [ "$(readlink "$dst" 2>/dev/null || true)" != "$src" ]; then
         drift=1
         note "link $target -> $source"
+        $placed_before && report_removals "$src" "$dst"
         if ! $check_only; then
           mkdir -p "$(dirname "$dst")"
           chmod -R u+w "$dst" 2>/dev/null || true
@@ -216,6 +266,7 @@ while IFS=$'\t' read -r target source mode; do
       if [ -L "$dst" ] || ! diff -rq "$src" "$dst" >/dev/null 2>&1; then
         drift=1
         note "copy $target <- $source (read-only)"
+        $placed_before && report_removals "$src" "$dst"
         if ! $check_only; then
           mkdir -p "$(dirname "$dst")"
           staging="$dst.projecting.$$"

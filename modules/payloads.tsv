@@ -23,6 +23,25 @@
 #       the repository instead of updating it. Declare per path, never per
 #       payload, so each exception stays visible.
 #
+# Granularity follows runtime state, not preference. Declaring a directory
+# hands the whole target to this repository: a replacement is `rm -rf` plus a
+# fresh copy, so whatever the tool wrote there is deleted with it. Declare a
+# directory only where this repository owns every entry; declare file by file
+# where it does not.
+#
+# The rule is inherited from modules/home/files.nix, which states it for link
+# granularity — and it bites harder here. Under symlinks a violation put the
+# tool's writes in the working tree, where `git status` reported them and the
+# fix was a `git checkout`. Under read-only copies it deletes them, and there
+# is nothing left to report afterwards. Same rule, a far worse consequence,
+# which is why bin/project.sh names every entry a replacement would remove
+# rather than trusting this paragraph to be read (#94).
+#
+# ~/.config/herdr is the worked example below. ~/.config/zsh is the next one:
+# zsh writes .zcompdump and HISTFILE into ZDOTDIR, so its files are declared
+# one by one, while modules/, complete/ and functions/ hold no runtime state
+# and are declared whole.
+#
 # ~/.config/nix is absent on purpose and must stay absent: see SELF_DEPENDENCIES
 # in bin/project.sh.
 
