@@ -341,6 +341,39 @@ jobs:
         # of what it checks.
         run: bin/project.sh --validate
 
+      - name: Plugin pins do not ride along with other changes
+        # `:Lazy update` writes config/nvim/lazy-lock.json whenever the editor
+        # is asked to update, so the pins land in whatever branch happens to be
+        # checked out (#98). flake.lock has ADR 0011 to keep that from
+        # happening; this file has nothing, and a lock hunk in a pull request
+        # that already touches config/ reads as noise.
+        #
+        # Only an update *riding along* is reported. Adding or removing a
+        # plugin changes the lock too, and legitimately arrives with the Lua
+        # change that declares it — so the signal is a diff where the pin set
+        # is identical and only commits moved.
+        #
+        # Reports rather than fails, the trade #94 and #96 both settled on.
+        # Updating pins deliberately in a branch that also fixes something is
+        # unusual, not wrong, and a gate that refused it would be overruling
+        # the author on a judgement it cannot make.
+        if: github.event_name == 'pull_request'
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -eu
+          lock=config/nvim/lazy-lock.json
+          changed=$(git diff --name-only "$BASE...HEAD")
+          if ! printf '%s\n' "$changed" | grep -qxF "$lock"; then
+            echo "ok: $lock is unchanged"
+            exit 0
+          fi
+          if [ -z "$(printf '%s\n' "$changed" | grep -vxF "$lock" || true)" ]; then
+            echo "ok: $lock moves alone"
+            exit 0
+          fi
+          python3 .github/scripts/pins-ride-along.py "$BASE" "$lock"
+
       - name: shellcheck
         uses: ludeeus/action-shellcheck@2.0.0
         with:
