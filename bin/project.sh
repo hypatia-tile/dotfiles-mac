@@ -210,6 +210,24 @@ report_removals() {
   fi
 }
 
+# Pick a backup name that does not exist yet (#96). `mv a b` where b is an
+# existing *directory* moves a into it rather than failing, so a colliding
+# backup nests silently — and the timestamp has one-second resolution, which
+# two runs in the same second, or one failure retried immediately, collide on.
+# Suffixing until the name is free removes the collision rather than making it
+# less likely; the nesting is `mv`'s documented behaviour, not chance.
+backup_path() {
+  local base candidate n
+  base="$1.bak-$(date +%Y%m%d%H%M%S)"
+  candidate=$base
+  n=0
+  while [ -e "$candidate" ] || [ -L "$candidate" ]; do
+    n=$((n + 1))
+    candidate="$base.$n"
+  done
+  printf '%s' "$candidate"
+}
+
 # --- remove what left the declaration ---------------------------------------
 # Only paths this script recorded. Anything else in those directories was put
 # there by something else and is none of our business.
@@ -271,7 +289,9 @@ while IFS=$'\t' read -r target source mode; do
       drift=1
       note "backup $dst (exists but was not placed by this script)"
       if ! $check_only; then
-        mv "$dst" "$dst.bak-$(date +%Y%m%d%H%M%S)"
+        bak=$(backup_path "$dst")
+        note "  moved to $bak"
+        mv "$dst" "$bak"
       fi
     fi
   fi
