@@ -112,15 +112,14 @@ So the repair is one command, and it needs nothing the bare shell lacks:
 Type the absolute path — there is no `$PATH` entry for it and no abbreviation
 in this shell. Then open a new terminal; the configuration is back.
 
-If that fails complaining that `nix-command` is disabled, `~/.config/nix` is
-missing too and the projector cannot read its declaration. Prefix it once:
+The projector needs nothing beyond `bash` and the utilities in `/usr/bin`. It
+reads `modules/payloads.tsv` with `read`, so no parser and no `nix` are
+involved, and it copies from the working tree, not from the store — a store
+symlink is something it reads and defers to, never something it creates. Nor
+could it have removed `~/.config/nix`: it refuses to place that path at all
+(`SELF_DEPENDENCIES` in `bin/project.sh`, #85).
 
-```sh
-NIX_CONFIG='experimental-features = nix-command flakes' \
-  ~/ghqrepo/github.com/hypatia-tile/dotfiles-mac/bin/project.sh
-```
-
-Neither of these is a rollback. The projection is not part of the closure, so
+This is not a rollback. The projection is not part of the closure, so
 `switch --rollback` does not restore it, and re-running the projector is the
 whole recovery.
 
