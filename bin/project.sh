@@ -118,6 +118,37 @@ validate_declaration() {
       rc=1
     done
   done <<< "$declared"
+
+  # A target inside another target cannot work, in either order (#96). Placing
+  # the outer one makes its directory read-only, so nothing can be placed
+  # inside afterwards; placing the inner one first only means the outer one's
+  # `rm -rf` deletes it. Two owners of one subtree is the thing ADR 0001 exists
+  # to forbid, and there is no ordering that rescues it.
+  #
+  # Refused here rather than left to fail during placement, because there it
+  # fails *after* Home Manager has released the path, writes no manifest — the
+  # manifest write comes after both loops — and therefore does not converge:
+  # the next run judges the half-placed target foreign and backs it up, and the
+  # run after that backs up the backup.
+  local targets outer
+  targets=$(printf '%s\n' "$declared" | cut -f1)
+  while IFS= read -r t; do
+    [ -n "$t" ] || continue
+    while IFS= read -r outer; do
+      [ -n "$outer" ] || continue
+      case "$t" in
+        "$outer"/*)
+          echo "project: refusing $t — it is inside $outer, which is also declared" >&2
+          echo "  A copy makes its directory read-only, so nothing can be placed" >&2
+          echo "  inside it afterwards, and replacing it would delete what was." >&2
+          echo "  Declare $outer's entries one by one instead, so that each" >&2
+          echo "  target has exactly one owner." >&2
+          rc=1
+          ;;
+      esac
+    done <<< "$targets"
+  done <<< "$targets"
+
   return "$rc"
 }
 
