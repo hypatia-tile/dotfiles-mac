@@ -40,6 +40,12 @@ lint jobs and are cheap, so run them first to fail fast.
    - The file-writing tool occasionally appends a stray closing tag to a file
      it creates, which then breaks Nix evaluation or lint. Scan the changed
      tree: `grep -rn '</content>' .`
+   - `bin/project.sh --validate` — the declaration is one the projector can
+     act on: three fields per line, a source that exists, a known mode, and no
+     self-dependency. It reads no `$HOME` path, so it is safe to run at any
+     point and says nothing about drift. Run it even when the change looks
+     unrelated: it is in CI's always-on job because `modules/payloads.tsv`
+     matches no path filter (#89, #91).
 3. **Payload content checks** (mirrors the CI *zsh payload syntax* and *nvim*
    jobs). Run the one matching what changed; skip if no payload changed.
    - zsh: `for f in config/zshenv config/zsh/.zshrc config/zsh/.zprofile config/zsh/.zshenv config/zsh/abbr-definitions.zsh config/zsh/modules/*.zsh; do zsh -n "$f" || echo "FAIL $f"; done`
