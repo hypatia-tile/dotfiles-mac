@@ -4,6 +4,7 @@
   "catppuccin": { "branch": "main", "commit": "edefef779ab08ce1a4a404713e3012b0d202bd35" },
   "conform.nvim": { "branch": "master", "commit": "016802de402556da54c36bd7359b441266b01cdd" },
   "denops.vim": { "branch": "main", "commit": "e82c5a94ca1154b05c9d74d6f6f58c9991b1424f" },
+  "firenvim": { "branch": "master", "commit": "7456b09491337bb53d2146012e8d0c9858f04557" },
   "floating-note.nvim": { "branch": "main", "commit": "4acb8e49ccce4db4ee6a1a01197601ad0e961075" },
   "friendly-snippets": { "branch": "main", "commit": "6cd7280adead7f586db6fccbd15d2cac7e2188b9" },
   "haskell-tools.nvim": { "branch": "main", "commit": "556c28dcfd7479270d557e3e73356411058005ea" },

@@ -7,6 +7,13 @@
 #
 # Limits: lazy-loaded plugins triggered by events, keys, or filetypes are
 # not exercised — a clean check proves startup, not the whole config.
+#
+# The isolation is NVIM_APPNAME, and it covers only what Neovim keys by it:
+# the config and data dirs. A plugin's `build` step that writes somewhere else
+# reaches the real environment from here. firenvim did exactly that — its
+# installer writes $XDG_DATA_HOME/firenvim — and the plugin spec now refuses to
+# install when NVIM_APPNAME is set to anything but nvim. A new plugin with a
+# build step is worth checking against this.
 set -eu
 
 repo=$(cd "$(dirname "$0")/.." && pwd)
