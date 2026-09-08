@@ -98,9 +98,11 @@ merging is always manual, and reviewing one is the `lock-review` skill.
   switching (this is what broke the first cutover attempt).
 - **Directory-sourced `xdg.configFile."x"` makes `~/.config/x` a read-only
   store symlink.** If anything inside must stay writable, either link
-  file-by-file with `recursive = true` (zsh does this: `HISTFILE` and
-  `.zcompdump` live in ZDOTDIR) or keep the writable file outside the
-  managed tree entirely (nvim user dictionary).
+  file-by-file with `recursive = true` or keep the writable file outside the
+  managed tree entirely (nvim user dictionary). Granularity outlives the
+  mechanism: zsh was the worked example here until ADR 0026 projected it, and
+  the same reason — `HISTFILE` and `.zcompdump` live in ZDOTDIR — now makes it
+  a file-by-file entry in `modules/payloads.tsv` instead.
 - **Nothing sources `hm-session-vars.sh` automatically.** HM's zsh
   integration is disabled because the zsh config is shipped as plain files,
   so `config/zsh/.zprofile` sources

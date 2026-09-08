@@ -37,10 +37,10 @@
 # which is why bin/project.sh names every entry a replacement would remove
 # rather than trusting this paragraph to be read (#94).
 #
-# ~/.config/herdr is the worked example below. ~/.config/zsh is the next one:
-# zsh writes .zcompdump and HISTFILE into ZDOTDIR, so its files are declared
-# one by one, while modules/, complete/ and functions/ hold no runtime state
-# and are declared whole.
+# ~/.config/herdr and ~/.config/zsh are the worked examples below. zsh writes
+# .zcompdump and HISTFILE into ZDOTDIR, so its files are declared one by one,
+# while modules/, complete/ and functions/ hold no runtime state and are
+# declared whole.
 #
 # ~/.config/nix is absent on purpose and must stay absent: see SELF_DEPENDENCIES
 # in bin/project.sh.
@@ -59,3 +59,22 @@
 # herdr writes logs, session.json, sessions/ and .plugins.lock into its config
 # directory, so only the file this repository owns is projected.
 .config/herdr/config.toml	config/herdr/config.toml	copy
+
+# zsh. The directory itself is NOT declarable: ~/.config/zsh is ZDOTDIR, and
+# zsh writes .zcompdump and HISTFILE (`history`) into it. A directory entry
+# would replace the target wholesale and take both with it — measured, not
+# reasoned (#94). So the four files this repository owns are declared one by
+# one, and modules/, complete/ and functions/ whole, because those three were
+# checked against the repository and hold no runtime state of their own.
+#
+# ~/.zshenv is the ZDOTDIR bootstrap and the only payload outside ~/.config
+# besides ~/.hammerspoon: zsh reads it before ZDOTDIR exists as an idea, so it
+# has to sit where zsh looks.
+.zshenv	config/zshenv	copy
+.config/zsh/.zshrc	config/zsh/.zshrc	copy
+.config/zsh/.zprofile	config/zsh/.zprofile	copy
+.config/zsh/.zshenv	config/zsh/.zshenv	copy
+.config/zsh/abbr-definitions.zsh	config/zsh/abbr-definitions.zsh	copy
+.config/zsh/modules	config/zsh/modules	copy
+.config/zsh/complete	config/zsh/complete	copy
+.config/zsh/functions	config/zsh/functions	copy
