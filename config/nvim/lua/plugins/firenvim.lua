@@ -56,10 +56,22 @@ return {
     -- Read by the extension when it connects, so it must be set before the
     -- plugin loads rather than in `config`.
     --
-    -- Upstream's defaults for the catch-all pattern, with one change:
-    -- takeover = "never". The default "always" hands *every* textarea to
-    -- Neovim on focus, search boxes included; "never" means <C-e> is what
-    -- asks for it.
+    -- **The extension caches this.** Editing the table below changes nothing in
+    -- the browser until "Reload settings" is pressed in the firenvim popup (the
+    -- toolbar icon) and the page is reloaded. Querying the native messaging
+    -- host directly shows the new settings immediately, which makes the two
+    -- disagree in a way that reads as "the change had no effect" — it cost an
+    -- hour here before the popup was tried.
+    --
+    -- Upstream's defaults for the catch-all pattern. takeover = "always" is
+    -- upstream's default and is kept deliberately: the selector is `textarea`
+    -- only, so single-line inputs and search boxes are never touched, and the
+    -- point of this plugin here is Japanese input — there is no system IME on
+    -- this machine, skkeleton in the frame is how a browser text box gets
+    -- Japanese, and a keystroke to ask for it first is friction on every use.
+    --
+    -- Verified end to end on a plain textarea: the frame opens on focus and
+    -- <C-j> toggles skkeleton inside it.
     vim.g.firenvim_config = {
       localSettings = {
         [".*"] = {
@@ -67,7 +79,16 @@ return {
           content = "text",
           priority = 0,
           selector = "textarea",
-          takeover = "never",
+          takeover = "always",
+        },
+        -- Cosense (and scrapbox.io, its former name) runs its own editor over
+        -- a textarea it keeps pulling focus back to. A frame opened there
+        -- flickers, accepts no input, and the page's own keybindings keep
+        -- firing — measured, and not something this side can win. An empty
+        -- selector matches no element, which is how a site is opted out.
+        ["https?://(scrapbox\\.io|cosense\\.io)/"] = {
+          priority = 1,
+          selector = "",
         },
       },
     }
