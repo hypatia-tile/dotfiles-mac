@@ -58,7 +58,7 @@ that check is how they know it took.
 | CLI tool, language, LSP, library | `modules/home/packages.nix` | ADR 0005, 0006 |
 | GUI application | `homebrew.casks` in `modules/darwin/homebrew.nix` | ADR 0005 |
 | Formula needing a macOS-specific source build | `homebrew.brews` | ADR 0005 |
-| New tool's configuration file | `config/<tool>/` + `modules/home/files.nix` | ADR 0020 |
+| New tool's configuration file | `config/<tool>/` + `modules/payloads.tsv` | ADR 0020, 0026 |
 | Editing an existing tool's configuration | the file under `config/<tool>/` | ADR 0020 |
 | Environment variable, `PATH` entry, launchd agent | `modules/home/base.nix` | ADR 0006 |
 | macOS system default or keybinding | `modules/darwin/macos.nix` | ADR 0017 |
@@ -73,11 +73,15 @@ that need a Nix value or a Nix-side integration, such as `programs.direnv`
 
 ### Traps that have already cost a PR
 
-- **A directory-sourced `xdg.configFile` makes the target a read-only store
-  symlink.** If the tool writes runtime state into its own config directory,
-  either link file-by-file (`recursive = true`, as zsh does for `ZDOTDIR`) or
-  link only the specific file (as `herdr/config.toml` does). Getting this
-  wrong makes the tool fail at runtime, not at build.
+- **Declaring a directory hands the whole directory to this repository.** If
+  the tool writes runtime state into its own config directory, declare the
+  specific files instead (as `herdr/config.toml` and the zsh payload do).
+  Getting this wrong makes the tool fail at runtime, not at build — and under
+  the read-only projection it is worse than under the old symlinks: replacing
+  a directory payload *deletes* what the tool wrote there (#94). The same rule
+  holds for the two entries still in `modules/home/files.nix`, where a
+  directory-sourced `xdg.configFile` makes the target a read-only store
+  symlink unless it is linked file-by-file with `recursive = true`.
 - **A non-official Homebrew tap must be declared `trusted = true`** on the
   `homebrew.taps` entry, or activation refuses to load its formulae.
 - **Whatever a `with-*` build option pulls in must be declared in `brews`
@@ -100,7 +104,7 @@ Name the applicable one in the PR body. "It built" is not one of these.
 | nixpkgs package removed | `command -v <bin>` finds nothing |
 | Homebrew cask | the app is in `/Applications` and launches |
 | Homebrew formula | `brew list --versions <name>` |
-| New config file | `readlink ~/.config/<tool>/…` points into `/nix/store`, **and** the tool is run once to confirm it actually reads the setting |
+| New config file | `bin/project.sh --check` reports in sync and `ls -ld ~/.config/<tool>/…` shows a read-only copy (`r--`), **and** the tool is run once to confirm it actually reads the setting. For the two entries still in `files.nix`, `readlink` instead: it points into `/nix/store` |
 | Edited config | the specific behavior that changed, exercised directly |
 | Session variable / `PATH` | open a **new** shell and `echo $VAR` — the value arrives via `hm-session-vars.sh`, sourced from `config/zsh/.zprofile` |
 | macOS default / keybinding | `activateSettings -u`, then `defaults read com.apple.symbolichotkeys AppleSymbolicHotKeys` matches `macos.nix`, then a behavior spot-check (`docs/operations.md` §1) |

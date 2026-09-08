@@ -2,10 +2,11 @@
 let
   common = import ../common.nix;
 
-  # Payloads are linked to this checkout's working tree, not copied into the
-  # store (ADR 0021): editing a file takes effect on save, and the repository
-  # stays the only surface through which configuration changes, because every
-  # edit is one `git status` reports.
+  # The two payloads that stay with Home Manager are linked to this checkout's
+  # working tree, not copied into the store (ADR 0021): editing a file takes
+  # effect on save, and the repository stays the only surface through which
+  # configuration changes, because every edit is one `git status` reports.
+  # Everything else is projected read-only instead (ADR 0026).
   #
   # Link granularity follows runtime state, not preference. A directory-level
   # link hands the directory to the repository, so anything the tool writes
@@ -14,38 +15,22 @@ let
   link = path: config.lib.file.mkOutOfStoreSymlink "${common.checkoutPath}/${path}";
 in
 {
-  home.file = {
-    # ZDOTDIR bootstrap — the whole zsh setup depends on it (inventory A-14).
-    ".zshenv".source = link "config/zshenv";
-  };
-
   xdg.configFile = {
-    # zsh writes .zcompdump and HISTFILE into ZDOTDIR, so the directory itself
-    # must stay a real directory: its files are linked one by one. The three
-    # subdirectories hold no runtime state and are linked whole, which means a
-    # new module needs no switch at all — only a new *link* does.
-    "zsh/.zshrc".source = link "config/zsh/.zshrc";
-    "zsh/.zprofile".source = link "config/zsh/.zprofile";
-    "zsh/.zshenv".source = link "config/zsh/.zshenv";
-    "zsh/abbr-definitions.zsh".source = link "config/zsh/abbr-definitions.zsh";
-    "zsh/modules".source = link "config/zsh/modules";
-    "zsh/complete".source = link "config/zsh/complete";
-    "zsh/functions".source = link "config/zsh/functions";
-
-    # Most payloads are no longer here: they are projected read-only by
-    # bin/project.sh from modules/payloads.nix (ADR 0026). Home Manager must
+    # The payloads are no longer here: they are projected read-only by
+    # bin/project.sh from modules/payloads.tsv (ADR 0026). Home Manager must
     # not declare those, or the path would have two owners — declaring
     # without placing is not possible, which is why the projector's
-    # declaration lives outside this file. What remains below is what has not
-    # been migrated yet; zsh is last because a broken shell cannot be
-    # repaired from, and a generation rollback does not undo a projection.
+    # declaration lives outside this file. What remains below is what stays
+    # here permanently; both entries have a reason that does not expire.
 
-    # Stays with Home Manager, permanently: `nix eval` needs the experimental
-    # features this file enables, and bin/project.sh reads its declaration with
-    # `nix eval`. Projecting it makes the projector unable to run — and the
-    # failure arrives after Home Manager has released the path, so nothing
-    # places it. The projector refuses this entry rather than relying on the
-    # comment (ADR 0026, issue #85).
+    # Stays with Home Manager, permanently. Projecting it once left the machine
+    # with nothing placed: the declaration was a Nix file, `nix eval` needs the
+    # experimental features this payload enables, and the failure arrived after
+    # Home Manager had released the path (#85). Reading the declaration without
+    # a parser removed that particular cycle, so the reason this entry stays is
+    # now the narrower one bin/project.sh states at SELF_DEPENDENCIES: the guard
+    # refuses the path, and a build that fails is what stops it being moved back
+    # without knowing why (ADR 0026).
     "nix".source = link "config/nix";
 
     # Neovim is a payload of this repository since the import (ADR 0021,
