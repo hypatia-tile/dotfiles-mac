@@ -219,3 +219,17 @@ on-mode-changed = []
     cmd-shift-j = ['join-with down', 'mode main']
     cmd-shift-k = ['join-with up', 'mode main']
     cmd-shift-l = ['join-with right', 'mode main']
+
+# The Japanese input pad (config/hammerspoon/init.lua, cmd-alt-I). A kitty
+# window running Neovim, used as a place to type Japanese with skkeleton for
+# apps that have no usable input of their own — this machine has no system IME.
+#
+# It must not be tiled: it is a transient overlay over whatever is being
+# written in, and taking a slot in the layout would move every other window
+# each time it opens. The match is the window title, which the launcher fixes
+# with `kitty --title=inputpad`; that option overrides whatever Neovim would
+# set, so the title cannot drift with the buffer name.
+[[on-window-detected]]
+if.app-id = 'net.kovidgoyal.kitty'
+if.window-title-regex-substring = 'inputpad'
+run = ['layout floating']
