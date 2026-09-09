@@ -121,6 +121,13 @@ hs.hotkey.bind({"cmd", "alt"}, "I", function()
     -- overrides apply to this instance only, so ordinary kitty windows keep
     -- remembering. 80x20 cells is a comment box, not an editor.
     "exec kitty --title=inputpad"
+      -- On macOS kitty stays running with no windows open, which is the
+      -- platform's expected behaviour for an application and exactly wrong for
+      -- a pad opened and closed many times a day: every <C-s> left a windowless
+      -- process behind. Scoped to this instance, so the working terminal —
+      -- a different kitty, from /Applications rather than the nix store — keeps
+      -- the default.
+      .. " -o macos_quit_when_last_window_closed=yes"
       .. " -o remember_window_size=no"
       .. " -o initial_window_width=80c"
       .. " -o initial_window_height=20c"
