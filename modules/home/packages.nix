@@ -76,5 +76,10 @@
     copilot-language-server
     claude-code
     codex
+    # Cursor's terminal agent (the `cursor-agent` binary), on trial. The GUI
+    # editor is a separate package (code-cursor) and is deliberately not
+    # installed. Like claude-code and codex, this moves only with flake.lock,
+    # and its own `cursor-agent update` cannot write to the Nix store.
+    cursor-cli
   ];
 }
