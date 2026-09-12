@@ -76,8 +76,5 @@
     copilot-language-server
     claude-code
     codex
-
-    # zenn cli
-    zenn-cli
   ];
 }
