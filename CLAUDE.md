@@ -38,4 +38,7 @@ an index that has to be maintained in an always-loaded file goes stale.
 are tracked through an allowlist (`.claude/skills/*` is ignored, with a
 `!.claude/skills/<name>` exception per tracked skill) so that personal skills
 in `~/.claude/skills` and skill-manager artifacts stay out of the repository.
-A new skill that is not allowlisted is silently untracked.
+A new skill that is not allowlisted is silently untracked — it works here and
+is absent from every clone, with `git status` clean throughout.
+`bin/check-skills.sh` is what makes that fail instead, in CI's always-on job
+and in `preflight`.

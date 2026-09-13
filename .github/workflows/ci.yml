@@ -341,6 +341,22 @@ jobs:
         # of what it checks.
         run: bin/project.sh --validate
 
+      - name: Skill tree is sound
+        # A skill whose frontmatter has no description is never surfaced to the
+        # model, and one whose `name` disagrees with its directory is invoked
+        # under a spelling nothing stores. Both are silent: the skill is simply
+        # never used, and no run-time error says so.
+        #
+        # Also fails a skill missing from the `.gitignore` allowlist. Those
+        # work on the machine that wrote them and are absent from every clone,
+        # with `git status` clean throughout — CLAUDE.md names the trap and
+        # this is what makes it fire.
+        #
+        # Always-on for the same reason as the two checks above: `.claude/`
+        # matches no path filter, so a gated version would be blind exactly
+        # when a skill changed (#89, #91).
+        run: bin/check-skills.sh
+
       - name: Plugin pins do not ride along with other changes
         # `:Lazy update` writes config/nvim/lazy-lock.json whenever the editor
         # is asked to update, so the pins land in whatever branch happens to be

@@ -46,6 +46,12 @@ lint jobs and are cheap, so run them first to fail fast.
      point and says nothing about drift. Run it even when the change looks
      unrelated: it is in CI's always-on job because `modules/payloads.tsv`
      matches no path filter (#89, #91).
+   - `bin/check-skills.sh` — every skill under `.claude/skills` has a
+     `SKILL.md` whose frontmatter `name` matches its directory and whose
+     `description` is non-empty, and is tracked rather than dropped by the
+     `.gitignore` allowlist. All of those fail silently: the skill is never
+     surfaced, or never leaves the machine that wrote it. Always-on for the
+     same reason as the line above — `.claude/` matches no path filter.
 3. **Payload content checks** (mirrors the CI *zsh payload syntax* and *nvim*
    jobs). Run the one matching what changed; skip if no payload changed.
    - zsh: `for f in config/zshenv config/zsh/.zshrc config/zsh/.zprofile config/zsh/.zshenv config/zsh/abbr-definitions.zsh config/zsh/modules/*.zsh; do zsh -n "$f" || echo "FAIL $f"; done`
