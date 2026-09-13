@@ -61,6 +61,25 @@
     # Build tools
     gradle
 
+    # Containers. Docker Desktop is deliberately not used here: colima runs
+    # the daemon inside its own Lima VM, needs no privileged helper, and is a
+    # plain CLI tool, so it belongs in this layer rather than in a cask.
+    #
+    # lima and qemu are NOT declared alongside it. The nixpkgs colima wrapper
+    # already puts lima-full, qemu, docker and krunkit on colima's own PATH;
+    # declaring them again would only add a second copy to the profile.
+    #
+    # colima keeps its instance state and its generated colima.yaml under
+    # ~/.colima, so none of it is projected — the granularity rule in
+    # modules/payloads.tsv is what forbids handing that directory over.
+    colima
+    # The client only, on darwin: nixpkgs defaults clientOnly to !isLinux, so
+    # this brings no dockerd — colima's VM provides it. buildxSupport and
+    # composeSupport both default to true, so `docker buildx` and
+    # `docker compose` arrive with this entry through DOCKER_CLI_PLUGIN_DIRS;
+    # docker-buildx and docker-compose must not be declared separately.
+    docker
+
     # Nix tools
     nixfmt-rfc-style
     statix
