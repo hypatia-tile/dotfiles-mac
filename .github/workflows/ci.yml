@@ -357,6 +357,17 @@ jobs:
         # when a skill changed (#89, #91).
         run: bin/check-skills.sh
 
+      - name: Agent guard decides as expected
+        # bin/agent-guard.sh is the only enforcement of the AGENTS.md hard rules
+        # for Codex and cursor-agent (ADR 0027), so a regression in it is a
+        # guardrail silently gone for every agent at once. The cases cover both
+        # directions: calls it must refuse, and prose that merely names `sudo`
+        # or `git push` and must not be refused.
+        #
+        # Always-on: the guard and its registrations live under bin/ and
+        # .claude/ and .codex/, none of which trips a path filter.
+        run: bin/check-agent-guard.sh
+
       - name: Plugin pins do not ride along with other changes
         # `:Lazy update` writes config/nvim/lazy-lock.json whenever the editor
         # is asked to update, so the pins land in whatever branch happens to be
