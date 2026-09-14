@@ -68,10 +68,20 @@ versions — Claude Code 2.1.266, Codex 0.154.0, cursor-agent 2026.08.31:
 
 **The guardrails are enforced for every agent that works in this repository,
 by one shared hook.** `bin/agent-guard.sh` reads the pre-tool-use JSON, decides,
-and answers in the Claude-compatible form all three agents accept. It is
-registered as a project-scoped `PreToolUse` hook for Claude Code in
-`.claude/settings.json` and for Codex in `.codex/hooks.json`. The deny list
-lives in that script and nowhere else.
+and answers. It is registered as a project-scoped `PreToolUse` hook in two
+places: `.claude/settings.json`, which serves Claude Code and cursor-agent, and
+`.codex/hooks.json`, which serves Codex. The deny list lives in that script and
+nowhere else.
+
+**The answer has exactly one shape.** Allowing prints nothing — answering
+"allow" would skip the agent's own permission prompt. Denying or asking prints
+`{"hookSpecificOutput": {"hookEventName", "permissionDecision",
+"permissionDecisionReason"}}` and no other key. Codex validates the answer
+with `additionalProperties: false`: an earlier draft added cursor-agent's
+native `permission` and `user_message` beside it, Codex rejected the whole
+object as invalid, and **ran the denied command**. cursor-agent reads the
+Claude form without them. The implementation's test suite fails any answer
+with an extra key.
 
 **What it enforces** is the hard rules of `AGENTS.md`, not only today's Claude
 list:
@@ -107,25 +117,56 @@ by name.
   the input shape then stops the guarded operations loudly, instead of
   disabling the guard in silence.
 - The script traps its own errors and emits a denial, because Claude and Codex
-  treat a crashing hook as non-blocking. For cursor-agent the registration sets
-  `failClosed: true`.
+  treat a crashing hook as non-blocking. For cursor-agent that trap is also
+  the only fail-closed layer: the Claude-format registration it reads cannot
+  carry `failClosed`. What stays non-blocking in all three is a hook that
+  cannot be started at all or exceeds its timeout.
 
 **`.claude/settings.json` keeps its permission lists unchanged**, as a second
 layer for Claude Code. ADR 0022's statement that those rules "stay exactly as
 they are" remains true.
 
-**How cursor-agent is registered is decided by measurement, not here.** It
-reads Claude's project hooks, so the Claude registration may already cover it;
-but `failClosed` is a cursor-agent field that a Claude-format entry may not
-carry, and a separate `.cursor/hooks.json` risks running the guard twice.
-_TBD: the implementation records which registration cursor-agent actually
-honours, with `failClosed`, running the guard exactly once._
+**cursor-agent is guarded through the Claude registration alone**, with no
+`.cursor/hooks.json`. Measured: with both present, cursor-agent ran each hook
+for every call — the guard twice. With only the Claude registration it ran the
+guard exactly once per call and honoured its denials and its "ask". Giving up
+`failClosed` is the price, and the script's own error trap covers the part of
+it that matters (above).
+
+**Codex has no "ask".** It reports "PreToolUse hook returned unsupported
+permissionDecision:ask", so for Codex a call that would ask is allowed and left
+to Codex's own approval flow, as decided above. The guard tells Codex apart by
+its input: `turn_id` without `cursor_version`.
+
+**Codex's registration names the checkout by absolute path.** Claude Code
+expands `$CLAUDE_PROJECT_DIR` in a hook command; Codex offers no equivalent,
+so `.codex/hooks.json` uses the same checkout path as `modules/common.nix`. A
+Codex session in a worktree therefore runs the main checkout's guard, not the
+branch's.
 
 **Verified before it is relied on.** In a new session of each agent, a
 harmless command the guard denies (`git push --dry-run`) must be refused, and
 the implementation records the input JSON each agent actually sent. An agent
 where the denial does not take effect is reported as a failure of this
 decision, not worked around.
+
+Measured on 2026-09-14 with the real guard behind a recorder, each agent asked
+to run five steps in a scratch repository:
+
+| Step | Claude Code | Codex | cursor-agent |
+|---|---|---|---|
+| `touch M && git push --dry-run` | denied, not run | denied, not run | denied, not run |
+| `touch M && sudo -n true` | denied, not run | denied, not run | denied, not run |
+| write a file containing `it's fine` | allowed (`Write`, `file_path` + `content`) | allowed (`apply_patch`, patch text in `command`) | allowed (`Write`, `file_path` + `content`) |
+| `echo "never run sudo" > M` | allowed | allowed | allowed |
+| `git commit --allow-empty -m probe` | asked; headless, so refused and not committed | allowed; Codex did not commit | asked; committed after approval |
+
+Shapes that shaped the implementation: Claude and Codex both name the shell
+tool `Bash` and send `tool_input.command`; cursor-agent names it `Shell`,
+sends `cwd` as an empty string and the workspace in `workspace_roots`; Codex's
+`apply_patch` puts the patch in `command`, which the guard must read as a patch
+and not as shell. Claude Code ran headless (`claude -p`), where an "ask" has no
+one to answer it and is reported as a refusal.
 
 This supersedes **ADR 0013's clause that `.claude/settings.json` enforces the
 safety boundary**, as the sole enforcement. The rest of ADR 0013 — its
