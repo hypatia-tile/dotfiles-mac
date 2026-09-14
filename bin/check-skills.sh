@@ -1,102 +1,160 @@
 #!/usr/bin/env bash
-# Validate this repository's skill tree.
+# Validate this repository's skill trees.
 #
 # The failures caught here are the silent kind. A skill with no description is
 # never surfaced to the model, and a `name` that disagrees with its directory
 # is invoked under one spelling and stored under another. Neither produces an
 # error at run time — the skill is simply never used, and nothing says so.
+# Codex adds its own silent case: its loader ignores a skill whose fields it
+# rejects, and its skill-creator allows only lowercase letters, digits and
+# hyphens, under 64 characters.
 #
-# The validator is ported from hypatia-tile/skills (MIT, same owner), which
-# runs it over the user-scope skills in `~/.claude/skills`. It is copied rather
-# than consumed as a flake input on purpose: an input would put it in the store
-# and gate every fix behind a lock bump, which ADR 0011 confines to dedicated
-# commits, and `nix flake check` is behind a path filter that a skill-only
-# change does not trip anyway. Seventy lines of bash is the cheaper dependency.
+# Two trees, since ADR 0028:
+#   .claude/skills        project scope — this repository's own procedures
+#   config/agents/skills  user scope — linked into ~/.claude/skills and
+#                         ~/.codex/skills by bin/project.sh
 #
-# One check here has no counterpart there. Skills in this repository are
-# tracked through a `.gitignore` allowlist (`.claude/skills/*` ignored, one
-# `!.claude/skills/<name>` per tracked skill), so a new skill that nobody
-# allowlists is silently untracked — it works on this machine, is absent from
-# every clone, and `git status` stays clean. CLAUDE.md names that trap; this is
-# what makes it fire.
+# Beyond each skill's own frontmatter, three checks exist only because the
+# trees are wired into something else:
+#   - tracked: project skills are tracked through a `.gitignore` allowlist
+#     (`.claude/skills/*` ignored, one `!.claude/skills/<name>` per skill), so a
+#     skill nobody allowlists works here and is absent from every clone, with
+#     `git status` clean throughout. CLAUDE.md names the trap.
+#   - declared: a user skill needs both `link` lines in modules/payloads.tsv;
+#     with one, it silently reaches only one agent.
+#   - unique across trees: a name in both is ambiguous in a session that sees
+#     both scopes.
 #
-# Usage: bin/check-skills.sh [skills-dir]   (default: .claude/skills)
-# Exit:  0 the tree is sound; 1 a skill is broken, untracked, or missing
+# The validator was ported from hypatia-tile/skills (MIT, same owner) and
+# copied rather than consumed as a flake input: an input would gate every fix
+# behind a lock bump (ADR 0011).
+#
+# Usage: bin/check-skills.sh             validate both trees and their wiring
+#        bin/check-skills.sh <dir>...    validate only the given trees' skills
+# Exit:  0 sound; 1 a skill is broken, untracked, undeclared or duplicated
 set -euo pipefail
 
-root="${1:-.claude/skills}"
-
-if [[ ! -d $root ]]; then
-  echo "error: $root is not a directory" >&2
-  exit 1
-fi
-
-# The tracking check needs an index to consult. Outside a work tree — a store
-# copy, an extracted tarball — the rest of the validation is still meaningful,
-# so degrade to it rather than refusing to run, and say which check was lost.
-tracked=""
-if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-  tracked="$(git ls-files "$root")"
-else
-  echo "note: not a git work tree, skipping the allowlist check" >&2
-fi
+PROJECT_ROOT=.claude/skills
+USER_ROOT=config/agents/skills
 
 fail=0
-found=0
+total=0
+err() { echo "error: $*" >&2; fail=1; }
 
-shopt -s nullglob
-for dir in "$root"/*/; do
-  found=$((found + 1))
-  slug="$(basename "$dir")"
-  file="$dir/SKILL.md"
+in_git=false
+git rev-parse --is-inside-work-tree >/dev/null 2>&1 && in_git=true
 
-  if [[ ! -f $file ]]; then
-    echo "error: $slug: SKILL.md is missing" >&2
-    fail=1
-    continue
+# check_tree <dir>: every skill directory's own validity. Leaves the names it
+# found in $names. Called directly, never in $(...): a subshell would discard
+# the failures it records, which an earlier draft did — printing errors and
+# exiting 0.
+names=""
+check_tree() {
+  local root=$1 dir slug file frontmatter name description tracked found=0
+  names=""
+  if [[ ! -d $root ]]; then
+    err "$root is not a directory"
+    return
   fi
+  # Consulted whenever there is an index at all. An earlier version skipped the
+  # check when nothing under the root was tracked yet — exactly the state of a
+  # new tree, which it then passed without looking.
+  tracked=""
+  $in_git && tracked="$(git ls-files -- "$root")"
+  $in_git || echo "note: not a git work tree, skipping the tracked check for $root" >&2
 
-  if [[ -n $tracked ]] && ! printf '%s\n' "$tracked" | grep -qxF "$root/$slug/SKILL.md"; then
-    echo "error: $slug: not tracked — add '!$root/$slug' to .gitignore" >&2
-    fail=1
-  fi
+  shopt -s nullglob
+  for dir in "$root"/*/; do
+    found=$((found + 1))
+    slug="$(basename "$dir")"
+    file="$dir/SKILL.md"
+    names+="$slug"$'\n'
 
-  if [[ "$(head -n 1 "$file")" != "---" ]]; then
-    echo "error: $slug/SKILL.md: does not open with YAML frontmatter" >&2
-    fail=1
-    continue
-  fi
+    if [[ ! -f $file ]]; then
+      err "$root/$slug: SKILL.md is missing"
+      continue
+    fi
 
-  frontmatter="$(awk 'NR == 1 { next } /^---[[:space:]]*$/ { exit } { print }' "$file")"
-  name="$(printf '%s\n' "$frontmatter" | sed -n 's/^name:[[:space:]]*//p' | head -n 1)"
-  description="$(printf '%s\n' "$frontmatter" | sed -n 's/^description:[[:space:]]*//p' | head -n 1)"
+    if $in_git && ! printf '%s\n' "$tracked" | grep -qxF "$root/$slug/SKILL.md"; then
+      if [[ $root == "$PROJECT_ROOT" ]]; then
+        err "$root/$slug: not tracked — add '!$root/$slug' to .gitignore"
+      else
+        err "$root/$slug: not tracked — git add it"
+      fi
+    fi
 
-  # No duplicate-name check, deliberately. The upstream script carries one,
-  # but it cannot fire: reaching it requires `name` to equal the directory
-  # basename, and two directories under one parent cannot share a basename.
-  # Requiring the match is what makes uniqueness a property of the filesystem
-  # rather than something to verify.
-  if [[ -z $name ]]; then
-    echo "error: $slug/SKILL.md: frontmatter has no 'name'" >&2
-    fail=1
-  elif [[ $name != "$slug" ]]; then
-    echo "error: $slug/SKILL.md: name '$name' does not match its directory" >&2
-    fail=1
-  fi
+    if [[ "$(head -n 1 "$file")" != "---" ]]; then
+      err "$root/$slug/SKILL.md: does not open with YAML frontmatter"
+      continue
+    fi
 
-  if [[ -z $description ]]; then
-    echo "error: $slug/SKILL.md: frontmatter has no 'description'" >&2
-    fail=1
-  fi
-done
+    frontmatter="$(awk 'NR == 1 { next } /^---[[:space:]]*$/ { exit } { print }' "$file")"
+    name="$(printf '%s\n' "$frontmatter" | sed -n 's/^name:[[:space:]]*//p' | head -n 1)"
+    description="$(printf '%s\n' "$frontmatter" | sed -n 's/^description:[[:space:]]*//p' | head -n 1)"
 
-if [[ $found -eq 0 ]]; then
-  echo "error: no skills found under $root" >&2
-  fail=1
+    # No duplicate check within a tree: requiring `name` to equal the directory
+    # makes uniqueness a property of the filesystem. Across trees it is not.
+    if [[ -z $name ]]; then
+      err "$root/$slug/SKILL.md: frontmatter has no 'name'"
+    elif [[ $name != "$slug" ]]; then
+      err "$root/$slug/SKILL.md: name '$name' does not match its directory"
+    fi
+    if ! [[ $slug =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]] || ((${#slug} >= 64)); then
+      err "$root/$slug: name must be lowercase letters, digits and single hyphens, under 64 characters (Codex)"
+    fi
+
+    if [[ -z $description ]]; then
+      err "$root/$slug/SKILL.md: frontmatter has no 'description'"
+    fi
+  done
+
+  [[ $found -gt 0 ]] || err "no skills found under $root"
+  total=$((total + found))
+}
+
+if [[ $# -gt 0 ]]; then
+  for root in "$@"; do check_tree "$root"; done
+  [[ $fail -eq 0 ]] || exit 1
+  echo "check-skills: $total skills validated"
+  exit 0
 fi
 
-if [[ $fail -ne 0 ]]; then
-  exit 1
-fi
+cd "$(dirname "$0")/.."
 
-echo "check-skills: $found skills validated"
+check_tree "$PROJECT_ROOT"
+project_names=$names
+check_tree "$USER_ROOT"
+user_names=$names
+
+while IFS= read -r n; do
+  [[ -n $n ]] || continue
+  if printf '%s\n' "$project_names" | grep -qxF "$n"; then
+    err "'$n' is both a project skill ($PROJECT_ROOT) and a user skill ($USER_ROOT)"
+  fi
+done <<< "$user_names"
+
+# Declared: both link lines per user skill, and no skill-directory line that
+# points anywhere but the skill of the same name. bin/project.sh --validate
+# already rejects a source that does not exist.
+decl=$(sed -e 's/#.*//' -e '/^[[:space:]]*$/d' modules/payloads.tsv)
+while IFS= read -r n; do
+  [[ -n $n ]] || continue
+  for agent in .claude .codex; do
+    if ! printf '%s\n' "$decl" | grep -qxF "$agent/skills/$n	$USER_ROOT/$n	link"; then
+      err "$USER_ROOT/$n: modules/payloads.tsv lacks '$agent/skills/$n<TAB>$USER_ROOT/$n<TAB>link'"
+    fi
+  done
+done <<< "$user_names"
+while IFS=$'\t' read -r target source mode; do
+  case "$target" in
+    .claude/skills/* | .codex/skills/*)
+      n=${target#*/skills/}
+      if [[ $source != "$USER_ROOT/$n" || $mode != link ]]; then
+        err "modules/payloads.tsv: '$target' must link to $USER_ROOT/$n, not '$source' ($mode)"
+      fi
+      ;;
+  esac
+done <<< "$decl"
+
+[[ $fail -eq 0 ]] || exit 1
+echo "check-skills: $total skills validated ($(printf '%s' "$project_names" | grep -c .) project, $(printf '%s' "$user_names" | grep -c .) user)"

@@ -12,8 +12,9 @@ result-*
 .claude/settings.local.json
 
 # Claude Code skills: only repository-workflow skills are tracked
-# (allowlist below); personal skills live in user scope (~/.claude/skills),
-# and skill-manager artifacts (vendored copies, lockfile) stay out.
+# (allowlist below). User-scope skills are not here but in
+# config/agents/skills (ADR 0028); a skill an agent creates for itself, and
+# skill-manager artifacts (vendored copies, lockfile), stay out.
 .claude/skills/*
 !.claude/skills/adr-new
 !.claude/skills/preflight

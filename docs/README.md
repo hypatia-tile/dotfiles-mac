@@ -9,7 +9,8 @@ opening lines.
 
 Procedures live in skills, not in these documents (ADR 0019). Each is
 `.claude/skills/<name>/SKILL.md` — Claude Code loads them automatically, other
-agents can read the file directly.
+agents can read the file directly. The owner's skills for every repository are
+a different set, in `config/agents/skills/` (ADR 0028).
 
 | Skill | Use it when |
 |---|---|

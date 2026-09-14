@@ -47,6 +47,21 @@ stop, rather than working around it.
   other agents should read the relevant file directly. Documents index and
   explain; they do not restate steps. If you find yourself copying a procedure
   into a document, that is the mistake this rule exists to prevent.
+- **User-scope agent skills live in `config/agents/skills/<name>/`** (ADR
+  0028) — the owner's skills for every repository, linked into
+  `~/.claude/skills` and `~/.codex/skills` by `bin/project.sh`. Add one through
+  `config-change`. Whenever you touch one:
+  - **An edit is live at once, in every agent session on this machine** —
+    before it is committed, in unrelated projects, and it follows the branch
+    checked out here. Never leave a skill half-finished.
+  - **Decide the scope first.** A skill belongs here only if it still makes
+    sense in a repository you have never seen; one that names this
+    repository's layout, ADRs or CI belongs in `.claude/skills/`.
+  - **A skill copied from elsewhere gets an entry in
+    `config/agents/skills/NOTICE.md`** — source, copyright holder, licence,
+    date — before it is committed.
+  - **No secrets, internal hostnames or personal paths** beyond
+    `$HOME`-relative ones: every agent reads these in every repository.
 - **Run `preflight` before proposing a PR.** It mirrors every required CI gate
   locally. Skipping it has round-tripped PRs through CI on trivial format
   failures.

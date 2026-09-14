@@ -352,6 +352,10 @@ jobs:
         # with `git status` clean throughout — CLAUDE.md names the trap and
         # this is what makes it fire.
         #
+        # Covers the user-scope tree in config/agents/skills too (ADR 0028):
+        # each skill needs both link lines in modules/payloads.tsv, or it
+        # reaches one agent and not the other, again without an error.
+        #
         # Always-on for the same reason as the two checks above: `.claude/`
         # matches no path filter, so a gated version would be blind exactly
         # when a skill changed (#89, #91).

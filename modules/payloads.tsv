@@ -78,3 +78,29 @@
 .config/zsh/modules	config/zsh/modules	copy
 .config/zsh/complete	config/zsh/complete	copy
 .config/zsh/functions	config/zsh/functions	copy
+
+# User-scope agent skills (ADR 0028). One source, config/agents/skills/<name>,
+# linked into the two agents whose native skill directories differ: Claude Code
+# reads ~/.claude/skills, Codex reads ~/.codex/skills. cursor-agent reads both,
+# so it has no entry of its own.
+#
+# `link`, not `copy`: an agent rewrites a skill mid-session, and that edit has
+# to land in this repository. Per skill, never per directory: Codex keeps its
+# own .system/ skills in ~/.codex/skills, and an agent may create a skill of
+# its own beside these. Every skill needs both lines; bin/check-skills.sh fails
+# one that has only one.
+#
+# A link resolves into the working tree, so these skills change with the branch
+# checked out here, in every running session (ADR 0028).
+.claude/skills/clangd-check	config/agents/skills/clangd-check	link
+.codex/skills/clangd-check	config/agents/skills/clangd-check	link
+.claude/skills/github-english	config/agents/skills/github-english	link
+.codex/skills/github-english	config/agents/skills/github-english	link
+.claude/skills/grilling	config/agents/skills/grilling	link
+.codex/skills/grilling	config/agents/skills/grilling	link
+.claude/skills/handoff	config/agents/skills/handoff	link
+.codex/skills/handoff	config/agents/skills/handoff	link
+.claude/skills/step-review	config/agents/skills/step-review	link
+.codex/skills/step-review	config/agents/skills/step-review	link
+.claude/skills/step-start	config/agents/skills/step-start	link
+.codex/skills/step-start	config/agents/skills/step-start	link
