@@ -63,6 +63,7 @@ that check is how they know it took.
 | Environment variable, `PATH` entry, launchd agent | `modules/home/base.nix` | ADR 0006 |
 | macOS system default or keybinding | `modules/darwin/macos.nix` | ADR 0017 |
 | Neovim configuration | the files under `config/nvim/` | ADR 0021 |
+| Agent skill for every repository (user scope) | `config/agents/skills/<name>/SKILL.md` + two `link` lines in `modules/payloads.tsv` (`.claude/skills/<name>`, `.codex/skills/<name>`) | ADR 0028 |
 | `flake.lock` | **not here** — use `lock-review` | ADR 0011 |
 
 Everything user-facing belongs to Home Manager; the darwin layer holds only
@@ -106,6 +107,7 @@ Name the applicable one in the PR body. "It built" is not one of these.
 | Homebrew formula | `brew list --versions <name>` |
 | New config file | `bin/project.sh --check` reports in sync and `ls -ld ~/.config/<tool>/…` shows a read-only copy (`r--`), **and** the tool is run once to confirm it actually reads the setting. For the two entries still in `files.nix`, `readlink` instead: it points into `/nix/store` |
 | Edited config | the specific behavior that changed, exercised directly |
+| User-scope agent skill | `bin/project.sh` places it without a switch; then `bin/project.sh --check` is in sync, `readlink ~/.claude/skills/<name>` and `readlink ~/.codex/skills/<name>` both point into this checkout, and `/skills` in a **new** Claude Code session and a **new** Codex session lists it |
 | Session variable / `PATH` | open a **new** shell and `echo $VAR` — the value arrives via `hm-session-vars.sh`, sourced from `config/zsh/.zprofile` |
 | macOS default / keybinding | `activateSettings -u`, then `defaults read com.apple.symbolichotkeys AppleSymbolicHotKeys` matches `macos.nix`, then a behavior spot-check (`docs/operations.md` §1) |
 
