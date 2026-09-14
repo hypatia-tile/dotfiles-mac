@@ -52,6 +52,7 @@ SEPARATORS = {";", "&&", "||", "|", "&", "|&", "(", ")", "\n", ";;"}
 WRITE_ANY_ARG = {"rm", "rmdir", "touch", "mkdir", "chmod", "chown", "chflags", "truncate", "tee", "unlink", "mv"}
 WRITE_DEST_ARG = {"cp", "ln", "install", "rsync", "ditto"}
 GIT_READ_ONLY = {"status", "log", "diff", "show", "ls-files", "rev-parse", "blame", "grep", "cat-file", "describe", "shortlog", "ls-tree", "config", "branch", "remote", "reflog"}
+PLACEHOLDER = "__agent_guard_substitution__"
 CONTENT_FIELDS = ("content", "new_string", "edits", "new_source", "old_string")
 
 class Refuse(Exception):
@@ -170,16 +171,23 @@ def substitutions(script, heredoc=False):
     is a literal backtick. Reading tokens after shlex could see neither, so
     `grep "only \\`link\\`"` was parsed as a substitution and refused. An
     unquoted heredoc body expands like double quotes, where `'` is literal.
+
+    Returns the substitutions and the text with each one replaced by a single
+    placeholder word. The caller tokenises that text, not the original: shlex
+    splits an unquoted `$(...)` at its parentheses, so `A=$(pwd)/activate` read
+    as a command named `/activate` and was refused.
     """
-    found, i, n, quote = [], 0, len(script), None
+    found, masked, i, n, quote = [], [], 0, len(script), None
     while i < n:
         c = script[i]
         if quote == "'":
+            masked.append(c)
             if c == "'":
                 quote = None
             i += 1
             continue
         if c == "\\":
+            masked.append(script[i:i + 2])
             i += 2
             continue
         if not heredoc and c == "'" and quote is None:
@@ -199,6 +207,7 @@ def substitutions(script, heredoc=False):
             if depth:
                 raise Refuse("an unterminated $( in the shell command")
             found.append(script[i + 2:j - 1])
+            masked.append(PLACEHOLDER)
             i = j
             continue
         elif c == "`":
@@ -208,10 +217,12 @@ def substitutions(script, heredoc=False):
             if j >= n:
                 raise Refuse("an unterminated backtick in the shell command")
             found.append(script[i + 1:j].replace("\\`", "`"))
+            masked.append(PLACEHOLDER)
             i = j + 1
             continue
+        masked.append(c)
         i += 1
-    return found
+    return found, "".join(masked)
 
 def unwrap(argv):
     while argv:
@@ -291,9 +302,10 @@ def check_shell(script, state):
     for body in bodies:
         check_shell(body, state)
     for body in expanding:
-        for inner in substitutions(body, heredoc=True):
+        for inner in substitutions(body, heredoc=True)[0]:
             check_shell(inner, state)
-    for inner in substitutions(normalise(script)):
+    inners, script = substitutions(normalise(script))
+    for inner in inners:
         check_shell(inner, state)
     tokens = tokenize(script)
     for i, t in enumerate(tokens):
