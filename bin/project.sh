@@ -159,6 +159,54 @@ if $validate_only; then
   exit 0
 fi
 
+# --- refuse placements that would not land where they say (ADR 0028) --------
+# Both checks run before anything under $HOME is touched, and both were
+# measured rather than imagined.
+
+# From a linked worktree, every link would point into that worktree — links
+# resolve to "$repo_root/<source>" — and worktrees are removed when the work is
+# done, taking every linked payload with them. Only placement is refused:
+# --check and --validate change nothing and are safe anywhere. Outside a git
+# checkout (a sandboxed copy) there is no worktree to confuse, so it proceeds.
+if ! $check_only; then
+  git_dir=$(git -C "$repo_root" rev-parse --absolute-git-dir 2>/dev/null || true)
+  common_dir=$(git -C "$repo_root" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)
+  if [ -n "$git_dir" ] && [ -n "$common_dir" ] && [ "$git_dir" != "$common_dir" ]; then
+    echo "project: refusing to place from a worktree: $repo_root" >&2
+    echo "  Links would point into it, and would dangle once it is removed." >&2
+    echo "  Run bin/project.sh from the main checkout, or use --check here." >&2
+    exit 2
+  fi
+fi
+
+# A target whose parent path runs through a symlink is not where it appears to
+# be. With ~/.claude/skills still a symlink into another repository, placing
+# .claude/skills/<name> moved the real directory *inside that repository* to a
+# .bak- name, planted a link there, left the symlink alone, and exited 0. The
+# backup rule protects the target; it cannot protect a target that resolves
+# somewhere else. Refused under --check too, because a declaration that cannot
+# be placed is worth knowing about before a switch runs this for real.
+unsafe=0
+while IFS=$'\t' read -r target _ _; do
+  [ -n "$target" ] || continue
+  parent=$(dirname "$target")
+  [ "$parent" = "." ] && continue
+  path=$HOME
+  IFS=/ read -r -a parts <<< "$parent"
+  for part in "${parts[@]}"; do
+    path="$path/$part"
+    if [ -L "$path" ]; then
+      echo "project: refusing $target — $path is a symlink (to $(readlink "$path"))" >&2
+      echo "  The target would resolve through it, into whatever it points at." >&2
+      echo "  Remove or replace the symlink first; this script never deletes a" >&2
+      echo "  path it did not place." >&2
+      unsafe=1
+      break
+    fi
+  done
+done <<< "$declared"
+[ "$unsafe" -eq 0 ] || exit 2
+
 # Manifest lines are `<target>` or `<target><TAB>pending`. A bare line is a
 # path currently placed; `pending` means it left the declaration on an earlier
 # run and was reported rather than deleted (see the two-phase prune below).
