@@ -11,8 +11,17 @@ restating it.
 
 ## Guardrails
 
-`.claude/settings.json` enforces the safety boundary mechanically, so it
-survives context resets (ADR 0013):
+Two layers enforce the safety boundary mechanically, so it survives context
+resets.
+
+`bin/agent-guard.sh` is registered in `.claude/settings.json` as a
+`PreToolUse` hook, and is the authoritative enforcement for every agent
+(ADR 0027) — see `AGENTS.md`. It reads each shell command as shell, so it
+catches `sudo` in any position and writes into the legacy repositories that a
+prefix list cannot see.
+
+The `permissions` lists in the same file are a second layer, specific to
+Claude Code and unchanged since ADR 0013:
 
 - **deny** — `darwin-rebuild switch` / `activate`, `sudo darwin-rebuild`,
   `git push`, `nix flake update`, and writes to the two archived legacy
@@ -23,8 +32,9 @@ survives context resets (ADR 0013):
   `nix build`, `nix eval`, `nix store diff-closures`, `darwin-rebuild build`,
   `git` status/diff/log/ls-files/branch, `brew list`/`leaves`/`info`).
 
-Bash-level writes to the legacy repositories cannot be fully pattern-blocked;
-the deny rules cover the realistic paths and the hard rules in `AGENTS.md`
+Bash-level writes to the legacy repositories still cannot be fully blocked:
+a shell string is not decidable. The guard covers the common write commands,
+redirection and `cd` into a legacy repository; the hard rules in `AGENTS.md`
 cover the rest.
 
 ## Skills

@@ -52,6 +52,10 @@ lint jobs and are cheap, so run them first to fail fast.
      `.gitignore` allowlist. All of those fail silently: the skill is never
      surfaced, or never leaves the machine that wrote it. Always-on for the
      same reason as the line above — `.claude/` matches no path filter.
+   - `bin/check-agent-guard.sh` — the pre-tool-use guard still refuses what the
+     `AGENTS.md` hard rules forbid and still allows prose that only names
+     them (ADR 0027). A regression here removes a guardrail from every agent
+     at once, so it runs on every change.
 3. **Payload content checks** (mirrors the CI *zsh payload syntax* and *nvim*
    jobs). Run the one matching what changed; skip if no payload changed.
    - zsh: `for f in config/zshenv config/zsh/.zshrc config/zsh/.zprofile config/zsh/.zshenv config/zsh/abbr-definitions.zsh config/zsh/modules/*.zsh; do zsh -n "$f" || echo "FAIL $f"; done`

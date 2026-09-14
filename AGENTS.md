@@ -33,6 +33,13 @@ everything user-facing. It has been the live single source of truth since the
 - **All repository artifacts are in English** — documents, code, comments,
   commit messages, PR bodies. Conversation with the owner may be in Japanese.
 
+These rules are enforced for every agent by `bin/agent-guard.sh`, a
+pre-tool-use hook registered for Claude Code and Codex (ADR 0027). A refusal
+that names `agent-guard` is a rule taking effect, not an obstacle: hand the
+step to the owner, and never rephrase the command to get past it. If the guard
+refuses something the rules allow, that is a bug in the guard — say so and
+stop, rather than working around it.
+
 ## How work is organised
 
 - **Procedures live in skills, not in documents** (ADR 0019). They are written
