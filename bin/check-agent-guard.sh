@@ -82,6 +82,7 @@ expect deny "# inside a word before sudo"  "$(bash_call 'echo a#b; sudo true')"
 expect deny "comment line then sudo"       "$(bash_call $'ls # just listing\nsudo true')"
 expect deny "sudo on a second line"        "$(bash_call $'ls\nsudo true')"
 expect deny "sudo after a line continuation" "$(bash_call $'ls \\\n && sudo true')"
+expect deny "sudo after a substitution word" "$(bash_call 'echo $(date)/x && sudo true')"
 expect deny "sudo in backticks"            "$(bash_call 'echo `sudo whoami`')"
 expect deny "sudo in nested substitution"  "$(bash_call 'echo "$(echo $(sudo whoami))"')"
 expect deny "sudo expanded in an unquoted heredoc" "$(bash_call $'cat <<EOF\n$(sudo whoami)\nEOF')"
@@ -125,6 +126,8 @@ expect allow "cursor: read"                  '{"hook_event_name":"preToolUse","c
 expect allow "escaped backticks in double quotes" "$(bash_call 'grep -n "only \`link\`\|It is the only" docs/adr/0026-project-payloads-read-only.md')"
 expect allow "substitution in single quotes is literal" "$(bash_call "echo '\$(sudo x)'")"
 expect allow "quoted heredoc does not expand"  "$(bash_call $'cat <<\'EOF\'\n$(sudo whoami)\nEOF')"
+expect allow "assignment from a substitution ending in /activate" "$(bash_call 'A=$(readlink -f result)/activate 2>/dev/null; echo "$A"')"
+expect allow "unquoted substitution inside a word" "$(bash_call 'echo $(date)/activate')"
 expect allow "comment mentioning sudo"    "$(bash_call 'ls # not sudo')"
 
 # --- registrations (ADR 0027) ------------------------------------------------
