@@ -72,7 +72,7 @@ def legacy(path, cwd):
 def strip_heredocs(text):
     """Remove heredoc bodies, returning (text, bodies fed to a shell)."""
     lines = text.split("\n")
-    out, shell_bodies, i = [], [], 0
+    out, shell_bodies, expanding, i = [], [], [], 0
     while i < len(lines):
         line = lines[i]
         out.append(line)
@@ -90,8 +90,12 @@ def strip_heredocs(text):
             words = unwrap(segment)
             if words and os.path.basename(words[0]) in SHELLS:
                 shell_bodies.append("\n".join(body))
+            elif not m.group(1):
+                # An unquoted delimiter expands $(...) in the body even when
+                # the receiver is not a shell: `cat <<EOF` runs them.
+                expanding.append("\n".join(body))
         i += 1
-    return "\n".join(out), shell_bodies
+    return "\n".join(out), shell_bodies, expanding
 
 def normalise(script):
     """Drop comments and turn unquoted newlines into `;`, quote-aware.
@@ -158,9 +162,55 @@ def simple_commands(tokens):
     if cmd:
         yield cmd
 
-def nested(token):
-    """Command substitutions inside a word, analysed as shell."""
-    found = re.findall(r"\$\(([^()]*)\)", token) + re.findall(r"`([^`]*)`", token)
+def substitutions(script, heredoc=False):
+    """Command substitutions the shell would run, read from the raw text.
+
+    Found before shlex removes the quoting that decides whether they run: in
+    single quotes `$(...)` is literal, and in double quotes an escaped \\`
+    is a literal backtick. Reading tokens after shlex could see neither, so
+    `grep "only \\`link\\`"` was parsed as a substitution and refused. An
+    unquoted heredoc body expands like double quotes, where `'` is literal.
+    """
+    found, i, n, quote = [], 0, len(script), None
+    while i < n:
+        c = script[i]
+        if quote == "'":
+            if c == "'":
+                quote = None
+            i += 1
+            continue
+        if c == "\\":
+            i += 2
+            continue
+        if not heredoc and c == "'" and quote is None:
+            quote = "'"
+        elif not heredoc and c == '"':
+            quote = None if quote == '"' else '"'
+        elif c == "$" and script[i + 1:i + 2] == "(":
+            depth, j = 1, i + 2
+            while j < n and depth:
+                if script[j] == "\\":
+                    j += 1
+                elif script[j] == "(":
+                    depth += 1
+                elif script[j] == ")":
+                    depth -= 1
+                j += 1
+            if depth:
+                raise Refuse("an unterminated $( in the shell command")
+            found.append(script[i + 2:j - 1])
+            i = j
+            continue
+        elif c == "`":
+            j = i + 1
+            while j < n and script[j] != "`":
+                j += 2 if script[j] == "\\" else 1
+            if j >= n:
+                raise Refuse("an unterminated backtick in the shell command")
+            found.append(script[i + 1:j].replace("\\`", "`"))
+            i = j + 1
+            continue
+        i += 1
     return found
 
 def unwrap(argv):
@@ -177,9 +227,6 @@ def unwrap(argv):
     return argv
 
 def check_argv(argv, state):
-    for t in argv:
-        for inner in nested(t):
-            check_shell(inner, state)
     argv = unwrap(argv)
     if not argv:
         return
@@ -240,9 +287,14 @@ def check_argv(argv, state):
             raise Refuse("%s would write into a legacy repository, which is read-only (AGENTS.md)" % name)
 
 def check_shell(script, state):
-    script, bodies = strip_heredocs(script)
+    script, bodies, expanding = strip_heredocs(script)
     for body in bodies:
         check_shell(body, state)
+    for body in expanding:
+        for inner in substitutions(body, heredoc=True):
+            check_shell(inner, state)
+    for inner in substitutions(normalise(script)):
+        check_shell(inner, state)
     tokens = tokenize(script)
     for i, t in enumerate(tokens):
         if t in (">", ">>") and i + 1 < len(tokens) and legacy(tokens[i + 1], state["cwd"]):
