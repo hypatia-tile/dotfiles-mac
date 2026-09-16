@@ -85,6 +85,8 @@ expect deny "sudo after a line continuation" "$(bash_call $'ls \\\n && sudo true
 expect deny "sudo after a substitution word" "$(bash_call 'echo $(date)/x && sudo true')"
 expect deny "sudo in backticks"            "$(bash_call 'echo `sudo whoami`')"
 expect deny "sudo in nested substitution"  "$(bash_call 'echo "$(echo $(sudo whoami))"')"
+expect deny "sudo after a quoted paren in a substitution" "$(bash_call $'x=$(echo \'")"\' && sudo true)')"
+expect deny "sudo in a substitution nested in double quotes" "$(bash_call $'x=$(echo "$(echo \'")"\'; sudo true)")')"
 expect deny "sudo expanded in an unquoted heredoc" "$(bash_call $'cat <<EOF\n$(sudo whoami)\nEOF')"
 expect deny "unbalanced quotes"           "$(bash_call "echo 'unterminated")"
 expect deny "command of unexpected shape" '{"tool_input":{"command":42}}'
@@ -128,6 +130,15 @@ expect allow "substitution in single quotes is literal" "$(bash_call "echo '\$(s
 expect allow "quoted heredoc does not expand"  "$(bash_call $'cat <<\'EOF\'\n$(sudo whoami)\nEOF')"
 expect allow "assignment from a substitution ending in /activate" "$(bash_call 'A=$(readlink -f result)/activate 2>/dev/null; echo "$A"')"
 expect allow "unquoted substitution inside a word" "$(bash_call 'echo $(date)/activate')"
+# A parenthesis inside quotes is text, not structure. Counting it ended the
+# substitution in the wrong place and left an unbalanced quote behind, which
+# `tokenize()` reported as "No closing quotation" — so the guard refused the
+# jq idiom below while watching CI (#124).
+expect allow "quoted backslash-paren in a substitution" "$(bash_call $'cur=$(echo "$s" | jq -r \'.[] | select(.bucket!="pending") | "\\(.name): \\(.bucket)"\' | sort)')"
+expect allow "unbalanced open paren in a substitution" "$(bash_call $'x=$(jq -r \'"("\')')"
+expect allow "unbalanced close paren in a substitution" "$(bash_call $'x=$(jq -r \'")"\')')"
+expect allow "backslash-paren in double quotes in a substitution" "$(bash_call 'x=$(jq -r "\(.a)")')"
+expect allow "substitution nested in double quotes, quoted parens" "$(bash_call $'x=$(echo "$(echo \'")"\')")')"
 expect allow "comment mentioning sudo"    "$(bash_call 'ls # not sudo')"
 
 # --- registrations (ADR 0027) ------------------------------------------------

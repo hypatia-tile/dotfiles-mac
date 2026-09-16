@@ -163,6 +163,47 @@ def simple_commands(tokens):
     if cmd:
         yield cmd
 
+def end_of_substitution(script, start):
+    """Index just past the `)` closing the `$(` whose body starts at `start`.
+
+    Quote-aware, because the body is shell wherever it appears: a parenthesis
+    inside quotes is text, not structure. Counting every parenthesis ended
+    `$(jq -r '"\\(.name)"')` at the `)` inside the jq filter, and the quote
+    left over then made tokenize() raise "No closing quotation" — a command
+    the rules allow, refused, because unparseable input denies (#124). A
+    backslash escapes outside single quotes, where it is literal.
+    """
+    depth, i, n, quote = 1, start, len(script), None
+    while i < n and depth:
+        c = script[i]
+        if quote == "'":
+            if c == "'":
+                quote = None
+        elif quote == '"':
+            if c == "\\":
+                i += 1
+            elif c == "$" and script[i + 1:i + 2] == "(":
+                # A nested substitution inside double quotes is parsed as shell
+                # in its own right, so its quotes are its own: in
+                # `$(echo "$(echo '")"')")` the `"` inside the inner filter does
+                # not end the outer string.
+                i = end_of_substitution(script, i + 2)
+                continue
+            elif c == '"':
+                quote = None
+        elif c == "\\":
+            i += 1
+        elif c in "'\"":
+            quote = c
+        elif c == "(":
+            depth += 1
+        elif c == ")":
+            depth -= 1
+        i += 1
+    if depth:
+        raise Refuse("an unterminated $( in the shell command")
+    return i
+
 def substitutions(script, heredoc=False):
     """Command substitutions the shell would run, read from the raw text.
 
@@ -195,17 +236,7 @@ def substitutions(script, heredoc=False):
         elif not heredoc and c == '"':
             quote = None if quote == '"' else '"'
         elif c == "$" and script[i + 1:i + 2] == "(":
-            depth, j = 1, i + 2
-            while j < n and depth:
-                if script[j] == "\\":
-                    j += 1
-                elif script[j] == "(":
-                    depth += 1
-                elif script[j] == ")":
-                    depth -= 1
-                j += 1
-            if depth:
-                raise Refuse("an unterminated $( in the shell command")
+            j = end_of_substitution(script, i + 2)
             found.append(script[i + 2:j - 1])
             masked.append(PLACEHOLDER)
             i = j
