@@ -43,8 +43,12 @@ stop, rather than working around it.
 ## How work is organised
 
 - **Procedures live in skills, not in documents** (ADR 0019). They are written
-  as `.claude/skills/<name>/SKILL.md`. Claude Code loads them automatically;
-  other agents should read the relevant file directly. Documents index and
+  as `.claude/skills/<name>/SKILL.md` and mirrored into `.codex/skills/<name>`
+  by a relative symlink, because Codex reads a repository's skills from
+  `.codex/skills` and `.agents/skills` and never from `.claude/skills`
+  (measured on codex-cli 0.154.0). Claude Code and Codex both load them
+  automatically; any other agent should read the file directly. A new skill
+  needs that link — `bin/check-skills.sh` fails without it. Documents index and
   explain; they do not restate steps. If you find yourself copying a procedure
   into a document, that is the mistake this rule exists to prevent.
 - **User-scope agent skills live in `config/agents/skills/<name>/`** (ADR

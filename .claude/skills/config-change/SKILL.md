@@ -64,6 +64,7 @@ that check is how they know it took.
 | macOS system default or keybinding | `modules/darwin/macos.nix` | ADR 0017 |
 | Neovim configuration | the files under `config/nvim/` | ADR 0021 |
 | Agent skill for every repository (user scope) | `config/agents/skills/<name>/SKILL.md` + two `link` lines in `modules/payloads.tsv` (`.claude/skills/<name>`, `.codex/skills/<name>`) | ADR 0028 |
+| Agent skill for this repository only (project scope) | `.claude/skills/<name>/SKILL.md` + a `!.claude/skills/<name>` line in `.gitignore` + a `.codex/skills/<name>` symlink | ADR 0019 |
 | `flake.lock` | **not here** — use `lock-review` | ADR 0011 |
 
 Everything user-facing belongs to Home Manager; the darwin layer holds only

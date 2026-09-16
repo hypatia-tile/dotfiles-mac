@@ -14,7 +14,16 @@
 #   config/agents/skills  user scope — linked into ~/.claude/skills and
 #                         ~/.codex/skills by bin/project.sh
 #
-# Beyond each skill's own frontmatter, three checks exist only because the
+# and one mirror of the first, .codex/skills, because Codex does not read
+# .claude/skills. Measured on codex-cli 0.154.0 through the app server's
+# `skills/list`: a repository's skills are read from .codex/skills and
+# .agents/skills, both reported at scope "repo", and .claude/skills is not
+# among the roots. The canonical tree stays .claude/skills (ADR 0019), so each
+# project skill is mirrored as a relative symlink — git stores one link
+# (mode 120000), not a second copy, and Codex resolves it to the canonical
+# SKILL.md.
+#
+# Beyond each skill's own frontmatter, four checks exist only because the
 # trees are wired into something else:
 #   - tracked: project skills are tracked through a `.gitignore` allowlist
 #     (`.claude/skills/*` ignored, one `!.claude/skills/<name>` per skill), so a
@@ -24,6 +33,8 @@
 #     with one, it silently reaches only one agent.
 #   - unique across trees: a name in both is ambiguous in a session that sees
 #     both scopes.
+#   - mirrored: a project skill with no .codex/skills link reaches Claude Code
+#     and no other agent, and nothing says so.
 #
 # The validator was ported from hypatia-tile/skills (MIT, same owner) and
 # copied rather than consumed as a flake input: an input would gate every fix
@@ -31,11 +42,16 @@
 #
 # Usage: bin/check-skills.sh             validate both trees and their wiring
 #        bin/check-skills.sh <dir>...    validate only the given trees' skills
-# Exit:  0 sound; 1 a skill is broken, untracked, undeclared or duplicated
+# Exit:  0 sound; 1 a skill is broken, untracked, undeclared, duplicated or
+#        unmirrored
 set -euo pipefail
 
 PROJECT_ROOT=.claude/skills
 USER_ROOT=config/agents/skills
+# Inside the checkout, not $HOME. The `.codex/skills/<name>` targets in
+# modules/payloads.tsv are a different thing entirely — those are user-scope
+# skills placed under $HOME by the projector.
+CODEX_MIRROR=.codex/skills
 
 fail=0
 total=0
@@ -155,6 +171,35 @@ while IFS=$'\t' read -r target source mode; do
       ;;
   esac
 done <<< "$decl"
+
+# Mirrored: one relative symlink per project skill, tracked, pointing at the
+# skill of the same name — and nothing else under the mirror, so a skill an
+# agent drops there is reported rather than read as a project procedure.
+while IFS= read -r n; do
+  [[ -n $n ]] || continue
+  link=$CODEX_MIRROR/$n
+  if [[ ! -L $link ]]; then
+    if [[ -e $link ]]; then
+      err "$link: not a symlink — the skill itself belongs in $PROJECT_ROOT/$n, linked from here"
+    else
+      err "$link: missing — Codex does not read $PROJECT_ROOT; ln -s ../../$PROJECT_ROOT/$n $link"
+    fi
+    continue
+  fi
+  if [[ "$(readlink "$link")" != "../../$PROJECT_ROOT/$n" ]]; then
+    err "$link: points at '$(readlink "$link")', not '../../$PROJECT_ROOT/$n'"
+  fi
+  if $in_git && ! git ls-files --error-unmatch "$link" >/dev/null 2>&1; then
+    err "$link: not tracked — git add it"
+  fi
+done <<< "$project_names"
+
+shopt -s nullglob
+for link in "$CODEX_MIRROR"/*; do
+  n="$(basename "$link")"
+  printf '%s\n' "$project_names" | grep -qxF "$n" && continue
+  err "$link: mirrors no skill — a project skill lives in $PROJECT_ROOT and is linked from here"
+done
 
 [[ $fail -eq 0 ]] || exit 1
 echo "check-skills: $total skills validated ($(printf '%s' "$project_names" | grep -c .) project, $(printf '%s' "$user_names" | grep -c .) user)"

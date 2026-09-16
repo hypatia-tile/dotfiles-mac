@@ -23,6 +23,10 @@ result-*
 !.claude/skills/keybinding-doctor
 !.claude/skills/config-change
 !.claude/skills/lock-review
+# .codex/skills is deliberately absent from this file. It holds one tracked
+# symlink per project skill — Codex reads a repository's skills from there and
+# not from .claude/skills — and staying visible to `git status` is what shows a
+# skill an agent drops beside them.
 .agents/
 skills-lock.json
 
