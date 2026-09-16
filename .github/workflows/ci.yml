@@ -356,6 +356,11 @@ jobs:
         # each skill needs both link lines in modules/payloads.tsv, or it
         # reaches one agent and not the other, again without an error.
         #
+        # And the .codex/skills mirror: Codex reads a repository's skills from
+        # .codex/skills and .agents/skills, never from .claude/skills, so a
+        # project skill with no link there is a procedure Claude Code follows
+        # and Codex does not know exists.
+        #
         # Always-on for the same reason as the two checks above: `.claude/`
         # matches no path filter, so a gated version would be blind exactly
         # when a skill changed (#89, #91).

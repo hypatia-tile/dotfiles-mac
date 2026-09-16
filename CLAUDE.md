@@ -55,3 +55,8 @@ A new skill that is not allowlisted is silently untracked — it works here and
 is absent from every clone, with `git status` clean throughout.
 `bin/check-skills.sh` is what makes that fail instead, in CI's always-on job
 and in `preflight`.
+
+It also needs the `.codex/skills/<name>` symlink `AGENTS.md` describes, for
+the same reason: without it the skill reaches Claude Code and no other agent,
+and nothing says so. `.codex/skills` is tracked normally rather than through
+an allowlist, so a skill an agent drops there shows up in `git status`.

@@ -48,10 +48,13 @@ lint jobs and are cheap, so run them first to fail fast.
      matches no path filter (#89, #91).
    - `bin/check-skills.sh` — every skill under `.claude/skills` has a
      `SKILL.md` whose frontmatter `name` matches its directory and whose
-     `description` is non-empty, and is tracked rather than dropped by the
-     `.gitignore` allowlist. All of those fail silently: the skill is never
-     surfaced, or never leaves the machine that wrote it. Always-on for the
-     same reason as the line above — `.claude/` matches no path filter.
+     `description` is non-empty, is tracked rather than dropped by the
+     `.gitignore` allowlist, and is mirrored by a tracked
+     `.codex/skills/<name>` symlink, which is the only way Codex sees it. All
+     of those fail silently: the skill is never surfaced, never leaves the
+     machine that wrote it, or reaches one agent and not the other. Always-on
+     for the same reason as the line above — `.claude/` matches no path
+     filter.
    - `bin/check-agent-guard.sh` — the pre-tool-use guard still refuses what the
      `AGENTS.md` hard rules forbid and still allows prose that only names
      them (ADR 0027). A regression here removes a guardrail from every agent
