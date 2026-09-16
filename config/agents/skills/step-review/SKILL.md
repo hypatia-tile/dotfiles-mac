@@ -1,7 +1,13 @@
 ---
 name: step-review
-description: Review a committed step of a hand-written learning project. Pins the review to a commit hash, reads the actual contents, and records findings as a comment on the step's GitHub issue. Use when the user asks for a review, or reports that a step is finished; the user may phrase this in Japanese.
+description: Deprecated — if this repository has its own step-review under .claude/skills, use that instead; carve one out with step-setup. Until then: review a committed step of a hand-written learning project. Pins the review to a commit hash, reads the actual contents, and records findings as a comment on the step's GitHub issue. Use when the user asks for a review, or reports that a step is finished; the user may phrase this in Japanese.
 ---
+
+> **Deprecated.** This is the default way to run a step, kept for repositories
+> that have not settled their own. Operating detail varies too much for one
+> user-scope skill to be right everywhere — who writes the code is inverted in
+> some projects — so a repository's own `step-review` under `.claude/skills`
+> wins wherever it exists. `step-setup` carves one out.
 
 Review one step of a learning project. **This skill never writes code.** It reports findings; the user fixes them.
 

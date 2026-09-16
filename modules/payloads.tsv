@@ -102,5 +102,7 @@
 .codex/skills/handoff	config/agents/skills/handoff	link
 .claude/skills/step-review	config/agents/skills/step-review	link
 .codex/skills/step-review	config/agents/skills/step-review	link
+.claude/skills/step-setup	config/agents/skills/step-setup	link
+.codex/skills/step-setup	config/agents/skills/step-setup	link
 .claude/skills/step-start	config/agents/skills/step-start	link
 .codex/skills/step-start	config/agents/skills/step-start	link

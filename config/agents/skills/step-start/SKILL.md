@@ -1,7 +1,13 @@
 ---
 name: step-start
-description: Start the next step of a hand-written learning project. Identifies the first unchecked step in docs/roadmap.md, files it as a GitHub issue, and presents the spec. Use when the user asks to begin, resume, or move on to the next step; the user may phrase this in Japanese.
+description: Deprecated — if this repository has its own step-start under .claude/skills, use that instead; carve one out with step-setup. Until then: start the next step of a hand-written learning project. Identifies the first unchecked step in docs/roadmap.md, files it as a GitHub issue, and presents the spec. Use when the user asks to begin, resume, or move on to the next step; the user may phrase this in Japanese.
 ---
+
+> **Deprecated.** This is the default way to run a step, kept for repositories
+> that have not settled their own. Operating detail varies too much for one
+> user-scope skill to be right everywhere — who writes the code is inverted in
+> some projects — so a repository's own `step-start` under `.claude/skills`
+> wins wherever it exists. `step-setup` carves one out.
 
 Run one step of a learning project. **This skill never writes code.** It produces a specification, the reasoning behind it, and verification steps. The user implements everything.
 
