@@ -1,13 +1,22 @@
-# Herdr configuration — standalone trial as a tmux alternative.
+# Herdr configuration — kept alongside tmux while #48 is open.
 #
-# Tracked here for history; not yet wired into the running system (cutover is
-# pending, ADR 0003). During the trial this file is also hand-placed at
-# ~/.config/herdr/config.toml so `herdr server reload-config` can pick it up
-# without a switch. Remove the hand-placed copy before cutover so Home Manager
-# can own the path.
+# The binary is declared in modules/home/packages.nix and this file is
+# projected to ~/.config/herdr/config.toml as a read-only copy
+# (modules/payloads.tsv, ADR 0026). herdr writes its logs, session.json,
+# sessions/ and .plugins.lock beside it, which is why the declaration names
+# this file and not the directory.
 #
-# herdr binary is not declared in packages.nix yet; the trial runs it via
-# `nix run nixpkgs#herdr`. Promote to a declarative install only if adopted.
+# Read-only means every setting herdr would otherwise persist for itself has
+# to be written here instead: it rewrites config.toml in place, and the write
+# is refused. `herdr server reload-config` picks up a change after
+# `bin/project.sh`.
+
+# First-run notification setup. Absent means "show it", and herdr records the
+# answer by writing this key back into config.toml — which the read-only
+# projection refuses, so the overlay returned every launch with a
+# "failed to save onboarding setting: Permission denied (os error 13)" toast.
+# Declaring the answer here is the same choice, made where it survives.
+onboarding = false
 
 [keys]
 # Match the current tmux prefix so muscle memory carries over.
