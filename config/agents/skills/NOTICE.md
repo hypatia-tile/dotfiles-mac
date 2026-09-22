@@ -17,7 +17,7 @@ of its own, and this file does not grant one.
   neither file matched its upstream counterpart, and `grilling` in particular
   has been rewritten upstream around a different questioning model.
 
-The remaining skills — `clangd-check`, `github-english`, `step-setup`,
+The remaining skills — `clangd-check`, `github-language`, `step-setup`,
 `step-start`, `step-review` — are original work. `step-setup` hands its
 questioning to `grilling` rather than restating it, and copies none of its
 text.
