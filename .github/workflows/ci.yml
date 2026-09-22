@@ -52,7 +52,7 @@ jobs:
     # only when the closure can actually change.
     if: github.event_name == 'push' || needs.changes.outputs.build == 'true'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Detect flake
         id: has-flake
@@ -98,7 +98,7 @@ jobs:
     name: Nix format & lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Detect nix files
         id: has-nix
@@ -134,7 +134,7 @@ jobs:
     needs: changes
     if: github.event_name == 'push' || needs.changes.outputs.zsh == 'true'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install zsh
         run: sudo apt-get update && sudo apt-get install -y zsh
@@ -168,7 +168,7 @@ jobs:
     needs: changes
     if: github.event_name == 'push' || needs.changes.outputs.nvim == 'true'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: stylua --check
         uses: JohnnyMorganz/stylua-action@v4
         with:
@@ -182,7 +182,7 @@ jobs:
     needs: changes
     if: github.event_name == 'push' || needs.changes.outputs.nvim == 'true'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install Neovim
         uses: rhysd/action-setup-vim@v1
@@ -199,7 +199,7 @@ jobs:
       - name: Cache plugins
         # config/nvim/bin/check restores plugins into the nvim-dev data dir to
         # match lazy-lock.json; cache it so runs after the first are a no-op.
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.local/share/nvim-dev
           key: nvim-dev-plugins-${{ hashFiles('config/nvim/lazy-lock.json') }}
@@ -219,7 +219,7 @@ jobs:
       run:
         working-directory: config/nvim
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install Neovim
         uses: rhysd/action-setup-vim@v1
@@ -235,7 +235,7 @@ jobs:
 
       - name: Cache plugins
         # Shares the key with nvim-check so plugins are installed once.
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.local/share/nvim-dev
           key: nvim-dev-plugins-${{ hashFiles('config/nvim/lazy-lock.json') }}
@@ -277,7 +277,7 @@ jobs:
     name: Secret scan (gitleaks)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - uses: gitleaks/gitleaks-action@v2
@@ -288,7 +288,7 @@ jobs:
     name: Docs & commit hygiene
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
