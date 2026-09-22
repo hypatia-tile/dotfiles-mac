@@ -94,6 +94,8 @@
 # checked out here, in every running session (ADR 0028).
 .claude/skills/clangd-check	config/agents/skills/clangd-check	link
 .codex/skills/clangd-check	config/agents/skills/clangd-check	link
+.claude/skills/conversation-language	config/agents/skills/conversation-language	link
+.codex/skills/conversation-language	config/agents/skills/conversation-language	link
 .claude/skills/github-language	config/agents/skills/github-language	link
 .codex/skills/github-language	config/agents/skills/github-language	link
 .claude/skills/grilling	config/agents/skills/grilling	link
