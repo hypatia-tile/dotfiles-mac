@@ -1,6 +1,6 @@
 ---
 name: preflight
-description: Mirror the required CI gates locally before pushing — nixfmt/statix/deadnix, markdownlint, flake check, system closure build, closure diff against the running system, Home Manager collision check, and a secret scan. Use before merging any flake or config change. Never switches or activates.
+description: Mirror the required CI gates locally before pushing — nixfmt/statix/deadnix, markdownlint, shellcheck, flake check, system closure build, closure diff against the running system, Home Manager collision check, and a secret scan. Use before merging any flake or config change. Never switches or activates.
 ---
 
 # preflight
@@ -34,6 +34,11 @@ lint jobs and are cheap, so run them first to fail fast.
      it raises rules CI does not have (notably **MD060**). Treat MD060 as a
      local-only false positive; a step is failing only on rules CI's version
      would also raise.
+   - `git ls-files '*.sh' | grep -v '^config/' | xargs nix run nixpkgs#shellcheck --`
+     — the same job runs `ludeeus/action-shellcheck`, which skips `.git` and
+     `config` (vendored dotfile payloads, zsh among them, which shellcheck
+     cannot parse — SC1071). Every repository script is `bin/*.sh`, so that
+     listing is the whole set. Skip only if the change touches no shell.
    - Commit messages must be Conventional Commits (CI runs commitlint against
      `commitlint.config.mjs`):
      `nix run nixpkgs#commitlint -- --from origin/main --to HEAD`
