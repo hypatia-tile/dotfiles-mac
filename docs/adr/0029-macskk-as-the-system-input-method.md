@@ -1,7 +1,9 @@
 # 0029. Adopt macSKK as the system input method, configured by hand
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-09-22
+
+Promoted to Accepted by shinokun, 2026-09-22.
 
 ## Context
 
