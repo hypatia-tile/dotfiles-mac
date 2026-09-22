@@ -15,11 +15,13 @@ Create a new Architecture Decision Record for this repository.
 3. Create `docs/adr/NNNN-<slug>.md` from the template below. Date is today
    (YYYY-MM-DD). Content in English.
 4. Fill Context/Decision/Consequences from the conversation; if the decision
-   is not yet settled, leave clearly marked `_TBD_` placeholders rather than
+   is not yet settled, leave clearly marked `*TBD*` placeholders rather than
    inventing content.
 
 ## Rules
 
+- Emphasis is asterisks, not underscores: markdownlint's MD049 fails a
+  `_TBD_`, and a draft that cannot pass `preflight` is not a draft.
 - Status is always `Proposed`. **Never** write `Accepted`, `Rejected`, or
   `Superseded` — only the repository owner changes status (ADR 0007).
 - Do not renumber or edit existing ADRs; a changed decision gets a new ADR
