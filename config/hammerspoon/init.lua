@@ -83,11 +83,13 @@ end)
 
 -- ===== Japanese Input Pad =====
 --
--- This machine has no system IME: Japanese is typed with skkeleton inside
--- Neovim. Every text box outside Neovim therefore has no good input path, and
--- browser-side attempts at closing that gap were tried and abandoned. This
--- closes it from the other side: cmd-alt-I opens a small Neovim window, and
--- what is written there goes to the clipboard.
+-- Japanese is typed with skkeleton inside Neovim, and since ADR 0029 with
+-- macSKK everywhere else. This pad predates macSKK — it was the only input
+-- path outside Neovim while the machine had no system IME — and is kept as the
+-- fallback for text boxes where macSKK is unavailable or misbehaves: cmd-alt-I
+-- opens a small Neovim window, and what is written there goes to the
+-- clipboard. Whether it is still worth keeping is a question for after macSKK
+-- has been lived with.
 --
 -- <C-s> in either mode copies the whole buffer to the system clipboard, saves,
 -- and closes the window. macOS then returns focus to the application that had

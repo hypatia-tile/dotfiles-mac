@@ -61,6 +61,16 @@
       # System Settings would be undone at the next activation, because
       # nix-darwin replaces the whole AppleSymbolicHotKeys dictionary.
       "raycast"
+      # The system input method (ADR 0029). Chosen over aquaskk — which this
+      # file's header records as removed at first activation — for one feature:
+      # its 直接入力 list bypasses conversion per Bundle Identifier, so kitty
+      # and Emacs keep C-j for skkeleton and ddskk.
+      #
+      # The cask is the whole of what is declared. Its input sources, its
+      # dictionary and that list live inside the application's sandbox
+      # container and are set by hand after the switch; ADR 0029 says why
+      # declaring them was rejected rather than missed.
+      "macskk"
     ];
 
     masApps = { };

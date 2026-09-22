@@ -66,7 +66,9 @@ deliberate exception is `lazy-lock.json`, which a lockfile wants to be: written
 by the editor *and* committed. The skkeleton user dictionary is at
 `~/.local/share/nvim/skk/user-dict`, and the SKK L dictionary is supplied by
 this flake at `~/.local/share/skk/SKK-JISYO.L` (`pkgs.skkDictionaries.l` — the
-pinned nixpkgs has no `skk-dicts` attr).
+pinned nixpkgs has no `skk-dicts` attr). macSKK reads a **second copy** of that
+dictionary from inside its own sandbox container, placed by hand; the
+duplication is deliberate and ADR 0029 says why.
 
 Note the limit of the verification: a clean `config/nvim/bin/check` proves
 startup, not lazy-loaded plugins.

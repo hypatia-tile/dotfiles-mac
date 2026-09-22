@@ -222,7 +222,8 @@ on-mode-changed = []
 
 # The Japanese input pad (config/hammerspoon/init.lua, cmd-alt-I). A kitty
 # window running Neovim, used as a place to type Japanese with skkeleton for
-# apps that have no usable input of their own — this machine has no system IME.
+# apps where the system input method (macSKK, ADR 0029) is unavailable or
+# misbehaves. It was the only such path before macSKK, and is now the fallback.
 #
 # It must not be tiled: it is a transient overlay over whatever is being
 # written in, and taking a slot in the layout would move every other window
