@@ -68,7 +68,9 @@ by the editor *and* committed. The skkeleton user dictionary is at
 this flake at `~/.local/share/skk/SKK-JISYO.L` (`pkgs.skkDictionaries.l` — the
 pinned nixpkgs has no `skk-dicts` attr). macSKK reads a **second copy** of that
 dictionary from inside its own sandbox container, placed by hand; the
-duplication is deliberate and ADR 0029 says why.
+duplication is deliberate and ADR 0029 says why. Placing it is one of the
+steps in the `manual-setup` skill, which holds everything about this machine
+that a switch does not place.
 
 Note the limit of the verification: a clean `config/nvim/bin/check` proves
 startup, not lazy-loaded plugins.
@@ -83,6 +85,14 @@ runtime behavior, so they are always confirmed by hand after the switch; the
 `AppleSymbolicHotKeys` dictionary** rather than merging into it. Changing any
 shortcut in System Settings is therefore reverted on the next switch — edit
 `modules/darwin/macos.nix` instead, and keep it the complete current set.
+
+**The reverse drift is real too, and the owner is not the only other writer.**
+The declaration is applied at activation and not held afterwards: macOS writes
+this key itself, as a side effect of actions that are not about shortcuts.
+Adding a second input source re-enabled 60 and 61 against a declaration of
+`enabled = 0` (measured 2026-09-22, ADR 0030). No build-time gate can see it,
+because none of them reads the live machine — `bin/check-symbolic-hotkeys.sh`
+does, comparing the live domain with the declaration ID by ID.
 
 ### Updating inputs
 

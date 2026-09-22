@@ -22,6 +22,7 @@ different set, in `config/agents/skills/` (ADR 0028).
 | `adr-new` | A decision needs recording |
 | `ops-qa` | "How does X work here?" / "Why is it like this?" |
 | `keybinding-doctor` | A key or chord is swallowed, produces the wrong character, or fires the wrong command |
+| `manual-setup` | A fresh machine, or state the flake knowingly does not declare (macSKK's input source, dictionary and 直接入力 list) |
 
 Applying is always the owner's manual step, and nothing else in this
 repository performs it:
