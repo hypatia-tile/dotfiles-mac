@@ -110,7 +110,7 @@ Name the applicable one in the PR body. "It built" is not one of these.
 | Edited config | the specific behavior that changed, exercised directly |
 | User-scope agent skill | `bin/project.sh` places it without a switch; then `bin/project.sh --check` is in sync, `readlink ~/.claude/skills/<name>` and `readlink ~/.codex/skills/<name>` both point into this checkout, and `/skills` in a **new** Claude Code session and a **new** Codex session lists it. For Codex, quit every running Codex process first. At the ADR 0028 cutover the first `/skills` checks listed none of the new skills while a Codex process started before the change was still running, and a later fresh start listed all of them; the stale process is the likely cause, not a confirmed one |
 | Session variable / `PATH` | open a **new** shell and `echo $VAR` — the value arrives via `hm-session-vars.sh`, sourced from `config/zsh/.zprofile` |
-| macOS default / keybinding | `activateSettings -u`, then `defaults read com.apple.symbolichotkeys AppleSymbolicHotKeys` matches `macos.nix`, then a behavior spot-check (`docs/operations.md` §1) |
+| macOS default / keybinding | `activateSettings -u`, then `bin/check-symbolic-hotkeys.sh` (compares the live domain with the declaration, ID by ID — macOS writes this key itself, see ADR 0030), then a behavior spot-check (`docs/operations.md` §1) |
 
 ## Rules
 
