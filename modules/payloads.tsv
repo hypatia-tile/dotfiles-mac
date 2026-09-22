@@ -100,6 +100,8 @@
 .codex/skills/grilling	config/agents/skills/grilling	link
 .claude/skills/handoff	config/agents/skills/handoff	link
 .codex/skills/handoff	config/agents/skills/handoff	link
+.claude/skills/scrap-note	config/agents/skills/scrap-note	link
+.codex/skills/scrap-note	config/agents/skills/scrap-note	link
 .claude/skills/step-review	config/agents/skills/step-review	link
 .codex/skills/step-review	config/agents/skills/step-review	link
 .claude/skills/step-setup	config/agents/skills/step-setup	link
