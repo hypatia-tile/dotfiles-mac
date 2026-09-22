@@ -40,7 +40,7 @@ Merged-but-not-switched is a normal intermediate state.
 | [`../CLAUDE.md`](../CLAUDE.md) | Claude Code specifics: the `settings.json` guardrails, how skills are tracked |
 | [`operations.md`](operations.md) | Day-to-day semantics: Home Manager placement rules, Nix on this machine, CI behavior, known quirks |
 | [`rollback.md`](rollback.md) | Recovery when a switch goes wrong |
-| [`adr/`](adr/) | The decisions, 0001–0029, with their rationale |
+| [`adr/`](adr/) | The decisions, 0001–0030, with their rationale |
 
 ## Pending input
 
