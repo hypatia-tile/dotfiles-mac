@@ -54,6 +54,13 @@
       # CLI-only build, which is deliberately not used here (ADR 0005 keeps
       # Homebrew to GUI casks).
       "tailscale-app"
+      # Launcher, on trial. Its hotkey is Cmd+Opt+Space, not the default
+      # Cmd+Space: Spotlight keeps Cmd+Space. That chord is macOS symbolic
+      # hotkey 65 (Show Finder search window), disabled in macos.nix — without
+      # that declaration both fire on the same chord, and a manual disable in
+      # System Settings would be undone at the next activation, because
+      # nix-darwin replaces the whole AppleSymbolicHotKeys dictionary.
+      "raycast"
     ];
 
     masApps = { };

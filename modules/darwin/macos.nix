@@ -18,6 +18,10 @@
 # to its macOS built-in default on activation, so every ID is declared even
 # though all are now off.
 #
+# "Complete" means complete for the IDs this repository has a view on. ID 64
+# (Spotlight, Cmd+Space) is omitted on purpose so it keeps its built-in default,
+# which is enabled; see the note on 65 below.
+#
 # Per the owner decision of 2026-07-29 (keybindings-inventory.md Layer 1), ALL
 # of these shortcuts are disabled (enabled = 0) — including the formerly-enabled
 # Mission Control family (32/33/34/36/37) and native Space switching (79-82).
@@ -193,6 +197,31 @@
       };
       "82" = {
         enabled = 0;
+      };
+
+      ## ---- disabled to free a chord for an application ----
+
+      # Show Finder search window (Cmd+Opt+Space) — freed for Raycast, whose
+      # hotkey is that chord (homebrew.nix). Unlike every other ID here this
+      # one was never in the 2026-07-29 inventory: macOS does not write 64/65
+      # into the plist until they are changed, so both were live at their
+      # built-in defaults. Declaring 65 off is what makes the chord Raycast's
+      # alone, and what stops a manual disable being reverted at the next
+      # activation — the write below replaces the whole dictionary.
+      #
+      # 64 (Spotlight, Cmd+Space) stays deliberately undeclared: Spotlight
+      # keeps that chord. Omission means "macOS built-in default", which for
+      # 64 is enabled — the intended state here, not an oversight.
+      "65" = {
+        enabled = 0;
+        value = {
+          parameters = [
+            32
+            49
+            1572864
+          ]; # Cmd+Opt+Space
+          type = "standard";
+        };
       };
     };
   };
