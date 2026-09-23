@@ -4,7 +4,7 @@
 -- syntax documentation in hover.
 return {
   cmd = { "ocamllsp" },
-  filetypes = { "ocaml" },
+  filetypes = { "ocaml", "dune" },
   root_markers = { "dune-project", "dune-workspace", ".git" },
   settings = {
     extendedHover = { enable = true },
