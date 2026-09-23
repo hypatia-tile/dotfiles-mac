@@ -154,9 +154,10 @@ merging is always manual, and reviewing one is the `lock-review` skill.
 Knowledge that does not expire. Work that is merely *not done yet* is not
 here — it is filed as a GitHub issue (`gh issue list`, ADR 0019).
 
-- `HISTFILE` is `~/.zsh_history`, not `$ZDOTDIR/history`: nix-darwin's
-  `/etc/zshrc` runs after the user `.zprofile` and overrides it. This
-  predates the migration.
+- History settings (`HISTFILE`, `HISTSIZE`, `SAVEHIST`) live in
+  `config/zsh/.zshrc`, not `.zprofile`: nix-darwin's `/etc/zshrc` runs after
+  `.zprofile` and would otherwise reset them to `~/.zsh_history` and 2000
+  (#45).
 - `brew` cleanup on activation also autoremoves dependency orphans of
   whatever it uninstalls — expected, not a stop signal.
 - **`brew` cleanup's `Uninstalled N formulae` summary reports what it

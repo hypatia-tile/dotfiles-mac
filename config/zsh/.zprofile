@@ -4,10 +4,7 @@
 
 # Set the zsh variables
 ZDOTDIR="${HOME}/.config/zsh"
-export HISTFILE=$ZDOTDIR/history
 export HISTORY_IGNORE=''
-export HISTSIZE=1000000000
-export SAVEHIST=1000000000
 export LANG=en_US.UTF-8
 export ARCHFLAGS="-arch x86_64" # Compilation flags
 

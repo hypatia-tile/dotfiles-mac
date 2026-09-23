@@ -7,6 +7,13 @@
 # 3. ~/.zshrc_env
 # 4. ~/.zshrc_private
 
+# History — must live in .zshrc, not .zprofile. nix-darwin's /etc/zshrc runs
+# after .zprofile and resets HISTFILE/HISTSIZE/SAVEHIST to 2000 and
+# ~/.zsh_history (#45). .zshrc is sourced after that, so these stick.
+export HISTFILE=$ZDOTDIR/history
+export HISTSIZE=1000000000
+export SAVEHIST=1000000000
+
 ###################
 # Check .zprofile #
 ###################
