@@ -64,12 +64,24 @@ lint jobs and are cheap, so run them first to fail fast.
      `AGENTS.md` hard rules forbid and still allows prose that only names
      them (ADR 0027). A regression here removes a guardrail from every agent
      at once, so it runs on every change.
+   - Paths the nvim projection hook depends on still exist (#87) — the hook
+     returns early when it cannot find what it names, which is invisible when
+     the path is simply stale. Always-on in CI for the same reason: the rename
+     that broke it last time was under `modules/`, which does not trip the
+     nvim filter. Reproduce the hygiene job's loop:
+     `hook=config/nvim/lua/autocmds.lua; for p in $(grep -oE 'root \.\. "/[^"]+"' "$hook" | sed -e 's/.*"\///' -e 's/"$//' | sort -u); do [ -e "$p" ] || { echo "MISSING $p"; exit 1; }; done`
 3. **Payload content checks** (mirrors the CI *zsh payload syntax* and *nvim*
    jobs). Run the one matching what changed; skip if no payload changed.
    - zsh: `for f in config/zshenv config/zsh/.zshrc config/zsh/.zprofile config/zsh/.zshenv config/zsh/abbr-definitions.zsh config/zsh/modules/*.zsh; do zsh -n "$f" || echo "FAIL $f"; done`
    - nvim: `nix run nixpkgs#stylua -- --check config/nvim/lua/ config/nvim/after/ config/nvim/ftplugin/ config/nvim/init.lua`,
      and `config/nvim/bin/check` for a headless startup (slow on a cold plugin
      cache; it restores to `lazy-lock.json`).
+   - nvim LuaLS typecheck — CI's `nvim-typecheck` job. Locally: restore
+     plugins under `NVIM_APPNAME=nvim-dev` (same as `config/nvim/bin/check`),
+     inject `workspace.library` into `.luarc.json` from
+     `config/nvim/.github/luarc.ci.json` the way the job does, then
+     `lua-language-server --check . --checklevel Warning`. Skip only when
+     nothing under `config/nvim/` changed.
    These are the steps that carry the weight for a payload change, because
    step 5 cannot see one — see the note there.
 
@@ -106,12 +118,36 @@ lint jobs and are cheap, so run them first to fail fast.
 
 ## Scope shortcuts
 
-Steps 1, 4, 5, 6 and 7 depend on `*.nix` or `flake.lock` having changed —
-the same paths CI's *build* filter uses. Step 3 depends on `config/**`.
-`config/**` is deliberately **not** in the build filter (ADR 0022): payload
-content cannot move the closure, so a payload-only change runs steps 2, 3 and
-8, and CI reports the macOS build as *skipping*, which still satisfies the
-required check. For a documentation-only change, run steps 2 and 8 alone.
+Steps 1, 4, 5, 6 and 7 run when the change can move the closure — the paths
+in CI's *build* filter in `.github/workflows/ci.yml`:
+
+```yaml
+build:
+  - '**/*.nix'
+  - 'flake.lock'
+  - '.github/workflows/ci.yml'
+```
+
+A change that only edits the workflow therefore still needs the flake check
+and the closure build locally; restating the filter as "`*.nix` or
+`flake.lock`" was wrong and is what #112 caught. Step 3 depends on
+`config/zsh/**`, `config/zshenv`, or `config/nvim/**` (CI's *zsh* / *nvim*
+filters also include `ci.yml`). `config/**` is deliberately **not** in the
+build filter (ADR 0022): payload content cannot move the closure, so a
+payload-only change runs steps 2, 3 and 8, and CI reports the macOS build as
+*skipping*, which still satisfies the required check. For a
+documentation-only change, run steps 2 and 8 alone.
+
+## Intentionally CI-only
+
+One hygiene step has no local counterpart, and the reason is the trade it
+encodes rather than an omission:
+
+- **Plugin pins do not ride along with other changes (#98)** — report-only,
+  and only on pull requests. It needs the PR base SHA and annotates rather
+  than fails: the judgement "pins rode along on purpose" is the author's,
+  which a gate cannot make. Run `.github/scripts/pins-ride-along.py` by hand
+  against a base if you want the same signal before opening the PR.
 
 ## Report
 
