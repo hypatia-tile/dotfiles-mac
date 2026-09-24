@@ -4,4 +4,4 @@ require "keymaps" -- global, non-plugin keymaps
 require "autocmds" -- global autocmds
 require "config.lazy" -- lazy.nvim bootstrap, loads lua/plugins/*
 require "shino.commands" -- user commands (:InitLua)
-require "lsp.init" -- global LspAttach handler and denols startup
+require "lsp.init" -- global LspAttach handler; enables denols and copilot

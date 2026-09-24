@@ -74,7 +74,7 @@ Use `nvim --startuptime /tmp/startup.log` to profile startup time.
 3. `autocmds` — global autocmds
 4. `config.lazy` — lazy.nvim bootstrap, loads all `lua/plugins/*.lua`
 5. `shino.commands` — user commands (`:InitLua`)
-6. `lsp.init` — global `LspAttach` handler and denols startup for TypeScript filetypes
+6. `lsp.init` — global `LspAttach` handler; enables `denols` and `copilot`
 
 ### Plugin Structure
 
@@ -84,8 +84,8 @@ All plugins live in `lua/plugins/*.lua` — each file returns a lazy.nvim plugin
 
 LSP uses the Neovim 0.11+ native API instead of lspconfig setup calls:
 - **Global keymaps**: `lua/lsp/keymaps.lua` — attached on every `LspAttach` event
-- **TypeScript (Deno only)**: `lua/lsp/init.lua` sets static `denols` options via `vim.lsp.config`, then a `FileType` autocmd calls `vim.lsp.start` per buffer, rooting at `deno.json`/`deno.jsonc` (falling back to the file's directory). Only Deno is supported; there is no `ts_ls`/tsserver path.
-- **Per-server configs**: `after/lsp/<server>.lua` — lua_ls, nil_ls, copilot, gh_actions_ls, ocamllsp
+- **TypeScript (Deno only)**: `vim.lsp.enable "denols"` from `lua/lsp/init.lua`, with settings and root logic in `after/lsp/denols.lua` (`deno:` URI handlers from nvim-lspconfig). Attaches under a Deno project (`deno.json` / `deno.jsonc` / `deno.lock`), or for a lone JS/TS file that is not inside a `package.json` tree. Only Deno is supported; there is no `ts_ls`/tsserver path.
+- **Per-server configs**: `after/lsp/<server>.lua` — denols, lua_ls, nil_ls, copilot, gh_actions_ls, ocamllsp
 - **OCaml**: `ocamllsp` (opam-provided, see `docs/adr/0001`) with beginner-friendly defaults — inlay hints auto-enabled on attach, `extendedHover`, `syntaxDocumentation`. Enabled from `after/ftplugin/ocaml.lua`.
 - **Language-specific plugins** bypass the global attach: haskell-tools.nvim (Haskell), lean.nvim (Lean), nvim-jdtls (Java)
 
