@@ -7,7 +7,7 @@ au.autocmd("LspAttach", "Attach global LSP keymaps on every client attach", {
   end,
 })
 
--- denols: config in after/lsp/denols.lua + nvim-lspconfig; attaches only when
--- the buffer sits under a Deno project root (see nvim-lspconfig's root_dir).
+-- denols: config in after/lsp/denols.lua (+ nvim-lspconfig handlers).
+-- Attaches under a Deno project, or for a lone JS/TS file with no package.json.
 vim.lsp.enable "denols"
 vim.lsp.enable "copilot"
