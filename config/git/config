@@ -26,4 +26,9 @@
 	root = ~/ghqrepo
 
 [commit]
-	template = "/Users/kazukishinohara/.config/git/commit_template.txt"
+	# ~/ is expanded by git for a path-type value, so this follows $HOME instead
+	# of naming one machine's. The file is projected here from config/git in this
+	# repository (modules/payloads.tsv), which is why the path is absolute-from-
+	# $HOME rather than relative: git resolves a relative template against the
+	# current directory, not against this file.
+	template = ~/.config/git/commit_template.txt
