@@ -63,9 +63,17 @@
 # zsh. The directory itself is NOT declarable: ~/.config/zsh is ZDOTDIR, and
 # zsh writes .zcompdump and HISTFILE (`history`) into it. A directory entry
 # would replace the target wholesale and take both with it — measured, not
-# reasoned (#94). So the four files this repository owns are declared one by
+# reasoned (#94). So the five files this repository owns are declared one by
 # one, and modules/, complete/ and functions/ whole, because those three were
 # checked against the repository and hold no runtime state of their own.
+#
+# `abbreviations` is zsh-abbr's own user-abbreviations file, which the plugin
+# reads at every shell start and rewrites on `abbr add`. `copy`, not `link`: the
+# rewrite is an `mv` over the path, which replaces a symlink with a regular file
+# instead of writing through it, so a link would break on the first interactive
+# `abbr add` and the write would never reach the repository anyway (measured).
+# As a read-only copy the same write is visible instead — `--check` reports the
+# drift, and this repository stays the editing surface.
 #
 # ~/.zshenv is the ZDOTDIR bootstrap and the only payload outside ~/.config
 # besides ~/.hammerspoon: zsh reads it before ZDOTDIR exists as an idea, so it
@@ -74,7 +82,7 @@
 .config/zsh/.zshrc	config/zsh/.zshrc	copy
 .config/zsh/.zprofile	config/zsh/.zprofile	copy
 .config/zsh/.zshenv	config/zsh/.zshenv	copy
-.config/zsh/abbr-definitions.zsh	config/zsh/abbr-definitions.zsh	copy
+.config/zsh/abbreviations	config/zsh/abbreviations	copy
 .config/zsh/modules	config/zsh/modules	copy
 .config/zsh/complete	config/zsh/complete	copy
 .config/zsh/functions	config/zsh/functions	copy

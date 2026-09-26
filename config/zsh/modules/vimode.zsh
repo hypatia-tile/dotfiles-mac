@@ -68,9 +68,15 @@ bindkey -M vicmd '^R' redo
 # VI_MODE variable is set by zle-keymap-select and zle-line-init
 # and is used in PROMPT in .zshrc
 
-# Re-apply zsh-abbr Space keybinding after vi mode setup
-# The 'bindkey -v' command above resets all keybindings to vi defaults
-# We need to restore the abbr expansion on Space
-if (( ${+widgets[abbr-expand-and-insert]} )); then
-  bindkey " " abbr-expand-and-insert
+# Re-apply zsh-abbr's key bindings. `bindkey -v` above replaces the whole `main`
+# keymap, so both of them went with it: Space stopped expanding abbreviations
+# and control-space — zsh-abbr's plain space — became `undefined-key`. Only the
+# first was restored here before; the second was silently dead.
+#
+# The list is abbr.zsh's, not this file's. The module glob in .zshrc sorts
+# `abbr` before `vimode`, so the function is defined by now; the guard is for
+# the case where it is not, which is harmless — loaded the other way round,
+# zsh-abbr binds after `bindkey -v` and needs no help.
+if (( ${+functions[abbr-bindkeys]} )); then
+  abbr-bindkeys
 fi

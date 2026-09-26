@@ -1,0 +1,91 @@
+# zsh-abbr abbreviations. This is zsh-abbr's *own* user-abbreviations file:
+# ABBR_USER_ABBREVIATIONS_FILE in modules/abbr.zsh points here, and the plugin
+# loads it itself on every shell start. The file is the state — there is no
+# seeding step, and an entry deleted here is gone from the next shell.
+#
+# It replaced a script of `abbr add --quieter` lines that ran once, when
+# `abbr list` came back empty. `abbr add` refuses a name that already has an
+# expansion and `--quieter` hid the refusal, so after the first run the file
+# could only add: an edited expansion or a deleted line never arrived, and
+# nothing said so. The live machine had 47 of its 48 lines applied — `v` had
+# been missing since the 2026-07 migration, unnoticed.
+#
+# Format: `abbr "<name>"="<expansion>"`, one per line. The loader executes only
+# lines whose first word is `abbr` and ignores every other line, which is what
+# makes comments safe here — and what makes a typo in the keyword a silent
+# no-op. bin/check-abbr.sh is what fails on it instead.
+#
+# No `--force` anywhere. It used to override zsh-abbr's refusal to shadow an
+# existing command (`dc` is /usr/bin/dc), and that check is skipped while this
+# file is loaded — measured, not inferred. On `..`, `...` and `....` it never
+# did anything at all.
+#
+# Every expansion must begin with something this machine can actually run;
+# `bin/check-abbr.sh --commands` enforces it. That check is the one that was
+# missing: `dc` expanded to `docker-compose`, which packages.nix deliberately
+# does not install (`docker compose` arrives as a CLI plugin), and ten kubectl
+# abbreviations named a binary this machine has never had.
+#
+# `abbr add` and `abbr erase` write *here*, and ~/.config/zsh/abbreviations is a
+# read-only projected copy (ADR 0026): the write replaces the copy, comments and
+# all, and `bin/project.sh --check` then reports the drift. This file in the
+# repository is the editing surface — edit it, then run bin/project.sh. For an
+# abbreviation that should not outlive the shell, `abbr add --session`.
+
+# Git
+abbr "g"="git"
+abbr "gs"="git status"
+abbr "ga"="git add"
+abbr "gaa"="git add --all"
+abbr "gc"="git commit"
+abbr "gcm"="git commit -m"
+abbr "gca"="git commit --amend"
+abbr "gp"="git push"
+abbr "gpl"="git pull"
+abbr "gd"="git diff"
+abbr "gds"="git diff --staged"
+abbr "gco"="git checkout"
+abbr "gcb"="git checkout -b"
+abbr "gb"="git branch"
+abbr "gba"="git branch -a"
+abbr "gl"="git log --oneline --graph --decorate"
+abbr "gst"="git stash"
+abbr "gstp"="git stash pop"
+
+# Directory navigation
+abbr ".."="cd .."
+abbr "..."="cd ../.."
+abbr "...."="cd ../../.."
+
+# Listing. `ll` is here rather than in modules/aliases.zsh, which used to carry
+# an identical alias: one name, one definition.
+abbr "ll"="ls -lah"
+abbr "la"="ls -A"
+abbr "l"="ls -CF"
+
+# Docker. `dc` is `docker compose`, the CLI plugin the docker package brings
+# (see modules/home/packages.nix) — not the `docker-compose` binary, which is
+# deliberately not installed.
+abbr "d"="docker"
+abbr "dc"="docker compose"
+abbr "dps"="docker ps"
+abbr "dpsa"="docker ps -a"
+abbr "di"="docker images"
+abbr "dex"="docker exec -it"
+abbr "dlog"="docker logs -f"
+
+# tmux. Kept while #48 decides whether herdr replaces it.
+abbr "ta"="tmux attach"
+abbr "tat"="tmux attach -t"
+abbr "tl"="tmux list-sessions"
+abbr "tn"="tmux new-session"
+abbr "tnt"="tmux new-session -s"
+
+# Editor. `nvim`, not `vim`: this machine's editor is Neovim (EDITOR in
+# modules/home/base.nix and .zshrc, the configuration in config/nvim). It read
+# `vim` until now, under a comment that said Neovim.
+abbr "v"="nvim"
+
+# System. $ZDOTDIR is expanded by the shell when the line runs, not stored
+# expanded, so this follows ZDOTDIR rather than hardcoding ~/.config/zsh.
+abbr "reload"="source $ZDOTDIR/.zshrc"

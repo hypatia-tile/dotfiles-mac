@@ -72,7 +72,14 @@ lint jobs and are cheap, so run them first to fail fast.
      `hook=config/nvim/lua/autocmds.lua; for p in $(grep -oE 'root \.\. "/[^"]+"' "$hook" | sed -e 's/.*"\///' -e 's/"$//' | sort -u); do [ -e "$p" ] || { echo "MISSING $p"; exit 1; }; done`
 3. **Payload content checks** (mirrors the CI *zsh payload syntax* and *nvim*
    jobs). Run the one matching what changed; skip if no payload changed.
-   - zsh: `for f in config/zshenv config/zsh/.zshrc config/zsh/.zprofile config/zsh/.zshenv config/zsh/abbr-definitions.zsh config/zsh/modules/*.zsh; do zsh -n "$f" || echo "FAIL $f"; done`
+   - zsh: `for f in config/zshenv config/zsh/.zshrc config/zsh/.zprofile config/zsh/.zshenv config/zsh/abbreviations config/zsh/modules/*.zsh; do zsh -n "$f" || echo "FAIL $f"; done`
+   - zsh abbreviations: `bin/check-abbr.sh --commands` — `config/zsh/abbreviations`
+     is zsh-abbr's own user-abbreviations file, loaded by the plugin at every
+     shell start, and its loader ignores any line it does not recognise without
+     a word. The check loads the payload with the pinned zsh-abbr in a sandbox
+     and compares what arrived with what is declared. `--commands` is the part
+     CI cannot run: it asserts every expansion starts with something installed
+     *here*, which is what `dc='docker-compose'` violated for months.
    - nvim: `nix run nixpkgs#stylua -- --check config/nvim/lua/ config/nvim/after/ config/nvim/ftplugin/ config/nvim/init.lua`,
      and `config/nvim/bin/check` for a headless startup (slow on a cold plugin
      cache; it restores to `lazy-lock.json`).
@@ -131,7 +138,8 @@ build:
 A change that only edits the workflow therefore still needs the flake check
 and the closure build locally; restating the filter as "`*.nix` or
 `flake.lock`" was wrong and is what #112 caught. Step 3 depends on
-`config/zsh/**`, `config/zshenv`, or `config/nvim/**` (CI's *zsh* / *nvim*
+`config/zsh/**`, `config/zshenv`, `bin/check-abbr.sh`, `modules/payloads.tsv`,
+or `config/nvim/**` (CI's *zsh* / *nvim*
 filters also include `ci.yml`). `config/**` is deliberately **not** in the
 build filter (ADR 0022): payload content cannot move the closure, so a
 payload-only change runs steps 2, 3 and 8, and CI reports the macOS build as

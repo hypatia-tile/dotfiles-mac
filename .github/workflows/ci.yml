@@ -39,6 +39,12 @@ jobs:
             zsh:
               - 'config/zsh/**'
               - 'config/zshenv'
+              # The abbreviations check reads its own script and the projection
+              # declaration, so a change to either must run it. modules/*.tsv
+              # matches no other filter, which is the #89/#91 lesson: a gate
+              # that cannot be triggered by the file it checks is not a gate.
+              - 'bin/check-abbr.sh'
+              - 'modules/payloads.tsv'
               - '.github/workflows/ci.yml'
             nvim:
               - 'config/nvim/**'
@@ -150,7 +156,7 @@ jobs:
           # this loop untestable in the shell it is checking.
           rc=0
           for f in config/zshenv config/zsh/.zshrc config/zsh/.zprofile \
-                   config/zsh/.zshenv config/zsh/abbr-definitions.zsh \
+                   config/zsh/.zshenv config/zsh/abbreviations \
                    config/zsh/modules/*.zsh; do
             [ -f "$f" ] || continue
             if zsh -n "$f"; then
@@ -161,6 +167,21 @@ jobs:
             fi
           done
           exit "$rc"
+
+      - name: Install Nix
+        # For the abbreviations check below, which loads the payload with the
+        # zsh-abbr the machine actually gets — the version pinned in flake.lock.
+        uses: cachix/install-nix-action@v31
+
+      - name: zsh-abbr abbreviations
+        # A step of this job rather than a job of its own: the zsh payload is
+        # one gate, and a new job name would have to be added to the ADR 0012
+        # ruleset before it could be required.
+        #
+        # Without --commands: this runner has no docker, tmux or nvim, and only
+        # the machine knows what is installed, so `preflight` adds that flag
+        # locally. Steps 1-4 of the check are the machine-independent ones.
+        run: ./bin/check-abbr.sh
 
   nvim-stylua:
     name: nvim stylua
