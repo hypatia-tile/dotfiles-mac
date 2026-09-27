@@ -84,10 +84,27 @@ Bundle Identifier, so the order matters.
 |---|---|
 | kitty | `net.kovidgoyal.kitty` |
 | Emacs | `org.gnu.Emacs` |
-| emacsclient | `org.gnu.EmacsClient` |
 
 kitty exists both in `/Applications` and under Home Manager Apps; the Bundle
 Identifier is the same, so one registration covers both.
+
+**Start Emacs with `em`, not `emacs`.** This is the part that reads like a
+working setup and is not. macOS gives a process the Bundle Identifier of the
+bundle it was *started from*, and nixpkgs' `bin/emacs` is a plain executable
+outside `Emacs.app` — a different file from the bundle's own binary. So a
+terminal `emacs` carries no Bundle Identifier at all, macSKK has nothing to key
+to, and 「Emacsで直接入力」never appears in the menu. `em` is
+`open -b org.gnu.Emacs` and goes through the bundle.
+
+This changed silently at ADR 0031. emacs-plus's `bin/emacs` was a shell wrapper
+that `exec`'d the bundle's binary, so the terminal command used to carry
+`org.gnu.Emacs` and the difference never showed.
+
+`org.gnu.EmacsClient` was in this table until ADR 0031 and is gone: that Bundle
+Identifier belonged to `Emacs Client.app`, which emacs-plus shipped and nixpkgs'
+Emacs does not — `path to application id "org.gnu.EmacsClient"` now fails
+outright. Running `emacsclient` in a terminal needs no registration of its own,
+because the frontmost application there is kitty.
 
 **Skipping this is the loud failure.** Both applications bind `C-j` —
 skkeleton in Neovim, ddskk in Emacs — and an input method that is merely in
@@ -193,7 +210,7 @@ nix build --dry-run github:hypatia-tile/emacs-flake#default        # "will be fe
 the local store, so the test proved nothing. `nix store delete` it first, or
 trust only the `substituters` line.
 
-### How it comes undone
+### What makes it come undone
 
 - **A Nix upgrade.** `/etc/nix/nix.conf` is installer-owned and can be
   overwritten, taking the `!include` with it. Emacs is then rebuilt locally
@@ -202,3 +219,118 @@ trust only the `substituters` line.
 - A fresh machine: both files, then the daemon restart.
 - Becoming a trusted user would make the flake's own configuration work instead,
   and is deliberately not done: it would let any flake name a substituter.
+
+## Only one Emacs may be registered with LaunchServices
+
+macSKK keys 直接入力 to a Bundle Identifier, and every build of Emacs claims the
+same one, `org.gnu.Emacs`. In Nix each build is its own store path, so each is a
+separate LaunchServices registration under that identifier — and which one
+`org.gnu.Emacs` resolves to is **not** something the version decides. Measured on
+this machine: a leftover 30.2.50 won over the installed 31.1.
+
+When it resolves to the wrong build, `em` opens the wrong Emacs and macSKK
+registers 直接入力 against a binary that is not the one being used.
+
+**This recurs on every Emacs bump.** A new store path is registered while the old
+one stays registered for as long as any generation still roots it.
+
+### What to do
+
+Ask what it resolves to — this does not launch anything:
+
+```sh
+osascript -e 'POSIX path of (path to application id "org.gnu.Emacs")'
+```
+
+If it is not the current build, the registration has to go, and **editing the
+database does not work**. Both of these were tried and neither held: `lsregister
+-gc` left the entry in place, and `lsregister -u <path>` removed it only until
+the next rescan put it back with a fresh id. As long as the bundle is on disk it
+comes back. `lsregister -kill` no longer exists, and `-delete` needs a reboot.
+
+Removing the store path is the only thing that works:
+
+```sh
+sudo nix-collect-garbage --delete-older-than 30d   # drop the generations rooting it
+nix-collect-garbage --delete-older-than 30d
+nix store delete /nix/store/<old-emacs-path>       # once nothing roots it
+```
+
+`--delete-older-than` rather than `-d`: `-d` drops every older generation and
+with it every rollback target. Thirty days left this machine three recent ones
+and still freed 47 GB of July.
+
+`nix-store --query --roots <path>` names what is holding it. A path with no roots
+listed can go straight to `nix store delete`.
+
+### Where the state lands
+
+The LaunchServices database, which nothing here declares and nothing checks.
+
+### What proves it worked
+
+The `osascript` line above returns the current store path, and
+「Emacsで直接入力」appears in the macSKK menu with Emacs frontmost.
+
+### What makes it come undone
+
+Every Emacs bump: a new store path registers, the old one stays registered for as
+long as a generation roots it, and the resolution can land on either. Check it
+after any switch that moved Emacs.
+
+### What else it took, once
+
+Moving off emacs-plus left two real application copies behind in
+`/Applications` — `Emacs.app` and `Emacs Client.app`, both 30.2, put there by a
+script that copied them out of the Cellar. `brew` cleanup removed the Cellar and
+so left them unable to launch (`Library not loaded: libtiff.6.dylib`) while they
+went on claiming `org.gnu.Emacs`. They were deleted by hand; a fresh machine
+never has them.
+
+## Recompile the Emacs packages after an Emacs version change
+
+`~/.emacs.d` is its own repository and outside this flake, but a change *here*
+can break it, so the step belongs here.
+
+A `.elc` carries the macro expansion of the Emacs that compiled it. Change the
+Emacs and every installed package's `.elc` is a stranger to it — while the
+`.eln` beside it is compiled from source by the *new* Emacs. The two disagree,
+and which one answers depends on load order.
+
+Measured going from 30.2 to 31.1: `define-globalized-minor-mode` renamed the
+variable it generates from `<mode>-set-explicitly` to `<mode>--set-explicitly`,
+so `envrc.elc` defined the old name while the freshly built `envrc.eln` used the
+new one. The symptom was
+`Error running timer: (void-variable envrc-mode--set-explicitly)` — a name that
+appears nowhere in either repository, from a timer, with nothing pointing at the
+package or at the version change.
+
+### What to do
+
+```sh
+emacs --batch -l ~/.emacs.d/init.el --eval '(package-recompile-all)'
+```
+
+Then restart Emacs: a process that already loaded a stale `.elc` keeps it.
+
+### Where the state lands
+
+`~/.emacs.d/elpa/*/*.elc`, and a new `~/.emacs.d/eln-cache/<version>-<hash>/`
+which Emacs fills on its own.
+
+### What proves it worked
+
+No `.elc` claims the old Emacs:
+
+```sh
+head -c 120 ~/.emacs.d/elpa/*/*.elc | grep -o "in Emacs version [0-9.]*" | sort -u
+```
+
+Third-party warnings during the recompile are not failures — ddskk's `ccc.el`
+has no `lexical-binding` cookie and AUCTeX's `bib-cite.el` calls an obsolete
+function, both upstream and both harmless.
+
+### What makes it come undone
+
+Any Emacs version change, which now arrives through `flake.lock` rather than by
+hand — so it can arrive without anyone deciding to change Emacs.

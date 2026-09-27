@@ -4,5 +4,13 @@
   // Inline HTML: allowed for occasional table formatting.
   "MD033": false,
   // First line heading: skill files start with YAML frontmatter.
-  "MD041": false
+  "MD041": false,
+  // Duplicate headings, siblings only. The manual-setup skill prescribes the
+  // same four sub-headings for every entry it holds -- what to do, where the
+  // state lands, what proves it worked, what makes it come undone -- so entries
+  // repeat them by design, and a third entry would otherwise have to invent
+  // synonyms for a shape that is deliberately uniform. `siblings_only` keeps the
+  // rule where it still catches a real mistake: two identical headings under the
+  // same parent.
+  "MD024": { "siblings_only": true }
 }
