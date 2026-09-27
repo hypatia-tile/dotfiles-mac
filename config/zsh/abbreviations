@@ -86,6 +86,21 @@ abbr "tnt"="tmux new-session -s"
 # `vim` until now, under a comment that said Neovim.
 abbr "v"="nvim"
 
+# Emacs is launched through its app bundle on purpose, not through `emacs`.
+# macOS gives a process the bundle identifier of the bundle it was started from,
+# and nixpkgs' bin/emacs is a plain executable sitting outside Emacs.app -- where
+# emacs-plus's was a wrapper that exec'd the bundle's own binary, so `emacs` in a
+# terminal used to carry org.gnu.Emacs and now does not. macSKK keys 直接入力 to
+# the frontmost application's bundle identifier, so a bundle-less Emacs is one it
+# cannot register, and C-j goes to the input method instead of ddskk
+# (ADR 0031; manual-setup step 3). `open -b` also takes file arguments.
+abbr "em"="open -b org.gnu.Emacs"
+
+# The terminal Emacs has no bundle identifier either, and does not need one: the
+# frontmost application there is kitty, whose own registration already covers the
+# chord.
+abbr "en"="emacs -nw"
+
 # System. $ZDOTDIR is expanded by the shell when the line runs, not stored
 # expanded, so this follows ZDOTDIR rather than hardcoding ~/.config/zsh.
 abbr "reload"="source $ZDOTDIR/.zshrc"
