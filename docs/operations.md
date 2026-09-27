@@ -216,14 +216,13 @@ here — it is filed as a GitHub issue (`gh issue list`, ADR 0019).
   so do not reach for it to force a cleanup through. Recovery either way is to
   put the dependencies back — `brew install <the missing formulae>` is enough
   and much cheaper than a source rebuild; `otool -L` on the binary names them.
-- **emacs-plus builds `Emacs.app` in its Cellar, not `/Applications`.** As a
-  formula (not a cask) it does not install a GUI app the way `emacs-app` did,
-  and a symlink into `/Applications` integrates poorly with Spotlight /
-  Launchpad / Dock. Copy the apps in with `bin/link-emacs-plus-app.sh` (it
-  `cp -R`s `Emacs.app` and `Emacs Client.app` from
-  `$(brew --prefix)/opt/emacs-plus@30` over any stale entry). The copy is
-  version-pinned, so **re-run the script after every
-  `brew reinstall emacs-plus@30`**.
+- **Emacs no longer comes from Homebrew** (ADR 0031). It is a Nix package now,
+  and Home Manager places its `Emacs.app` under
+  `~/Applications/Home Manager Apps/`, so nothing has to be copied into
+  `/Applications` and `bin/link-emacs-plus-app.sh` is gone. The emacs-plus
+  examples elsewhere in this section are kept because the Homebrew behaviour
+  they illustrate has not changed, but the formula they name is no longer
+  installed.
 - **Check a formula's real option set before passing `args`.** `brew install`
   aborts on the first invalid option (e.g. `emacs-plus@30` has no
   `--with-native-comp` — it always builds `--with-native-compilation=aot` —

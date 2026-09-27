@@ -19,6 +19,14 @@
       url = "github:oxalica/rust-overlay";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    # Emacs, pinned and patched in its own flake (ADR 0031).
+    #
+    # Deliberately no `inputs.nixpkgs.follows`. That flake applies a patch, so
+    # its Emacs is not in cache.nixos.org and it publishes to a cache of its
+    # own, built by its CI against its own lock. Making it follow this
+    # repository's nixpkgs would build a different derivation, miss that cache
+    # every time, and put a twenty-minute Emacs build back on the machine.
+    emacs-flake.url = "github:hypatia-tile/emacs-flake";
   };
 
   outputs =
@@ -28,6 +36,7 @@
       home-manager,
       neovim-nightly-overlay,
       rust-overlay,
+      emacs-flake,
       ...
     }:
     let
@@ -57,6 +66,7 @@
                 nixpkgs.overlays = [
                   neovim-nightly-overlay.overlays.default
                   rust-overlay.overlays.default
+                  emacs-flake.overlays.default
                 ];
                 home-manager = {
                   useGlobalPkgs = true;

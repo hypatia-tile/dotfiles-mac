@@ -38,6 +38,11 @@
     neovim
     vim
     helix
+    # Emacs 31.1 with the frame-transparency patch, from the emacs-flake
+    # overlay (ADR 0031). Replaces Homebrew's emacs-plus@30. Its configuration
+    # is not managed here: ~/.emacs.d is its own repository and stays a live
+    # checkout.
+    myEmacs
 
     # Development tools
     cargo
