@@ -83,9 +83,11 @@ non-Cocoa apps or Emacs. A `noop:`/action mapping on the chord swallows it.
 
 ## Step 6 — App-internal handling (single-app symptoms)
 
-- **Emacs (GUI)**: `mac-option-modifier = meta` (default in emacs-plus) means
-  Option is **Meta**, so `Option+,` is `M-,` (a command), *not* char input —
-  expected, not a fault. Emacs config is out of scope (ADR 0002).
+- **Emacs (GUI)**: Option is **Meta** by default, so `Option+,` is `M-,` (a
+  command), *not* char input — expected, not a fault. The variable is
+  `ns-option-modifier` on the Cocoa build this machine runs since ADR 0031;
+  `mac-option-modifier` is the macport's name for it and is unbound here.
+  Emacs config is out of scope (ADR 0002).
 - **Terminals**: kitty `macos_option_as_alt`, alacritty `option_as_alt`
   (in scope: `config/kitty/`, `config/alacritty/`).
 - **Browser**: extensions (Vimium/Tridactyl) — affect that browser only, so

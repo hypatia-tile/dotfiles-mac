@@ -123,3 +123,67 @@ declaration cannot hold this key on its own.
 - Removing the cask from `homebrew.nix`: the application goes, the container,
   the dictionary and the input source stay behind.
 - A fresh machine: all four steps, in order.
+
+## Emacs binary cache — the substituter Nix refuses to be told about
+
+Emacs comes from `hypatia-tile/emacs-flake` (ADR 0031), patched, so it is not in
+`cache.nixos.org` and is served from `hypatia-emacs.cachix.org` instead. Without
+that substituter the package still builds — it just takes twenty minutes, on
+this machine, every time the pin moves.
+
+The flake cannot declare it. `substituters` and `trusted-public-keys` are
+restricted settings, this machine's Nix client is not a trusted user
+(`nix store info --json` → `"trusted": 0`), and `/etc/nix/nix.conf` belongs to
+the installer, which ADR 0014 keeps nix-darwin away from (`nix.enable = false`).
+A cache named in the user's `nix.conf`, on the command line, or in the flake's
+`nixConfig` is dropped with at most a warning.
+
+### What to do
+
+```sh
+sudo tee /etc/nix/nix.custom.conf >/dev/null <<'CONF'
+extra-substituters = https://hypatia-emacs.cachix.org
+extra-trusted-public-keys = hypatia-emacs.cachix.org-1:01hQJcXQlX0AFv1UpAL7v9zQNhoDT0bJzoNaAzABEzQ=
+CONF
+sudo tee -a /etc/nix/nix.conf >/dev/null <<'CONF'
+!include /etc/nix/nix.custom.conf
+CONF
+sudo launchctl kickstart -k system/org.nixos.nix-daemon
+```
+
+The values go in their own file and are included, so later additions never
+touch the installer-owned one again. `!include` does not fail when the file is
+missing. The **daemon** performs substitution, so it is the daemon that has to
+be restarted.
+
+`/etc/nix/nix.custom.conf` alone does nothing on the Nix installed here:
+upstream Nix does not read that path — it is a Determinate Nix feature, and
+`determinate-nixd` being present does not make the running Nix Determinate's
+(`nix --version` says plain `Nix`). Nothing warns that a config file went
+unread, which is the whole reason this entry exists.
+
+### Where the state lands
+
+`/etc/nix/nix.custom.conf` and one appended line in `/etc/nix/nix.conf`. Both
+root-owned, outside every payload and every module.
+
+### What proves it worked
+
+```sh
+nix config show | grep -E '^(substituters|trusted-public-keys) '   # the cache is listed
+nix build --dry-run github:hypatia-tile/emacs-flake#default        # "will be fetched"
+```
+
+`--dry-run` printing **nothing** is not success: it means the path is already in
+the local store, so the test proved nothing. `nix store delete` it first, or
+trust only the `substituters` line.
+
+### How it comes undone
+
+- **A Nix upgrade.** `/etc/nix/nix.conf` is installer-owned and can be
+  overwritten, taking the `!include` with it. Emacs is then rebuilt locally
+  instead of fetched — twenty silent minutes, with nothing to say why. Re-check
+  this entry after any Nix upgrade.
+- A fresh machine: both files, then the daemon restart.
+- Becoming a trusted user would make the flake's own configuration work instead,
+  and is deliberately not done: it would let any flake name a substituter.
