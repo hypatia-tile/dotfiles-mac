@@ -1,6 +1,6 @@
 # 0031. Emacs from Nix, pinned in its own flake with its own binary cache
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-09-27
 
 ## Context
