@@ -165,7 +165,22 @@ unread, which is the whole reason this entry exists.
 ### Where the state lands
 
 `/etc/nix/nix.custom.conf` and one appended line in `/etc/nix/nix.conf`. Both
-root-owned, outside every payload and every module.
+root-owned, outside every payload and every module. `nix.conf` holds only the
+`!include`; the values live in `nix.custom.conf` alone.
+
+The same substituter and key are necessarily written in two other places, and
+**nothing checks that the three agree**:
+
+| Where | Why it cannot be shared |
+| --- | --- |
+| `.github/workflows/ci.yml`, the flake job | A GitHub runner configures Nix from the workflow and cannot read this machine |
+| `hypatia-tile/emacs-flake`'s README | Canonical for anyone else consuming that flake, and readable before this repository is checked out |
+
+If the cache is ever recreated, those are the places to change alongside this
+one. Getting it wrong costs a slow build, not a wrong one: a key that does not
+match makes Nix refuse the cache and fall back to building, and signature
+verification is what stops a mismatch admitting anything else. That is why the
+three copies are accepted rather than machinery built to reconcile them.
 
 ### What proves it worked
 
