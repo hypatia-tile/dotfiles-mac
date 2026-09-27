@@ -75,8 +75,13 @@ jobs:
         uses: cachix/install-nix-action@v31
         with:
           extra_nix_config: |
-            extra-substituters = https://nix-community.cachix.org
-            extra-trusted-public-keys = nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs=
+            # Both caches on one line each: a second `extra-substituters` line
+            # in the same file replaces the first rather than adding to it.
+            # hypatia-emacs carries the patched Emacs of ADR 0031, which is not
+            # in cache.nixos.org -- without it this job builds Emacs from source,
+            # AOT pass included, on every closure-affecting PR.
+            extra-substituters = https://nix-community.cachix.org https://hypatia-emacs.cachix.org
+            extra-trusted-public-keys = nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs= hypatia-emacs.cachix.org-1:01hQJcXQlX0AFv1UpAL7v9zQNhoDT0bJzoNaAzABEzQ=
 
       - name: Restore and save Nix store
         if: steps.has-flake.outputs.present == 'true'
