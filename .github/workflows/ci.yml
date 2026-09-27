@@ -75,8 +75,19 @@ jobs:
         uses: cachix/install-nix-action@v31
         with:
           extra_nix_config: |
-            # Both caches on one line each: a second `extra-substituters` line
-            # in the same file replaces the first rather than adding to it.
+            # Both caches on one line each. That is a readability choice and
+            # nothing more: a setting whose name carries the `extra-` prefix
+            # accumulates rather than replacing, so repeated `extra-substituters`
+            # lines would work equally well. An earlier version of this comment
+            # asserted the opposite, without checking.
+            #
+            # Keep prose here free of the names of settings this block does not
+            # set. install-nix-action decides whether to add its own defaults by
+            # looking for a setting's name *as text* in this value, so a comment
+            # merely mentioning one is enough to suppress the default -- which is
+            # how a comment-only edit once disabled nix-command and failed the
+            # flake check.
+            #
             # hypatia-emacs carries the patched Emacs of ADR 0031, which is not
             # in cache.nixos.org -- without it this job builds Emacs from source,
             # AOT pass included, on every closure-affecting PR.
