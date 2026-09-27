@@ -11,8 +11,9 @@ project it was learned in. A note there is read back on its own, long after
 the session that produced it, by someone who no longer remembers the context
 — so it has to stand without one.
 
-The repository is at `~/ghqrepo/github.com/hypatia-tile/scrap`. If it is not
-there, `ghq get hypatia-tile/scrap`. **It is public.**
+The repository is at `"$(ghq root)/github.com/hypatia-tile/scrap"` — resolve
+the path with `ghq root` rather than assuming one. If it is not there,
+`ghq get hypatia-tile/scrap`. **It is public.**
 
 ## What belongs here
 
