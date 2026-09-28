@@ -26,7 +26,9 @@
 # `docker-compose`, a binary modules/home/packages.nix deliberately does not
 # install, and when ten kubectl abbreviations named one this machine never had.
 #
-# Usage: bin/check-abbr.sh [--commands]
+# Usage: nix develop -c bin/check-abbr.sh [--commands] [--applies] [FILE...]
+#        (the contract is in bin/lib/check.sh; FILE only decides whether the
+#        whole check runs)
 # Exit:  0 sound; 1 a check failed; 2 the plugin could not be obtained
 #
 # The plugin comes from the Home Manager profile when this runs on the machine,
@@ -35,23 +37,27 @@
 # which modules/darwin/nix.nix allows for the system but a bare `nix build` does
 # not, hence NIXPKGS_ALLOW_UNFREE and --impure. $ABBR_PLUGIN overrides both.
 set -euo pipefail
+# shellcheck source=lib/check.sh source-path=SCRIPTDIR
+. "$(dirname "$0")/lib/check.sh"
 
 ABBREVIATIONS=config/zsh/abbreviations
 MODULE=config/zsh/modules/abbr.zsh
 PAYLOADS=modules/payloads.tsv
 
 check_commands=false
-case "${1:-}" in
-  "") ;;
-  --commands) check_commands=true ;;
-  *) echo "check-abbr: unknown option '$1' (expected --commands)" >&2; exit 2 ;;
-esac
+if [[ ${1-} == --commands ]]; then
+  check_commands=true
+  shift
+fi
+
+scope "$ABBREVIATIONS" "$MODULE" "$PAYLOADS"
+check_gate "$@"
 
 fail=0
 err() { echo "error: $*" >&2; fail=1; }
 tab=$'\t'
 
-[[ -f $ABBREVIATIONS ]] || { echo "check-abbr: $ABBREVIATIONS not found — run from the checkout root" >&2; exit 2; }
+[[ -f $ABBREVIATIONS ]] || { echo "check-abbr: $ABBREVIATIONS not found" >&2; exit 2; }
 
 # 1 & 2. Structure and uniqueness, by line number so the message is actionable.
 declared=0
@@ -102,7 +108,9 @@ if [[ -z $plugin ]]; then
   fi
 fi
 [[ -f $plugin ]] || { echo "check-abbr: $plugin is not a file" >&2; exit 2; }
-command -v zsh >/dev/null 2>&1 || { echo "check-abbr: zsh not found" >&2; exit 2; }
+# Resolved here because env looks a bare name up in the PATH it sets below,
+# which holds only the system directories: the devShell's zsh is not in them.
+zsh=$(command -v zsh) || { echo "check-abbr: zsh not found" >&2; exit 2; }
 
 sandbox=$(mktemp -d)
 trap 'rm -rf "$sandbox"' EXIT
@@ -124,7 +132,7 @@ env -i \
   PATH=/usr/bin:/bin \
   ABBR_USER_ABBREVIATIONS_FILE="$sandbox/config/zsh/abbreviations" \
   PLUGIN="$plugin" \
-  zsh -f -c 'source $PLUGIN; abbr list' > "$loaded" 2>"$sandbox/stderr" || {
+  "$zsh" -f -c 'source $PLUGIN; abbr list' > "$loaded" 2>"$sandbox/stderr" || {
     err "loading $ABBREVIATIONS failed:"
     sed 's/^/    /' "$sandbox/stderr" >&2
   }
