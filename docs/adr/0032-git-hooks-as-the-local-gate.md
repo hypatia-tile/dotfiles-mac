@@ -1,6 +1,6 @@
 # 0032. Run the verification gates as Git hooks, from checks shared with CI
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-09-28
 
 ## Context
