@@ -22,12 +22,9 @@ land as dedicated commits (ADR 0011), so a check or build must never mutate the
 lock — a lock modification here is itself a failure. Steps 1–2 mirror the CI
 lint jobs and are cheap, so run them first to fail fast.
 
-1. **Nix format & lint** (mirrors the CI *Nix format & lint* job). Skip if the
-   change touches no `*.nix`.
-   - `find . -name '*.nix' -not -path './.git/*' -print0 | xargs -0 nix run nixpkgs#nixfmt-rfc-style -- --check`
-     (to fix: rerun without `--check`)
-   - `nix run nixpkgs#statix -- check .`
-   - `nix run nixpkgs#deadnix -- --fail .`
+1. **Nix format & lint** (the CI *Nix format & lint* job runs the same
+   script). Skip if the change touches no `*.nix`.
+   - `nix develop --no-update-lock-file -c bin/check-nix.sh`
 2. **Docs & commit hygiene** (mirrors the CI *Docs & commit hygiene* job).
    - `nix run nixpkgs#markdownlint-cli2 -- '**/*.md'` — the nixpkgs
      markdownlint is newer than CI's pinned `markdownlint-cli2-action@v19`, so

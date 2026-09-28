@@ -122,33 +122,14 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Detect nix files
-        id: has-nix
-        run: |
-          if find . -name '*.nix' -not -path './.git/*' | grep -q .; then
-            echo "present=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "present=false" >> "$GITHUB_OUTPUT"
-            echo "No .nix files yet - skipping (bootstrap phase)."
-          fi
-
       - name: Install Nix
-        if: steps.has-nix.outputs.present == 'true'
         uses: cachix/install-nix-action@v31
 
-      - name: nixfmt (check only)
-        if: steps.has-nix.outputs.present == 'true'
-        run: |
-          find . -name '*.nix' -not -path './.git/*' -print0 \
-            | xargs -0 nix run nixpkgs#nixfmt-rfc-style -- --check
-
-      - name: statix
-        if: steps.has-nix.outputs.present == 'true'
-        run: nix run nixpkgs#statix -- check .
-
-      - name: deadnix
-        if: steps.has-nix.outputs.present == 'true'
-        run: nix run nixpkgs#deadnix -- --fail .
+      - name: nixfmt, deadnix, statix
+        # The commands live in the script, which hooks and preflight run too;
+        # this job only supplies the devShell that pins their versions
+        # (ADR 0032). No file arguments: CI checks the whole tree.
+        run: nix develop --no-update-lock-file -c bin/check-nix.sh
 
   zsh-syntax:
     name: zsh payload syntax
