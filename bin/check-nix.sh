@@ -10,7 +10,7 @@
 #        (the contract is in bin/lib/check.sh)
 # Fix:   nix develop -c nixfmt <file>...
 set -euo pipefail
-# shellcheck source=bin/lib/check.sh
+# shellcheck source=lib/check.sh source-path=SCRIPTDIR
 . "$(dirname "$0")/lib/check.sh"
 
 scope '*.nix'

@@ -1,0 +1,4 @@
+# CI's action-shellcheck checks one file at a time without -x, so a script
+# that sources bin/lib/check.sh fails on SC1091 unless following sources is
+# enabled here. Following them also lets shellcheck check the helper's use.
+external-sources=true
