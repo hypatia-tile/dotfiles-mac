@@ -310,10 +310,22 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Install Nix
+        # For the devShell that pins the tools the check scripts run with
+        # (ADR 0032). The scripts hold the commands; hooks and preflight run
+        # them too. No file arguments: CI checks the whole tree.
+        uses: cachix/install-nix-action@v31
+
       - name: markdownlint
-        uses: DavidAnson/markdownlint-cli2-action@v19
-        with:
-          globs: '**/*.md'
+        run: nix develop --no-update-lock-file -c bin/check-markdown.sh
+
+      - name: shellcheck
+        run: nix develop --no-update-lock-file -c bin/check-shell.sh
+
+      - name: Stray closing tags
+        # An agent's file-writing tool occasionally appends `</content>` to a
+        # file it creates. Until now only preflight looked for it.
+        run: bin/check-stray-tags.sh
 
       - name: commitlint
         uses: wagoid/commitlint-github-action@v6
@@ -427,11 +439,3 @@ jobs:
             exit 0
           fi
           python3 .github/scripts/pins-ride-along.py "$BASE" "$lock"
-
-      - name: shellcheck
-        uses: ludeeus/action-shellcheck@2.0.0
-        with:
-          # config/ holds vendored dotfile payloads (zsh scripts among them);
-          # shellcheck does not support zsh (SC1071), and payloads are data,
-          # not repository scripts.
-          ignore_paths: .git config

@@ -14,9 +14,10 @@
 # Exit: 0 clean; 1 a finding (or, for --applies, not in scope); 2 the check
 # could not run.
 #
-# A script sources this, declares `scope PATTERN...`, defines `run_check`, and
-# ends with `check_main "$@"`. Patterns are `case` patterns matched against the
-# whole path, so `*` crosses `/`. run_check receives the in-scope FILEs that
+# A script sources this, declares `scope PATTERN...` (and optionally
+# `exclude PATTERN...`, which wins), defines `run_check`, and ends with
+# `check_main "$@"`. Patterns are `case` patterns matched against the whole
+# path, so `*` crosses `/`. run_check receives the in-scope FILEs that
 # still exist; CHECK_ALL says whether it was asked for everything instead, and
 # a whole-tree check ignores both. Each tool runs through `step`, which records
 # a failure and carries on, so one run reports every finding.
@@ -24,14 +25,20 @@
 cd "$(dirname "${BASH_SOURCE[0]}")/../.." || exit 2
 
 CHECK_SCOPE=()
+CHECK_EXCLUDE=()
 # shellcheck disable=SC2034 # read by the sourcing script's run_check
 CHECK_ALL=false
 CHECK_FAILED=0
 
 scope() { CHECK_SCOPE+=("$@"); }
+exclude() { CHECK_EXCLUDE+=("$@"); }
 
 in_scope() {
   local pat
+  for pat in ${CHECK_EXCLUDE[@]+"${CHECK_EXCLUDE[@]}"}; do
+    # shellcheck disable=SC2254 # the pattern is meant to match as a glob
+    case $1 in $pat) return 1 ;; esac
+  done
   for pat in "${CHECK_SCOPE[@]}"; do
     # shellcheck disable=SC2254 # the pattern is meant to match as a glob
     case $1 in $pat) return 0 ;; esac
@@ -63,11 +70,12 @@ step() {
 }
 
 # tracked_files PATTERN...: tracked and untracked-but-not-ignored files that
-# exist, which is what "everything" means for a file-level check.
+# exist and are in scope, which is what "everything" means for a file-level
+# check. PATTERNs are git pathspecs; '*' is every file.
 tracked_files() {
   local f
   git ls-files --cached --others --exclude-standard -- "$@" | sort -u | while IFS= read -r f; do
-    [[ -e $f ]] && printf '%s\n' "$f"
+    [[ -e $f ]] && in_scope "$f" && printf '%s\n' "$f"
   done
 }
 

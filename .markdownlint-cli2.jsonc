@@ -16,5 +16,8 @@
   // startup check; this repository's prose lint is not among them, and
   // reformatting imported files would make the import unfaithful to the
   // archived original.
-  "ignores": ["result/**", "result-*/**", "config/nvim/**"]
+  //
+  // .codex/skills holds symlinks to .claude/skills, so linting it reports every
+  // project skill's findings twice.
+  "ignores": ["result/**", "result-*/**", "config/nvim/**", ".codex/skills/**"]
 }

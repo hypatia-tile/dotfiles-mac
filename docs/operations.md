@@ -142,10 +142,10 @@ merging is always manual, and reviewing one is the `lock-review` skill.
   Pushes to `main` always build (cache warmth).
 - **shellcheck ignores `config/`** — vendored payloads include zsh scripts,
   which shellcheck cannot parse (SC1071); they are data, not repo scripts.
-- **Local markdownlint may be newer than CI's.** CI pins
-  markdownlint-cli2-action@v19 (markdownlint-cli2 0.17.2); running the
-  nixpkgs `markdownlint-cli2` locally can raise rules CI does not have
-  (e.g. MD060) — check rule availability before "fixing" other files.
+  `bin/check-shell.sh` holds the exclusion.
+- **Linters run at the version `flake.lock` pins**, locally and in CI alike,
+  through the check devShell (ADR 0032). A new rule therefore arrives with a
+  lock update, not with a change of machine.
 - Transient GitHub "Service Unavailable" failures in job *setup* are
   infrastructure, not code: rerun the failed job.
 

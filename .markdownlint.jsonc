@@ -12,5 +12,9 @@
   // synonyms for a shape that is deliberately uniform. `siblings_only` keeps the
   // rule where it still catches a real mistake: two identical headings under the
   // same parent.
-  "MD024": { "siblings_only": true }
+  "MD024": { "siblings_only": true },
+  // Table column style. It arrived with the markdownlint that the check
+  // devShell pins (ADR 0032) and flags 181 tables written before it, four ADRs
+  // among them — and an accepted ADR is never edited.
+  "MD060": false
 }

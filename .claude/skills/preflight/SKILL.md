@@ -26,22 +26,14 @@ lint jobs and are cheap, so run them first to fail fast.
    script). Skip if the change touches no `*.nix`.
    - `nix develop --no-update-lock-file -c bin/check-nix.sh`
 2. **Docs & commit hygiene** (mirrors the CI *Docs & commit hygiene* job).
-   - `nix run nixpkgs#markdownlint-cli2 -- '**/*.md'` — the nixpkgs
-     markdownlint is newer than CI's pinned `markdownlint-cli2-action@v19`, so
-     it raises rules CI does not have (notably **MD060**). Treat MD060 as a
-     local-only false positive; a step is failing only on rules CI's version
-     would also raise.
-   - `git ls-files '*.sh' | grep -v '^config/' | xargs nix run nixpkgs#shellcheck --`
-     — the same job runs `ludeeus/action-shellcheck`, which skips `.git` and
-     `config` (vendored dotfile payloads, zsh among them, which shellcheck
-     cannot parse — SC1071). Every repository script is `bin/*.sh`, so that
-     listing is the whole set. Skip only if the change touches no shell.
+   - `nix develop --no-update-lock-file -c bin/check-markdown.sh`
+   - `nix develop --no-update-lock-file -c bin/check-shell.sh`
+   - `bin/check-stray-tags.sh` — the file-writing tool occasionally appends a
+     stray closing tag to a file it creates, which then breaks Nix evaluation
+     or lint.
    - Commit messages must be Conventional Commits (CI runs commitlint against
      `commitlint.config.mjs`):
      `nix run nixpkgs#commitlint -- --from origin/main --to HEAD`
-   - The file-writing tool occasionally appends a stray closing tag to a file
-     it creates, which then breaks Nix evaluation or lint. Scan the changed
-     tree: `grep -rn '</content>' .`
    - `bin/project.sh --validate` — the declaration is one the projector can
      act on: three fields per line, a source that exists, a known mode, and no
      self-dependency. It reads no `$HOME` path, so it is safe to run at any

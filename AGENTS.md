@@ -96,5 +96,5 @@ Lessons that cost something to learn and are not tied to one procedure.
   applies this to key interception specifically.
 - **Check the tail of files you write.** The file-writing tool occasionally
   appends a stray closing tag (e.g. `</content>`) to a file it creates, which
-  then breaks Nix evaluation or lint. `grep -rn '</content>' .` over the
-  changed tree catches it; `preflight` includes the scan.
+  then breaks Nix evaluation or lint. `bin/check-stray-tags.sh` catches it,
+  and CI and `preflight` run it.
