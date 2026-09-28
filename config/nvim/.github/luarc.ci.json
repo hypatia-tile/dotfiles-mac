@@ -3,8 +3,5 @@
     "diagnostics.globals": [
         "vim"
     ],
-    "workspace.checkThirdParty": false,
-    "diagnostics.disable": [
-        "undefined-field"
-    ]
+    "workspace.checkThirdParty": false
 }
