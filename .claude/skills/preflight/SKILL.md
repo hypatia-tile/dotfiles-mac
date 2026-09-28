@@ -87,11 +87,11 @@ lint jobs and are cheap, so run them first to fail fast.
    `./result`'s home-files). For each target that already exists in `$HOME`
    as a regular file or foreign symlink, report it. Verify
    `backupFileExtension` is configured before calling this step passed.
-8. **Secret scan**
-   `gitleaks detect --source . --no-banner` if gitleaks is available;
-   otherwise grep the working tree for obvious patterns
-   (`BEGIN .* PRIVATE KEY`, `ghp_`, `github_pat_`, `AKIA[0-9A-Z]{16}`,
-   `oauth_token`).
+8. **Secret scan** (mirrors the CI *Secret scan* job).
+   - `nix develop --no-update-lock-file -c bin/check-secrets.sh` — every
+     commit HEAD reaches.
+   - It reads commits, so a change not yet committed is not in it: stage the
+     change and run `nix develop --no-update-lock-file -c bin/check-secrets.sh --staged`.
 
 ## Scope shortcuts
 
