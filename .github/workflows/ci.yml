@@ -330,81 +330,19 @@ jobs:
       - name: commitlint
         uses: wagoid/commitlint-github-action@v6
 
+      # The four checks below each explain themselves in their script, and each
+      # reads its scope from the files it guards. They run here, in the
+      # always-on job, because what they guard trips no path filter (#89, #91).
       - name: Paths the nvim projection hook depends on still exist
-        # The hook returns early when it cannot find what it names, which is
-        # correct for another repository and invisible when the path is simply
-        # stale — it shipped dead twice that way (#87). This runs in the
-        # always-on job on purpose: the rename that broke it last time was
-        # under modules/, which does not trigger the nvim filter.
-        run: |
-          set -eu
-          rc=0
-          hook=config/nvim/lua/autocmds.lua
-          # Every `root .. "/..."` in the hook is a path it expects to find.
-          # A for-loop rather than a pipeline: rc set inside a `while read`
-          # pipeline is lost with the subshell.
-          for p in $(grep -oE 'root \.\. "/[^"]+"' "$hook" | sed -e 's/.*"\///' -e 's/"$//' | sort -u); do
-            if [ -e "$p" ]; then
-              echo "ok      $p"
-            else
-              echo "MISSING $p — the hook names it and it is not there"
-              rc=1
-            fi
-          done
-          exit "$rc"
+        run: bin/check-nvim-hook-paths.sh
 
       - name: Payload declaration is one the projector can act on
-        # `--validate` reads modules/payloads.tsv and the sources it names, and
-        # nothing else — no $HOME, no manifest — which is what makes it
-        # runnable here rather than only on the machine.
-        #
-        # What it buys is earliness (#91). The activation hook runs *after*
-        # linkGeneration, so a projector that cannot run fails in the window
-        # where Home Manager has released the payload and bin/project.sh has
-        # not yet placed it, leaving it neither linked nor placed. Every
-        # condition --validate rejects is one that would land there; caught on
-        # the pull request, it is caught while the old placement is intact.
-        #
-        # Always-on rather than gated, for #89's reason: modules/payloads.tsv
-        # matches no filter in the `changes` job, and `config/**` reaches only
-        # the zsh and nvim filters, so a gated version would be blind to most
-        # of what it checks.
-        run: bin/project.sh --validate
+        run: bin/check-payloads.sh
 
       - name: Skill tree is sound
-        # A skill whose frontmatter has no description is never surfaced to the
-        # model, and one whose `name` disagrees with its directory is invoked
-        # under a spelling nothing stores. Both are silent: the skill is simply
-        # never used, and no run-time error says so.
-        #
-        # Also fails a skill missing from the `.gitignore` allowlist. Those
-        # work on the machine that wrote them and are absent from every clone,
-        # with `git status` clean throughout — CLAUDE.md names the trap and
-        # this is what makes it fire.
-        #
-        # Covers the user-scope tree in config/agents/skills too (ADR 0028):
-        # each skill needs both link lines in modules/payloads.tsv, or it
-        # reaches one agent and not the other, again without an error.
-        #
-        # And the .codex/skills mirror: Codex reads a repository's skills from
-        # .codex/skills and .agents/skills, never from .claude/skills, so a
-        # project skill with no link there is a procedure Claude Code follows
-        # and Codex does not know exists.
-        #
-        # Always-on for the same reason as the two checks above: `.claude/`
-        # matches no path filter, so a gated version would be blind exactly
-        # when a skill changed (#89, #91).
         run: bin/check-skills.sh
 
       - name: Agent guard decides as expected
-        # bin/agent-guard.sh is the only enforcement of the AGENTS.md hard rules
-        # for Codex and cursor-agent (ADR 0027), so a regression in it is a
-        # guardrail silently gone for every agent at once. The cases cover both
-        # directions: calls it must refuse, and prose that merely names `sudo`
-        # or `git push` and must not be refused.
-        #
-        # Always-on: the guard and its registrations live under bin/ and
-        # .claude/ and .codex/, none of which trips a path filter.
         run: bin/check-agent-guard.sh
 
       - name: Plugin pins do not ride along with other changes

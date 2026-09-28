@@ -34,31 +34,11 @@ lint jobs and are cheap, so run them first to fail fast.
    - Commit messages must be Conventional Commits (CI runs commitlint against
      `commitlint.config.mjs`):
      `nix run nixpkgs#commitlint -- --from origin/main --to HEAD`
-   - `bin/project.sh --validate` — the declaration is one the projector can
-     act on: three fields per line, a source that exists, a known mode, and no
-     self-dependency. It reads no `$HOME` path, so it is safe to run at any
-     point and says nothing about drift. Run it even when the change looks
-     unrelated: it is in CI's always-on job because `modules/payloads.tsv`
-     matches no path filter (#89, #91).
-   - `bin/check-skills.sh` — every skill under `.claude/skills` has a
-     `SKILL.md` whose frontmatter `name` matches its directory and whose
-     `description` is non-empty, is tracked rather than dropped by the
-     `.gitignore` allowlist, and is mirrored by a tracked
-     `.codex/skills/<name>` symlink, which is the only way Codex sees it. All
-     of those fail silently: the skill is never surfaced, never leaves the
-     machine that wrote it, or reaches one agent and not the other. Always-on
-     for the same reason as the line above — `.claude/` matches no path
-     filter.
-   - `bin/check-agent-guard.sh` — the pre-tool-use guard still refuses what the
-     `AGENTS.md` hard rules forbid and still allows prose that only names
-     them (ADR 0027). A regression here removes a guardrail from every agent
-     at once, so it runs on every change.
-   - Paths the nvim projection hook depends on still exist (#87) — the hook
-     returns early when it cannot find what it names, which is invisible when
-     the path is simply stale. Always-on in CI for the same reason: the rename
-     that broke it last time was under `modules/`, which does not trip the
-     nvim filter. Reproduce the hygiene job's loop:
-     `hook=config/nvim/lua/autocmds.lua; for p in $(grep -oE 'root \.\. "/[^"]+"' "$hook" | sed -e 's/.*"\///' -e 's/"$//' | sort -u); do [ -e "$p" ] || { echo "MISSING $p"; exit 1; }; done`
+   - `bin/check-payloads.sh`, `bin/check-skills.sh`,
+     `bin/check-agent-guard.sh` and `bin/check-nvim-hook-paths.sh` — each
+     script's header says what it guards. Run them without arguments, even
+     when the change looks unrelated: what they guard trips no CI path filter,
+     which is why they sit in CI's always-on job (#89, #91).
 3. **Payload content checks** (mirrors the CI *zsh payload syntax* and *nvim*
    jobs). Run the one matching what changed; skip if no payload changed.
    - zsh: `for f in config/zshenv config/zsh/.zshrc config/zsh/.zprofile config/zsh/.zshenv config/zsh/abbreviations config/zsh/modules/*.zsh; do zsh -n "$f" || echo "FAIL $f"; done`

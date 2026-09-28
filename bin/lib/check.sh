@@ -9,18 +9,22 @@
 # No FILE means everything, so a caller that loses its file list runs more,
 # never less. FILEs are repository-relative, as git and lefthook print them. A
 # FILE that no longer exists still counts as in scope: deleting a file can
-# break what remains.
+# break what remains. The script itself and this file are always in scope, and
+# a change to either checks everything: a check that changed must run.
 #
 # Exit: 0 clean; 1 a finding (or, for --applies, not in scope); 2 the check
 # could not run.
 #
 # A script sources this, declares `scope PATTERN...` (and optionally
 # `exclude PATTERN...`, which wins), defines `run_check`, and ends with
-# `check_main "$@"`. Patterns are `case` patterns matched against the whole
+# `check_main "$@"` — or, for a whole-tree check, calls `check_gate "$@"`
+# (below) instead. Patterns are `case` patterns matched against the whole
 # path, so `*` crosses `/`. run_check receives the in-scope FILEs that
 # still exist; CHECK_ALL says whether it was asked for everything instead, and
 # a whole-tree check ignores both. Each tool runs through `step`, which records
-# a failure and carries on, so one run reports every finding.
+# a failure and carries on, so one run reports every finding. `step` runs its
+# command as a condition, where errexit is off: a function given to it must
+# return its own status.
 
 cd "$(dirname "${BASH_SOURCE[0]}")/../.." || exit 2
 
@@ -45,6 +49,8 @@ in_scope() {
   done
   return 1
 }
+
+is_self() { [[ $1 == "bin/$(basename "$0")" || $1 == bin/lib/check.sh ]]; }
 
 # need TOOL...: the tools come from the check devShell, not from the machine.
 need() {
@@ -79,9 +85,14 @@ tracked_files() {
   done
 }
 
-check_main() {
+# check_gate "$@": the argument half of the contract. It exits for --applies,
+# a usage error, or nothing in scope; otherwise it returns, with the in-scope
+# FILEs in CHECK_FILES (empty when CHECK_ALL). A whole-tree check calls it and
+# then runs its body at the top level, where errexit applies, ending in its own
+# exit status.
+CHECK_FILES=()
+check_gate() {
   local applies=false matched=false f
-  local files=()
 
   if [[ ${1-} == --applies ]]; then
     applies=true
@@ -101,17 +112,27 @@ check_main() {
   else
     for f in "$@"; do
       f=${f#./}
+      if is_self "$f"; then
+        matched=true
+        CHECK_ALL=true
+        continue
+      fi
       in_scope "$f" || continue
       matched=true
-      [[ -e $f ]] && files+=("$f")
+      [[ -e $f ]] && CHECK_FILES+=("$f")
     done
     if $applies; then
       $matched && exit 0
       exit 1
     fi
     $matched || exit 0
+    $CHECK_ALL && CHECK_FILES=()
   fi
+  return 0
+}
 
-  run_check "${files[@]}"
+check_main() {
+  check_gate "$@"
+  run_check ${CHECK_FILES[@]+"${CHECK_FILES[@]}"}
   exit "$CHECK_FAILED"
 }

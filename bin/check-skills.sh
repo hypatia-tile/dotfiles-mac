@@ -40,11 +40,18 @@
 # copied rather than consumed as a flake input: an input would gate every fix
 # behind a lock bump (ADR 0011).
 #
-# Usage: bin/check-skills.sh             validate both trees and their wiring
-#        bin/check-skills.sh <dir>...    validate only the given trees' skills
+# Usage: bin/check-skills.sh [--applies] [FILE...]
+#        (the contract is in bin/lib/check.sh; any in-scope FILE validates
+#        both trees and their wiring in full)
 # Exit:  0 sound; 1 a skill is broken, untracked, undeclared, duplicated or
 #        unmirrored
 set -euo pipefail
+# shellcheck source=lib/check.sh source-path=SCRIPTDIR
+. "$(dirname "$0")/lib/check.sh"
+
+scope '.claude/skills/*' '.codex/skills/*' 'config/agents/skills/*' \
+  modules/payloads.tsv .gitignore
+check_gate "$@"
 
 PROJECT_ROOT=.claude/skills
 USER_ROOT=config/agents/skills
@@ -127,15 +134,6 @@ check_tree() {
   [[ $found -gt 0 ]] || err "no skills found under $root"
   total=$((total + found))
 }
-
-if [[ $# -gt 0 ]]; then
-  for root in "$@"; do check_tree "$root"; done
-  [[ $fail -eq 0 ]] || exit 1
-  echo "check-skills: $total skills validated"
-  exit 0
-fi
-
-cd "$(dirname "$0")/.."
 
 check_tree "$PROJECT_ROOT"
 project_names=$names
