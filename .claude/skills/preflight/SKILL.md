@@ -31,9 +31,10 @@ lint jobs and are cheap, so run them first to fail fast.
    - `bin/check-stray-tags.sh` — the file-writing tool occasionally appends a
      stray closing tag to a file it creates, which then breaks Nix evaluation
      or lint.
-   - Commit messages must be Conventional Commits (CI runs commitlint against
-     `commitlint.config.mjs`):
-     `nix run nixpkgs#commitlint -- --from origin/main --to HEAD`
+   - `nix develop --no-update-lock-file -c bin/check-commits.sh` — the
+     branch's commits are Conventional Commits. CI also checks the pull
+     request's title, which becomes the squash commit's subject when the branch
+     has more than one commit.
    - `bin/check-payloads.sh`, `bin/check-skills.sh`,
      `bin/check-agent-guard.sh` and `bin/check-nvim-hook-paths.sh` — each
      script's header says what it guards. Run them without arguments, even

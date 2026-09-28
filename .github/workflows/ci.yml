@@ -328,7 +328,20 @@ jobs:
         run: bin/check-stray-tags.sh
 
       - name: commitlint
-        uses: wagoid/commitlint-github-action@v6
+        # On a pull request: the branch's commits, not the merge commit CI
+        # checks out, and the title, which becomes the squash commit's subject
+        # when the branch has more than one commit. On main: what landed.
+        # The title goes through env, never into the script text.
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          nix develop --no-update-lock-file -c bin/check-commits.sh "$BASE" "$HEAD"
+          if [ "$EVENT" = pull_request ]; then
+            printf '%s\n' "$TITLE" | nix develop --no-update-lock-file -c bin/check-commits.sh --message -
+          fi
 
       # The four checks below each explain themselves in their script, and each
       # reads its scope from the files it guards. They run here, in the
