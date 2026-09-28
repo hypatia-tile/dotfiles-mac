@@ -8,15 +8,23 @@
 # that mention `sudo` or `git push` by name. Those cases are here so a looser
 # pattern cannot land without failing.
 #
-# Usage: bin/check-agent-guard.sh
+# Usage: bin/check-agent-guard.sh [--applies] [FILE...]
+#        (the contract is in bin/lib/check.sh; any in-scope FILE runs every
+#        case)
 # Exit:  0 every case decided as expected; 1 otherwise
 #
 # The cases below are literal command strings as an agent would send them, so
 # `$(…)` and `~` must reach the guard unexpanded.
 # shellcheck disable=SC2016,SC2088
 set -euo pipefail
+# shellcheck source=lib/check.sh source-path=SCRIPTDIR
+. "$(dirname "$0")/lib/check.sh"
 
-guard="$(cd "$(dirname "$0")" && pwd)/agent-guard.sh"
+scope bin/agent-guard.sh .claude/settings.json .codex/hooks.json \
+  modules/common.nix '.cursor/*'
+check_gate "$@"
+
+guard="$PWD/bin/agent-guard.sh"
 fail=0
 total=0
 
@@ -144,7 +152,7 @@ expect allow "comment mentioning sudo"    "$(bash_call 'ls # not sudo')"
 # --- registrations (ADR 0027) ------------------------------------------------
 # The cases above prove the script decides correctly; these prove the agents
 # will actually run it. Each is a measured requirement rather than taste.
-root="$(cd "$(dirname "$0")/.." && pwd)"
+root=$PWD
 registered() { jq -e --arg c "$2" '[.. | objects | select(.type? == "command") | .command] | index($c) != null' "$1" >/dev/null 2>&1; }
 
 total=$((total + 1))
