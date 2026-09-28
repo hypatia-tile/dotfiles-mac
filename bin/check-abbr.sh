@@ -108,7 +108,9 @@ if [[ -z $plugin ]]; then
   fi
 fi
 [[ -f $plugin ]] || { echo "check-abbr: $plugin is not a file" >&2; exit 2; }
-command -v zsh >/dev/null 2>&1 || { echo "check-abbr: zsh not found" >&2; exit 2; }
+# Resolved here because env looks a bare name up in the PATH it sets below,
+# which holds only the system directories: the devShell's zsh is not in them.
+zsh=$(command -v zsh) || { echo "check-abbr: zsh not found" >&2; exit 2; }
 
 sandbox=$(mktemp -d)
 trap 'rm -rf "$sandbox"' EXIT
@@ -130,7 +132,7 @@ env -i \
   PATH=/usr/bin:/bin \
   ABBR_USER_ABBREVIATIONS_FILE="$sandbox/config/zsh/abbreviations" \
   PLUGIN="$plugin" \
-  zsh -f -c 'source $PLUGIN; abbr list' > "$loaded" 2>"$sandbox/stderr" || {
+  "$zsh" -f -c 'source $PLUGIN; abbr list' > "$loaded" 2>"$sandbox/stderr" || {
     err "loading $ABBREVIATIONS failed:"
     sed 's/^/    /' "$sandbox/stderr" >&2
   }
