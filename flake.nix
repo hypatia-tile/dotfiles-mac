@@ -85,5 +85,35 @@
     in
     {
       darwinConfigurations = lib.listToAttrs (map mkHost hosts);
+
+      # The tools the verification gates run with, pinned by flake.lock
+      # (ADR 0032). Hooks, preflight and CI all run inside this shell, so a
+      # linter's version moves only when the lock does. x86_64-linux is the
+      # Ubuntu runners.
+      devShells = lib.genAttrs [ "aarch64-darwin" "x86_64-linux" ] (
+        system:
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+        in
+        {
+          default = pkgs.mkShellNoCC {
+            packages = with pkgs; [
+              commitlint
+              deadnix
+              gitleaks
+              jq
+              lefthook
+              lua-language-server
+              markdownlint-cli2
+              nixfmt
+              python3
+              shellcheck
+              statix
+              stylua
+              zsh
+            ];
+          };
+        }
+      );
     };
 }
