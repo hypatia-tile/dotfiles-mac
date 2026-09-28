@@ -7,7 +7,17 @@
 #
 # Limits: lazy-loaded plugins triggered by events, keys, or filetypes are
 # not exercised — a clean check proves startup, not the whole config.
+#
+# --restore stops after the restore, for a check that needs the plugins on
+# disk but not the startup (the LuaLS typecheck).
 set -eu
+
+restore_only=false
+case "${1-}" in
+  "") ;;
+  --restore) restore_only=true ;;
+  *) echo "usage: $0 [--restore]" >&2; exit 2 ;;
+esac
 
 repo=$(cd "$(dirname "$0")/.." && pwd)
 link="${XDG_CONFIG_HOME:-$HOME/.config}/nvim-dev"
@@ -25,6 +35,10 @@ if ! restore_out=$(NVIM_APPNAME=nvim-dev nvim --headless "+Lazy! restore" +qa 2>
   printf '%s\n' "$restore_out" >&2
   echo "check: FAILED ('Lazy! restore' exited non-zero)" >&2
   exit 1
+fi
+if $restore_only; then
+  echo "check: plugins restored"
+  exit 0
 fi
 
 # 2. Plain startup: anything printed to stderr is a finding.

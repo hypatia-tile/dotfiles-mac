@@ -50,15 +50,12 @@ lint jobs and are cheap, so run them first to fail fast.
      and compares what arrived with what is declared. `--commands` is the part
      CI cannot run: it asserts every expansion starts with something installed
      *here*, which is what `dc='docker-compose'` violated for months.
-   - nvim: `nix run nixpkgs#stylua -- --check config/nvim/lua/ config/nvim/after/ config/nvim/ftplugin/ config/nvim/init.lua`,
-     and `config/nvim/bin/check` for a headless startup (slow on a cold plugin
+   - nvim: `nix develop --no-update-lock-file -c bin/check-stylua.sh`, and
+     `nix develop .#nvim --no-update-lock-file -c bin/check-nvim.sh` for a
+     headless startup with the Neovim the machine runs (slow on a cold plugin
      cache; it restores to `lazy-lock.json`).
-   - nvim LuaLS typecheck — CI's `nvim-typecheck` job. Locally: restore
-     plugins under `NVIM_APPNAME=nvim-dev` (same as `config/nvim/bin/check`),
-     inject `workspace.library` into `.luarc.json` from
-     `config/nvim/.github/luarc.ci.json` the way the job does, then
-     `lua-language-server --check . --checklevel Warning`. Skip only when
-     nothing under `config/nvim/` changed.
+   - nvim LuaLS typecheck:
+     `nix develop .#nvim --no-update-lock-file -c bin/check-luals.sh`.
    These are the steps that carry the weight for a payload change, because
    step 5 cannot see one — see the note there.
 
@@ -107,10 +104,13 @@ build:
 
 A change that only edits the workflow therefore still needs the flake check
 and the closure build locally; restating the filter as "`*.nix` or
-`flake.lock`" was wrong and is what #112 caught. Step 3 depends on
-`config/zsh/**`, `config/zshenv`, `bin/check-zsh.sh`, `bin/check-abbr.sh`,
-`bin/lib/check.sh`, `modules/payloads.tsv`, or `config/nvim/**` (CI's *zsh* /
-*nvim* filters also include `ci.yml`). `config/**` is deliberately **not** in the
+`flake.lock`" was wrong and is what #112 caught. Step 3's zsh checks depend
+on `config/zsh/**`, `config/zshenv`, `bin/check-zsh.sh`, `bin/check-abbr.sh`,
+`bin/lib/check.sh` or `modules/payloads.tsv`; its nvim checks on
+`config/nvim/**`, `bin/check-stylua.sh`, `bin/check-nvim.sh`,
+`bin/check-luals.sh`, `bin/lib/check.sh`, `flake.nix` or `flake.lock`, because
+the nvim shell's Neovim moves with the lock (CI's *zsh* / *nvim* filters also
+include `ci.yml`). `config/**` is deliberately **not** in the
 build filter (ADR 0022): payload content cannot move the closure, so a
 payload-only change runs steps 2, 3 and 8, and CI reports the macOS build as
 *skipping*, which still satisfies the required check. For a

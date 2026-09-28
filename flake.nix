@@ -94,8 +94,23 @@
         system:
         let
           pkgs = nixpkgs.legacyPackages.${system};
+          # The overlay the hosts apply, so the Neovim checked is the one the
+          # machine runs: on the machine it is the same store path. No cache
+          # carries it for this nixpkgs, so CI builds it once per lock.
+          nvimPkgs = pkgs.extend neovim-nightly-overlay.overlays.default;
         in
-        {
+        rec {
+          # The nvim checks' shell: the startup check and LuaLS need the
+          # editor itself, and denops needs Deno at startup. Kept apart so the
+          # other gates never wait on a Neovim build.
+          nvim = pkgs.mkShellNoCC {
+            inputsFrom = [ default ];
+            packages = [
+              nvimPkgs.neovim
+              pkgs.deno
+            ];
+          };
+
           default = pkgs.mkShellNoCC {
             packages = with pkgs; [
               commitlint

@@ -52,6 +52,13 @@ jobs:
               - '.github/workflows/ci.yml'
             nvim:
               - 'config/nvim/**'
+              - 'bin/check-stylua.sh'
+              - 'bin/check-nvim.sh'
+              - 'bin/check-luals.sh'
+              - 'bin/lib/check.sh'
+              # The nvim shell's Neovim, LuaLS and stylua move with the lock.
+              - 'flake.nix'
+              - 'flake.lock'
               - '.github/workflows/ci.yml'
 
   flake:
@@ -169,13 +176,20 @@ jobs:
     if: github.event_name == 'push' || needs.changes.outputs.nvim == 'true'
     steps:
       - uses: actions/checkout@v5
-      - name: stylua --check
-        uses: JohnnyMorganz/stylua-action@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          version: latest
-          args: --check config/nvim/lua/ config/nvim/after/ config/nvim/ftplugin/ config/nvim/init.lua
 
+      - name: Install Nix
+        # The default devShell: stylua needs no Neovim, so this job never
+        # waits on the nvim shell's build.
+        uses: cachix/install-nix-action@v31
+
+      - name: stylua --check
+        run: nix develop --no-update-lock-file -c bin/check-stylua.sh
+
+  # The two jobs below run in the devShell's nvim shell, whose Neovim is the
+  # nightly the machine runs (ADR 0032). It is built against this
+  # repository's nixpkgs, so no binary cache carries it: the store is cached
+  # per lock instead, and a lock update pays for one build. No garbage
+  # collection before the save — nothing roots the shell, so it would all go.
   nvim-check:
     name: nvim headless load check
     runs-on: ubuntu-latest
@@ -184,21 +198,18 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Install Neovim
-        uses: rhysd/action-setup-vim@v1
-        with:
-          neovim: true
-          version: stable
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
 
-      - name: Install Deno
-        # Needed by denops.vim / skkeleton at startup.
-        uses: denoland/setup-deno@v2
+      - name: Restore and save Nix store
+        uses: nix-community/cache-nix-action@v6
         with:
-          deno-version: v2.x
+          primary-key: nix-nvim-${{ runner.os }}-${{ hashFiles('flake.lock', 'flake.nix') }}
+          restore-prefixes-first-match: nix-nvim-${{ runner.os }}-
 
       - name: Cache plugins
-        # config/nvim/bin/check restores plugins into the nvim-dev data dir to
-        # match lazy-lock.json; cache it so runs after the first are a no-op.
+        # The check restores plugins into the nvim-dev data dir to match
+        # lazy-lock.json; cache it so runs after the first are a no-op.
         uses: actions/cache@v5
         with:
           path: ~/.local/share/nvim-dev
@@ -206,32 +217,25 @@ jobs:
           restore-keys: nvim-dev-plugins-
 
       - name: Headless load check
-        # The script resolves its own repo root, so it points ~/.config/nvim-dev
-        # at config/nvim without needing a working-directory.
-        run: config/nvim/bin/check
+        run: nix develop .#nvim --no-update-lock-file -c bin/check-nvim.sh
 
   nvim-typecheck:
     name: nvim LuaLS typecheck
     runs-on: ubuntu-latest
     needs: changes
     if: github.event_name == 'push' || needs.changes.outputs.nvim == 'true'
-    defaults:
-      run:
-        working-directory: config/nvim
     steps:
       - uses: actions/checkout@v5
 
-      - name: Install Neovim
-        uses: rhysd/action-setup-vim@v1
-        with:
-          neovim: true
-          version: stable
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
 
-      - name: Install Deno
-        # denops.vim / skkeleton may touch Deno during the restore startup.
-        uses: denoland/setup-deno@v2
+      - name: Restore and save Nix store
+        # Shares the key with nvim-check, so a warm cache serves both.
+        uses: nix-community/cache-nix-action@v6
         with:
-          deno-version: v2.x
+          primary-key: nix-nvim-${{ runner.os }}-${{ hashFiles('flake.lock', 'flake.nix') }}
+          restore-prefixes-first-match: nix-nvim-${{ runner.os }}-
 
       - name: Cache plugins
         # Shares the key with nvim-check so plugins are installed once.
@@ -241,37 +245,8 @@ jobs:
           key: nvim-dev-plugins-${{ hashFiles('config/nvim/lazy-lock.json') }}
           restore-keys: nvim-dev-plugins-
 
-      - name: Restore plugins (no startup check)
-        # Populate the nvim-dev data dir so plugin type definitions are on disk;
-        # the full startup check is nvim-check's job.
-        run: |
-          mkdir -p "$HOME/.config"
-          ln -sfn "$GITHUB_WORKSPACE/config/nvim" "$HOME/.config/nvim-dev"
-          NVIM_APPNAME=nvim-dev nvim --headless "+Lazy! restore" +qa
-
-      - name: Install lua-language-server
-        run: |
-          ver=3.18.2
-          url="https://github.com/LuaLS/lua-language-server/releases/download/${ver}/lua-language-server-${ver}-linux-x64.tar.gz"
-          mkdir -p "$HOME/luals"
-          curl -fsSL "$url" | tar -xz -C "$HOME/luals"
-          echo "$HOME/luals/bin" >> "$GITHUB_PATH"
-
-      - name: Build CI luarc (inject library paths)
-        # LuaLS luarc cannot expand env vars, so resolve $VIMRUNTIME and the
-        # installed plugin lua dirs here and write the effective .luarc.json.
-        # This mirrors what lazydev supplies in-editor.
-        run: |
-          vimruntime="$(nvim --headless --clean -c 'lua io.write(vim.env.VIMRUNTIME)' -c 'qa' 2>/dev/null)"
-          libs="$(printf '%s\n' "$vimruntime" "$HOME"/.local/share/nvim-dev/lazy/*/lua | jq -R . | jq -s .)"
-          jq --argjson libs "$libs" '. + {"workspace.library": $libs}' .github/luarc.ci.json > .luarc.json
-          echo "Effective .luarc.json:"; cat .luarc.json
-
       - name: lua-language-server --check
-        # --check prints diagnostics and exits non-zero when problems are
-        # found, so the exit code is the signal (this version writes no
-        # check.json).
-        run: lua-language-server --check . --checklevel Warning --logpath /tmp/luals-log
+        run: nix develop .#nvim --no-update-lock-file -c bin/check-luals.sh
 
   secrets:
     name: Secret scan (gitleaks)

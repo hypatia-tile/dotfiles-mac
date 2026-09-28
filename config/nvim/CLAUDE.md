@@ -53,12 +53,15 @@ Format-on-save via Conform is enabled for Lua (stylua), Nix (nixfmt), and OCaml 
 
 ## CI
 
-GitHub Actions (`.github/workflows/ci.yml`) runs on pull requests and on
-pushes to `main`. Two required checks:
-- **stylua**: `stylua --check` on `lua/ after/ ftplugin/ init.lua`.
-- **check**: `bin/check` — headless startup with a `lazy-lock.json`-faithful
-  plugin restore. Installs Neovim and Deno (needed by denops/skkeleton) and
-  caches the `nvim-dev` plugin dir across runs.
+dotfiles-mac's CI checks this config through three scripts in its `bin/`, run
+from the repository root inside its check devShell (its ADR 0032), so the
+tools are the versions its `flake.lock` pins:
+- `bin/check-stylua.sh` — `stylua --check` on every `.lua` file here.
+- `bin/check-nvim.sh` — `bin/check` above, with the nightly Neovim the
+  machine runs and Deno (needed by denops/skkeleton), from `nix develop .#nvim`.
+- `bin/check-luals.sh` — `lua-language-server --check` at Warning level, with
+  `.github/luarc.ci.json` plus the library paths lazydev supplies in the
+  editor, from `nix develop .#nvim`.
 
 ## Debugging
 
