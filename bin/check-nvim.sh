@@ -4,7 +4,9 @@
 # (ADR 0032). config/nvim/bin/check holds the check itself — it restores the
 # plugins to lazy-lock.json and fails on anything a headless startup prints.
 #
-# Any file of the payload can break startup, so any change to one runs it.
+# Any file of the payload can break startup, so any change to one runs it. So
+# does a change to the flake or its lock, which moves the Neovim it starts
+# with (#153).
 #
 # Usage: nix develop .#nvim -c bin/check-nvim.sh [--applies] [FILE...]
 #        (the contract is in bin/lib/check.sh; FILE only decides whether the
@@ -13,7 +15,7 @@ set -euo pipefail
 # shellcheck source=lib/check.sh source-path=SCRIPTDIR
 . "$(dirname "$0")/lib/check.sh"
 
-scope 'config/nvim/*'
+scope 'config/nvim/*' flake.nix flake.lock
 check_gate "$@"
 
 need nvim deno
