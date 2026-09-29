@@ -9,7 +9,8 @@
 # the tracked config/nvim/.luarc.json, the editor's, untouched.
 #
 # The plugins' types are part of what is checked, so a change to the lock runs
-# it as well as a change to the Lua.
+# it as well as a change to the Lua. So does a change to the flake or its lock,
+# which moves LuaLS and the Neovim runtime it reads.
 #
 # Usage: nix develop .#nvim -c bin/check-luals.sh [--applies] [FILE...]
 #        (the contract is in bin/lib/check.sh; FILE only decides whether the
@@ -21,7 +22,7 @@ set -euo pipefail
 NVIM_DIR=config/nvim
 
 scope "$NVIM_DIR/*.lua" "$NVIM_DIR/lazy-lock.json" "$NVIM_DIR/.luarc.json" \
-  "$NVIM_DIR/.github/luarc.ci.json"
+  "$NVIM_DIR/.github/luarc.ci.json" flake.nix flake.lock
 check_gate "$@"
 
 need nvim deno lua-language-server jq

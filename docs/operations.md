@@ -134,12 +134,13 @@ merging is always manual, and reviewing one is the `lock-review` skill.
 
 ## 4. CI behavior
 
-- **Docs-only PRs skip the macOS build job.** A `changes` job
-  (dorny/paths-filter) gates it on `**/*.nix`, `flake.lock`, `config/**`,
-  and `ci.yml`. The job is *skipped*, which still satisfies the required
-  status check — do not convert this to workflow-level `paths-ignore`,
-  which would leave the required check unreported and block merges.
-  Pushes to `main` always build (cache warmth).
+- **Docs-only PRs skip the macOS build job.** The `changes` job passes the
+  changed files to each gate's check scripts with `--applies`, so the
+  scripts' own scopes decide which jobs run (ADR 0032). A change to `ci.yml`
+  runs them all. A skipped job still satisfies the required status check —
+  do not convert this to workflow-level `paths-ignore`, which would leave
+  the required check unreported and block merges. Pushes to `main` always
+  run every job (cache warmth).
 - **shellcheck ignores `config/`** — vendored payloads include zsh scripts,
   which shellcheck cannot parse (SC1071); they are data, not repo scripts.
   `bin/check-shell.sh` holds the exclusion.

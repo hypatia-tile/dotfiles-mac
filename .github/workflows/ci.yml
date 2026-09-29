@@ -24,50 +24,73 @@ jobs:
     name: Detect closure-affecting changes
     runs-on: ubuntu-latest
     outputs:
-      build: ${{ steps.filter.outputs.build }}
-      zsh: ${{ steps.filter.outputs.zsh }}
-      nvim: ${{ steps.filter.outputs.nvim }}
+      build: ${{ steps.gates.outputs.build }}
+      zsh: ${{ steps.gates.outputs.zsh }}
+      nvim: ${{ steps.gates.outputs.nvim }}
     steps:
-      # On a pull request paths-filter asks the API for the changed files; on
-      # a push it reads git history, which needs the repository here (#183).
       - uses: actions/checkout@v5
-
-      - uses: dorny/paths-filter@v3
-        id: filter
         with:
-          filters: |
-            build:
-              - '**/*.nix'
-              - 'flake.lock'
-              # Until --applies replaces this filter (#167), it restates the
-              # script's scope, the helper included.
-              - 'bin/check-flake.sh'
-              - 'bin/lib/check.sh'
-              - '.github/workflows/ci.yml'
-            zsh:
-              - 'config/zsh/**'
-              - 'config/zshenv'
-              # The abbreviations check reads its own script and the projection
-              # declaration, so a change to either must run it. modules/*.tsv
-              # matches no other filter, which is the #89/#91 lesson: a gate
-              # that cannot be triggered by the file it checks is not a gate.
-              - 'bin/check-abbr.sh'
-              - 'modules/payloads.tsv'
-              # Until the scripts' --applies replaces this filter (#167), it
-              # restates their scopes, the helper included.
-              - 'bin/check-zsh.sh'
-              - 'bin/lib/check.sh'
-              - '.github/workflows/ci.yml'
-            nvim:
-              - 'config/nvim/**'
-              - 'bin/check-stylua.sh'
-              - 'bin/check-nvim.sh'
-              - 'bin/check-luals.sh'
-              - 'bin/lib/check.sh'
-              # The nvim shell's Neovim, LuaLS and stylua move with the lock.
-              - 'flake.nix'
-              - 'flake.lock'
-              - '.github/workflows/ci.yml'
+          fetch-depth: 0
+
+      - name: Ask each gate's scripts whether the change concerns them
+        # A gate runs when any of its scripts' --applies says the changed
+        # files are in scope (ADR 0032). The scopes live in the scripts, so
+        # hooks, preflight and this job read the same ones.
+        #
+        # A change to this workflow runs every gate, since it can break any
+        # job and is in no script's scope (#112). On a push to main every gate
+        # runs anyway (the jobs' own `if`), which keeps the caches warm.
+        id: gates
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          all=false
+          files=()
+          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
+            # --no-renames lists a rename as its deletion and its addition, so
+            # the old path's scope counts too.
+            mapfile -t files < <(git diff --name-only --no-renames "$BASE...$HEAD")
+            printf '%s\n' "${files[@]}"
+            if printf '%s\n' "${files[@]}" | grep -qxF .github/workflows/ci.yml; then
+              all=true
+            fi
+          else
+            all=true
+          fi
+
+          # applies SCRIPT...: 0 if any SCRIPT's --applies answers yes.
+          applies() {
+            local script rc
+            [ "${#files[@]}" -gt 0 ] || return 1
+            for script in "$@"; do
+              rc=0
+              "bin/$script" --applies "${files[@]}" || rc=$?
+              case $rc in
+                0) return 0 ;;
+                1) ;;
+                *)
+                  echo "::error::$script --applies exited $rc"
+                  exit 1
+                  ;;
+              esac
+            done
+            return 1
+          }
+
+          # gate NAME SCRIPT...
+          gate() {
+            local name=$1 value=false
+            shift
+            if $all || applies "$@"; then value=true; fi
+            echo "$name: $value"
+            echo "$name=$value" >> "$GITHUB_OUTPUT"
+          }
+
+          gate build check-flake.sh
+          gate zsh check-zsh.sh check-abbr.sh
+          gate nvim check-stylua.sh check-nvim.sh check-luals.sh
 
   flake:
     name: Flake check & system closure build

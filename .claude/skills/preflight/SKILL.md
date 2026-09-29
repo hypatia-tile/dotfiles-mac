@@ -38,7 +38,7 @@ lint jobs and are cheap, so run them first to fail fast.
    - `bin/check-payloads.sh`, `bin/check-skills.sh`,
      `bin/check-agent-guard.sh` and `bin/check-nvim-hook-paths.sh` — each
      script's header says what it guards. Run them without arguments, even
-     when the change looks unrelated: what they guard trips no CI path filter,
+     when the change looks unrelated: what they guard trips no CI gate,
      which is why they sit in CI's always-on job (#89, #91).
 3. **Payload content checks** (mirrors the CI *zsh payload syntax* and *nvim*
    jobs). Run the one matching what changed; skip if no payload changed.
@@ -94,31 +94,31 @@ lint jobs and are cheap, so run them first to fail fast.
 
 ## Scope shortcuts
 
-Steps 1, 4, 5, 6 and 7 run when the change can move the closure — the paths
-in CI's *build* filter in `.github/workflows/ci.yml`:
+Whether a step applies is the script's answer, not a list restated here: the
+scopes live in the scripts, and CI's `changes` job asks the same ones. For
+the branch's changes:
 
-```yaml
-build:
-  - '**/*.nix'
-  - 'flake.lock'
-  - 'bin/check-flake.sh'
-  - 'bin/lib/check.sh'
-  - '.github/workflows/ci.yml'
+```sh
+changed() { git diff --name-only --no-renames main...; }
+bin/check-flake.sh --applies $(changed)   # steps 1, 4, 5, 6 and 7
+bin/check-zsh.sh --applies $(changed) || bin/check-abbr.sh --applies $(changed)
+bin/check-stylua.sh --applies $(changed) || bin/check-nvim.sh --applies $(changed) ||
+  bin/check-luals.sh --applies $(changed)   # step 3, per payload
 ```
 
-A change that only edits the workflow therefore still needs the flake check
-and the closure build locally; restating the filter as "`*.nix` or
-`flake.lock`" was wrong and is what #112 caught. Step 3's zsh checks depend
-on `config/zsh/**`, `config/zshenv`, `bin/check-zsh.sh`, `bin/check-abbr.sh`,
-`bin/lib/check.sh` or `modules/payloads.tsv`; its nvim checks on
-`config/nvim/**`, `bin/check-stylua.sh`, `bin/check-nvim.sh`,
-`bin/check-luals.sh`, `bin/lib/check.sh`, `flake.nix` or `flake.lock`, because
-the nvim shell's Neovim moves with the lock (CI's *zsh* / *nvim* filters also
-include `ci.yml`). `config/**` is deliberately **not** in the
-build filter (ADR 0022): payload content cannot move the closure, so a
-payload-only change runs steps 2, 3 and 8, and CI reports the macOS build as
-*skipping*, which still satisfies the required check. For a
-documentation-only change, run steps 2 and 8 alone.
+Exit 0 means the step applies, and 1 that it does not. The list is committed
+changes only, so add any uncommitted files to it. With no changed files,
+`--applies` exits 2, which is a usage error.
+
+**A change to `.github/workflows/ci.yml` runs every step.** It is in no
+script's scope, and CI runs every gate for it, so a change that only edits the
+workflow still needs the flake check and the closure build locally. Leaving
+that out is what #112 caught.
+
+`config/**` is deliberately in no closure scope (ADR 0022): payload content
+cannot move the closure, so a payload-only change runs steps 2, 3 and 8, and
+CI reports the macOS build as *skipping*, which still satisfies the required
+check. For a documentation-only change, run steps 2 and 8 alone.
 
 ## Intentionally CI-only
 
