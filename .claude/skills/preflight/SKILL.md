@@ -59,11 +59,13 @@ lint jobs and are cheap, so run them first to fail fast.
    These are the steps that carry the weight for a payload change, because
    step 5 cannot see one — see the note there.
 
-4. **Flake check**
-   `nix flake check --no-update-lock-file`
+4. **Flake check** (the CI *Flake check & system closure build* job runs the
+   same script).
+   `bin/check-flake.sh` — `nix flake check`, then a build of every attr in
+   `darwinConfigurations` (currently `Kazukis-MacBook-Air`).
 5. **Build every host closure**
-   For each attr in `darwinConfigurations` (currently
-   `Kazukis-MacBook-Air`):
+   Step 4 built them and left no link. Link the one step 6 compares; it is
+   already built, so this is instant:
    `nix build .#darwinConfigurations.<host>.system --no-update-lock-file -o result`
 6. **Closure diff**
    `nix store diff-closures /run/current-system ./result`
@@ -99,6 +101,8 @@ in CI's *build* filter in `.github/workflows/ci.yml`:
 build:
   - '**/*.nix'
   - 'flake.lock'
+  - 'bin/check-flake.sh'
+  - 'bin/lib/check.sh'
   - '.github/workflows/ci.yml'
 ```
 
