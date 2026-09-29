@@ -39,6 +39,10 @@ jobs:
             build:
               - '**/*.nix'
               - 'flake.lock'
+              # Until --applies replaces this filter (#167), it restates the
+              # script's scope, the helper included.
+              - 'bin/check-flake.sh'
+              - 'bin/lib/check.sh'
               - '.github/workflows/ci.yml'
             zsh:
               - 'config/zsh/**'
@@ -75,18 +79,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Detect flake
-        id: has-flake
-        run: |
-          if [ -f flake.nix ]; then
-            echo "present=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "present=false" >> "$GITHUB_OUTPUT"
-            echo "No flake.nix yet - skipping (bootstrap phase)."
-          fi
-
       - name: Install Nix
-        if: steps.has-flake.outputs.present == 'true'
         uses: cachix/install-nix-action@v31
         with:
           extra_nix_config: |
@@ -110,26 +103,16 @@ jobs:
             extra-trusted-public-keys = nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs= hypatia-emacs.cachix.org-1:01hQJcXQlX0AFv1UpAL7v9zQNhoDT0bJzoNaAzABEzQ=
 
       - name: Restore and save Nix store
-        if: steps.has-flake.outputs.present == 'true'
         uses: nix-community/cache-nix-action@v6
         with:
           primary-key: nix-${{ runner.os }}-${{ hashFiles('flake.lock') }}
           restore-prefixes-first-match: nix-${{ runner.os }}-
           gc-max-store-size-macos: 4G
 
-      - name: Flake check (frozen lock)
-        if: steps.has-flake.outputs.present == 'true'
-        run: nix flake check --no-update-lock-file -L
-
-      - name: Build all darwin configurations (never switch)
-        if: steps.has-flake.outputs.present == 'true'
-        run: |
-          hosts=$(nix eval .#darwinConfigurations --apply builtins.attrNames --json | jq -r '.[]')
-          for host in $hosts; do
-            echo "::group::build $host"
-            nix build ".#darwinConfigurations.${host}.system" --no-update-lock-file -L
-            echo "::endgroup::"
-          done
+      - name: Flake check and every host's closure build (never switch)
+        # The commands live in the script, which hooks and preflight run too
+        # (ADR 0032). No file arguments: CI checks the whole tree.
+        run: bin/check-flake.sh
 
   nix-lint:
     name: Nix format & lint
