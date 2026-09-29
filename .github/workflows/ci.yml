@@ -28,6 +28,10 @@ jobs:
       zsh: ${{ steps.filter.outputs.zsh }}
       nvim: ${{ steps.filter.outputs.nvim }}
     steps:
+      # On a pull request paths-filter asks the API for the changed files; on
+      # a push it reads git history, which needs the repository here (#183).
+      - uses: actions/checkout@v5
+
       - uses: dorny/paths-filter@v3
         id: filter
         with:
