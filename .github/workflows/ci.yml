@@ -103,33 +103,26 @@ jobs:
       - uses: actions/checkout@v5
 
       - name: Install Nix
-        uses: cachix/install-nix-action@v31
+        # nix-quick-install-action, as in the nvim jobs: install-nix-action's
+        # multi-user store is root's, so restoring the cache into it failed
+        # with "Permission denied" and the job rebuilt from scratch (#185).
+        uses: nixbuild/nix-quick-install-action@v35
         with:
-          extra_nix_config: |
-            # Both caches on one line each. That is a readability choice and
-            # nothing more: a setting whose name carries the `extra-` prefix
-            # accumulates rather than replacing, so repeated `extra-substituters`
-            # lines would work equally well. An earlier version of this comment
-            # asserted the opposite, without checking.
-            #
-            # Keep prose here free of the names of settings this block does not
-            # set. install-nix-action decides whether to add its own defaults by
-            # looking for a setting's name *as text* in this value, so a comment
-            # merely mentioning one is enough to suppress the default -- which is
-            # how a comment-only edit once disabled nix-command and failed the
-            # flake check.
-            #
+          nix_conf: |
             # hypatia-emacs carries the patched Emacs of ADR 0031, which is not
             # in cache.nixos.org -- without it this job builds Emacs from source,
-            # AOT pass included, on every closure-affecting PR.
+            # AOT pass included, on every closure-affecting PR. A single-user
+            # store trusts its own user, so both caches are used as given.
             extra-substituters = https://nix-community.cachix.org https://hypatia-emacs.cachix.org
             extra-trusted-public-keys = nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs= hypatia-emacs.cachix.org-1:01hQJcXQlX0AFv1UpAL7v9zQNhoDT0bJzoNaAzABEzQ=
 
       - name: Restore and save Nix store
+        # The key prefix changed with the store, so the entries saved from the
+        # multi-user store are never restored into this one.
         uses: nix-community/cache-nix-action@v6
         with:
-          primary-key: nix-${{ runner.os }}-${{ hashFiles('flake.lock') }}
-          restore-prefixes-first-match: nix-${{ runner.os }}-
+          primary-key: nix-single-user-${{ runner.os }}-${{ hashFiles('flake.lock') }}
+          restore-prefixes-first-match: nix-single-user-${{ runner.os }}-
           gc-max-store-size-macos: 4G
 
       - name: Flake check and every host's closure build (never switch)
