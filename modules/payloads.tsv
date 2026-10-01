@@ -110,6 +110,8 @@
 .codex/skills/grilling	config/agents/skills/grilling	link
 .claude/skills/handoff	config/agents/skills/handoff	link
 .codex/skills/handoff	config/agents/skills/handoff	link
+.claude/skills/host-environment	config/agents/skills/host-environment	link
+.codex/skills/host-environment	config/agents/skills/host-environment	link
 .claude/skills/scrap-note	config/agents/skills/scrap-note	link
 .codex/skills/scrap-note	config/agents/skills/scrap-note	link
 .claude/skills/step-review	config/agents/skills/step-review	link
@@ -118,3 +120,11 @@
 .codex/skills/step-setup	config/agents/skills/step-setup	link
 .claude/skills/step-start	config/agents/skills/step-start	link
 .codex/skills/step-start	config/agents/skills/step-start	link
+
+# User-scope agent instructions (ADR 0033): one source, loaded by every
+# session of the two agents. `copy`, unlike the skills above: this is the entry
+# point to a safeguard, and a safeguard the agents it guards can rewrite is not
+# one. Each target is a single file, never ~/.claude or ~/.codex whole — both
+# hold the agents' own state.
+.claude/CLAUDE.md	config/agents/instructions.md	copy
+.codex/AGENTS.md	config/agents/instructions.md	copy
