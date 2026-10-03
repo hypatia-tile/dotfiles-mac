@@ -1,0 +1,6 @@
+#!/bin/sh
+# ADR 0032: enter the check devShell and let Lefthook dispatch. Fails closed:
+# no nix, or a devShell that cannot be evaluated, fails the hook. So does a
+# missing lefthook.yml, which Lefthook itself would take as "nothing to run".
+[ -f lefthook.yml ] || { echo "pre-push: lefthook.yml is missing; refusing to skip the gates" >&2; exit 1; }
+exec nix develop --no-update-lock-file --option warn-dirty false .#nvim -c lefthook run pre-push "$@"
