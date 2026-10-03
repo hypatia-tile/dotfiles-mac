@@ -147,6 +147,32 @@ expect deny "patch adding a hook stub"     "$(codex_patch $'*** Begin Patch\n***
 expect deny "codex: commit --no-verify"    "$(codex_call 'git commit --no-verify -m x')"
 expect deny "cursor: LEFTHOOK=0"           "$(cursor_call 'LEFTHOOK=0 git commit -m x')"
 
+# gh reaches the remote as git push does (#149): merging, writing through the
+# API and changing the repository are the owner's.
+expect deny "gh pr merge"                  "$(bash_call 'gh pr merge 148 --squash --delete-branch')"
+expect deny "gh pr merge --auto"           "$(bash_call 'gh pr merge --auto --rebase 197')"
+expect deny "gh pr merge with -R first"    "$(bash_call 'gh -R hypatia-tile/x pr merge 1')"
+expect deny "gh pr merge with --repo before the verb" "$(bash_call 'gh pr --repo hypatia-tile/x merge 1')"
+expect deny "gh pr merge by full path"     "$(bash_call '/opt/homebrew/bin/gh pr merge 1')"
+expect deny "gh pr merge inside bash -c"   "$(bash_call "bash -c 'gh pr merge 1'")"
+expect deny "gh pr merge after a check"    "$(bash_call 'gh pr checks 1 && gh pr merge 1 --squash')"
+expect deny "gh api -X PUT contents"       "$(bash_call 'gh api -X PUT /repos/o/r/contents/a.md -f message=x -f content=eA==')"
+expect deny "gh api --method=PUT merge"    "$(bash_call 'gh api --method=PUT /repos/o/r/pulls/1/merge')"
+expect deny "gh api -XPOST"                "$(bash_call 'gh api -XPOST /repos/o/r/git/refs')"
+expect deny "gh api -X delete, lower case" "$(bash_call 'gh api -X delete /repos/o/r/git/refs/heads/x')"
+expect deny "gh api with a field is a POST" "$(bash_call 'gh api /repos/o/r/merges -f base=main -f head=feat/x')"
+expect deny "gh api with --input is a POST" "$(bash_call 'gh api /repos/o/r/pulls/1/merge --input body.json')"
+expect deny "gh api graphql mutation"      "$(bash_call "gh api graphql -f query='mutation { mergePullRequest(input: {pullRequestId: \"x\"}) { clientMutationId } }'")"
+expect deny "gh api graphql query from a file" "$(bash_call 'gh api graphql -F query=@q.graphql')"
+expect deny "gh repo sync"                 "$(bash_call 'gh repo sync')"
+expect deny "gh repo edit"                 "$(bash_call 'gh repo edit --default-branch x')"
+expect deny "gh release create"            "$(bash_call 'gh release create v1')"
+expect deny "gh workflow run"              "$(bash_call 'gh workflow run update-flake-lock.yml')"
+expect deny "gh secret set"                "$(bash_call 'gh secret set TOKEN')"
+expect deny "gh auth token"                "$(bash_call 'gh auth token')"
+expect deny "codex: gh pr merge"           "$(codex_call 'gh pr merge 1 --squash')"
+expect deny "cursor: gh pr merge"          "$(cursor_call 'gh pr merge 1 --squash')"
+
 # --- must ask ---------------------------------------------------------------
 expect ask  "git commit"                  "$(bash_call 'git commit -m "feat: x"')"
 expect ask  "git commit from a heredoc mentioning sudo and git push" \
@@ -156,6 +182,15 @@ expect ask  "cursor: git commit"            "$(cursor_call 'git commit -m x')"
 expect ask  "commit whose message mentions --no-verify" "$(bash_call 'git commit -m "docs: never use --no-verify"')"
 expect ask  "commit whose message is -n"     "$(bash_call 'git commit -m -n')"
 expect ask  "commit with LEFTHOOK_OUTPUT, which only changes output" "$(bash_call 'LEFTHOOK_OUTPUT=summary git commit -m x')"
+expect ask  "commit whose message names gh pr merge" "$(bash_call 'git commit -m "docs: the owner runs gh pr merge"')"
+# A gh command on neither list is not allowed by default: a verb added later,
+# or an alias that could expand to anything.
+expect ask  "gh pr review"                 "$(bash_call 'gh pr review 1 --approve')"
+expect ask  "gh pr close"                  "$(bash_call 'gh pr close 1')"
+expect ask  "gh extension install"         "$(bash_call 'gh extension install o/gh-x')"
+expect ask  "gh alias"                     "$(bash_call 'gh co 1')"
+expect ask  "bare gh"                      "$(bash_call 'gh')"
+expect allow "codex: unlisted gh (its own approval applies)" "$(codex_call 'gh pr review 1')"
 
 # --- must allow -------------------------------------------------------------
 expect allow "git status"                 "$(bash_call 'git status --short')"
@@ -202,6 +237,25 @@ expect allow "reading a hook stub"         "$(bash_call 'cat .githooks/pre-commi
 expect allow "copying a hook stub out"     "$(bash_call 'cp .githooks/pre-commit /tmp/x')"
 expect allow "LEFTHOOK=0 only as text"     "$(bash_call 'echo "LEFTHOOK=0 is refused"')"
 expect allow "grep for --no-verify"        "$(bash_call "grep -rn 'git commit --no-verify' docs/")"
+expect allow "gh pr create"                "$(bash_call 'gh pr create --title "feat: x" --body-file /tmp/body.md')"
+expect allow "gh pr checks"                "$(bash_call 'gh pr checks 1 --json name,bucket')"
+expect allow "gh pr view"                  "$(bash_call 'gh pr view 1 --json mergeable')"
+expect allow "gh pr checkout"              "$(bash_call 'gh pr checkout 197')"
+expect allow "gh pr edit"                  "$(bash_call 'gh pr edit 1 --body-file /tmp/b.md')"
+expect allow "gh run rerun --failed"       "$(bash_call 'gh run rerun 123 --failed')"
+expect allow "gh issue list"               "$(bash_call 'gh issue list --state open')"
+expect allow "gh issue create with -R"     "$(bash_call 'gh issue create -R hypatia-tile/x --label from-agent --title t --body b')"
+expect allow "gh issue comment"            "$(bash_call 'gh issue comment 149 --body-file /tmp/c.md')"
+expect allow "gh issue close"              "$(bash_call 'gh issue close 195 --comment "Superseded by #200."')"
+expect allow "gh search"                   "$(bash_call 'gh search issues merge --repo o/r')"
+expect allow "gh auth status"              "$(bash_call 'gh auth status')"
+expect allow "gh api GET"                  "$(bash_call 'gh api repos/o/r/pulls/1/merge')"
+expect allow "gh api -X GET with fields"   "$(bash_call 'gh api -X GET search/issues -f q=merge')"
+expect allow "gh api with --jq naming a write" "$(bash_call "gh api repos/o/r/pulls --jq '.[] | select(.title | test(\"mutation\"))'")"
+expect allow "gh api graphql query"        "$(bash_call "gh api graphql -f query='query { viewer { login } }'")"
+expect allow "gh issue body naming gh pr merge" "$(bash_call "gh issue create --title x --body 'nothing stops gh pr merge or gh api -X PUT'")"
+expect allow "grep for gh pr merge"        "$(bash_call "grep -rn 'gh pr merge' .claude/skills")"
+expect allow "echo of gh pr merge"         "$(bash_call 'echo "run: ! gh pr merge 1 --squash"')"
 expect allow "editing the tracked lefthook.yml" '{"tool_name":"Edit","cwd":"/tmp/r","tool_input":{"file_path":"lefthook.yml","old_string":"a","new_string":"b"}}'
 
 # --- registrations (ADR 0027) ------------------------------------------------
