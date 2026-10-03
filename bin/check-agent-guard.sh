@@ -106,12 +106,56 @@ expect deny "codex: patch into a legacy repo" "$(codex_patch "$(printf '*** Begi
 expect deny "cursor: git push"              "$(cursor_call 'git push')"
 expect deny "cursor: relative write, workspace is legacy" "$(cursor_call 'touch x' "$HOME/github/dotfiles")"
 
+# Hook bypasses (ADR 0032). The hooks are the gates, so every way of running a
+# commit without them is refused: the flag, the config that points Git
+# elsewhere, the variables Lefthook skips on, and writes to the hooks
+# themselves or to the untracked override that can switch them off.
+expect deny "commit --no-verify"           "$(bash_call 'git commit --no-verify -m x')"
+expect deny "commit -n"                    "$(bash_call 'git commit -n -m x')"
+expect deny "commit -n in a cluster"       "$(bash_call 'git commit -anm x')"
+expect deny "commit --no-verify abbreviated" "$(bash_call 'git commit --no-veri -m x')"
+expect deny "merge --no-verify"            "$(bash_call 'git merge --no-verify feat/x')"
+expect deny "push --no-verify"             "$(bash_call 'git push --no-verify')"
+expect deny "git -c core.hooksPath"        "$(bash_call 'git -c core.hooksPath=/dev/null commit -m x')"
+expect deny "git -c core.hooksPath, any case" "$(bash_call 'git -c CORE.HOOKSPATH=/tmp commit -m x')"
+expect deny "git --config-env core.hooksPath" "$(bash_call 'git --config-env=core.hooksPath=H commit -m x')"
+expect deny "config sets core.hooksPath"   "$(bash_call 'git config core.hooksPath /dev/null')"
+expect deny "config --local sets core.hooksPath" "$(bash_call 'git config --local core.hooksPath .git/hooks')"
+expect deny "config --unset core.hooksPath" "$(bash_call 'git config --unset core.hooksPath')"
+expect deny "config set core.hooksPath"    "$(bash_call 'git config set core.hooksPath x')"
+expect deny "config unset core.hooksPath"  "$(bash_call 'git config unset core.hooksPath')"
+expect deny "config --edit"                "$(bash_call 'git config --edit')"
+expect deny "LEFTHOOK=0"                   "$(bash_call 'LEFTHOOK=0 git commit -m x')"
+expect deny "LEFTHOOK=false"               "$(bash_call 'LEFTHOOK=false git commit -m x')"
+expect deny "LEFTHOOK_EXCLUDE through env" "$(bash_call 'env LEFTHOOK_EXCLUDE=secrets git commit -m x')"
+expect deny "LEFTHOOK_CONFIG"              "$(bash_call 'LEFTHOOK_CONFIG=/tmp/empty.yml git commit -m x')"
+expect deny "export LEFTHOOK=0"            "$(bash_call 'export LEFTHOOK=0 && git commit -m x')"
+expect deny "bare assignment, then export" "$(bash_call 'LEFTHOOK=0; export LEFTHOOK; git commit -m x')"
+expect deny "GIT_CONFIG_KEY core.hooksPath" "$(bash_call 'GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=core.hooksPath GIT_CONFIG_VALUE_0=/dev/null git commit -m x')"
+expect deny "GIT_CONFIG_PARAMETERS core.hooksPath" "$(bash_call "GIT_CONFIG_PARAMETERS=\"'core.hooksPath'='/dev/null'\" git commit -m x")"
+expect deny "rm a hook stub"               "$(bash_call 'rm .githooks/pre-commit')"
+expect deny "chmod a hook stub"            "$(bash_call 'chmod -x .githooks/pre-commit')"
+expect deny "redirect into a hook stub"    "$(bash_call "echo 'exit 0' > .githooks/pre-commit")"
+expect deny "cp into .git/hooks"           "$(bash_call 'cp /tmp/x .git/hooks/pre-commit')"
+expect deny "sed -i on .git/config"        "$(bash_call "sed -i '' s/a/b/ .git/config")"
+expect deny "write lefthook-local.yml"     "$(bash_call 'touch lefthook-local.yml')"
+expect deny "git rm a hook stub"           "$(bash_call 'git rm .githooks/pre-commit')"
+expect deny "Write a hook stub"            '{"tool_name":"Write","cwd":"/tmp/r","tool_input":{"file_path":"/tmp/r/.githooks/pre-commit","content":"exit 0"}}'
+expect deny "Edit .git/config"             '{"tool_name":"Edit","cwd":"/tmp/r","tool_input":{"file_path":".git/config","old_string":"a","new_string":"b"}}'
+expect deny "Write .config/lefthook-local.yml" '{"tool_name":"Write","cwd":"/tmp/r","tool_input":{"file_path":".config/lefthook-local.yml","content":"pre-commit:\n  skip: true"}}'
+expect deny "patch adding a hook stub"     "$(codex_patch $'*** Begin Patch\n*** Add File: .githooks/pre-commit\n+exit 0\n*** End Patch\n')"
+expect deny "codex: commit --no-verify"    "$(codex_call 'git commit --no-verify -m x')"
+expect deny "cursor: LEFTHOOK=0"           "$(cursor_call 'LEFTHOOK=0 git commit -m x')"
+
 # --- must ask ---------------------------------------------------------------
 expect ask  "git commit"                  "$(bash_call 'git commit -m "feat: x"')"
 expect ask  "git commit from a heredoc mentioning sudo and git push" \
   "$(bash_call $'git commit -F - <<\'EOF\'\nfix: never run sudo or git push from an agent\nEOF')"
 
 expect ask  "cursor: git commit"            "$(cursor_call 'git commit -m x')"
+expect ask  "commit whose message mentions --no-verify" "$(bash_call 'git commit -m "docs: never use --no-verify"')"
+expect ask  "commit whose message is -n"     "$(bash_call 'git commit -m -n')"
+expect ask  "commit with LEFTHOOK_OUTPUT, which only changes output" "$(bash_call 'LEFTHOOK_OUTPUT=summary git commit -m x')"
 
 # --- must allow -------------------------------------------------------------
 expect allow "git status"                 "$(bash_call 'git status --short')"
@@ -148,6 +192,17 @@ expect allow "unbalanced close paren in a substitution" "$(bash_call $'x=$(jq -r
 expect allow "backslash-paren in double quotes in a substitution" "$(bash_call 'x=$(jq -r "\(.a)")')"
 expect allow "substitution nested in double quotes, quoted parens" "$(bash_call $'x=$(echo "$(echo \'")"\')")')"
 expect allow "comment mentioning sudo"    "$(bash_call 'ls # not sudo')"
+expect allow "config reads core.hooksPath" "$(bash_call 'git config core.hooksPath')"
+expect allow "config --get core.hooksPath" "$(bash_call 'git config --get core.hooksPath')"
+expect allow "config get core.hooksPath"   "$(bash_call 'git config get core.hooksPath')"
+expect allow "merge --no-verify-signatures" "$(bash_call 'git merge --no-verify-signatures feat/x')"
+expect allow "log -n"                      "$(bash_call 'git log -n 5')"
+expect allow "running a hook by hand"      "$(bash_call 'LEFTHOOK_VERBOSE=1 git hook run pre-commit')"
+expect allow "reading a hook stub"         "$(bash_call 'cat .githooks/pre-commit .git/config')"
+expect allow "copying a hook stub out"     "$(bash_call 'cp .githooks/pre-commit /tmp/x')"
+expect allow "LEFTHOOK=0 only as text"     "$(bash_call 'echo "LEFTHOOK=0 is refused"')"
+expect allow "grep for --no-verify"        "$(bash_call "grep -rn 'git commit --no-verify' docs/")"
+expect allow "editing the tracked lefthook.yml" '{"tool_name":"Edit","cwd":"/tmp/r","tool_input":{"file_path":"lefthook.yml","old_string":"a","new_string":"b"}}'
 
 # --- registrations (ADR 0027) ------------------------------------------------
 # The cases above prove the script decides correctly; these prove the agents

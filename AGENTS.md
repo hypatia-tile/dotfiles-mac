@@ -71,7 +71,9 @@ stop, rather than working around it.
   failures.
 - **Git hooks run the gates on commit and push** (ADR 0032), once
   `core.hooksPath` is set (`manual-setup`). A commit or push a hook refuses is
-  a finding to report, never one to get past: do not bypass the hooks. If the
+  a finding to report, never one to get past. `agent-guard` refuses the
+  bypasses (`--no-verify`, `core.hooksPath`, Lefthook's skip variables, and
+  writes to the hooks or to an untracked `lefthook-local.*`). If the
   refusal is `cannot connect to socket at '/nix/var/nix/daemon-socket/socket'`,
   the cause is your sandbox, not the change. Ask the owner to run that commit
   outside the sandbox (#196).
