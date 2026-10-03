@@ -54,6 +54,14 @@ WRITE_DEST_ARG = {"cp", "ln", "install", "rsync", "ditto"}
 GIT_READ_ONLY = {"status", "log", "diff", "show", "ls-files", "rev-parse", "blame", "grep", "cat-file", "describe", "shortlog", "ls-tree", "config", "branch", "remote", "reflog"}
 PLACEHOLDER = "__agent_guard_substitution__"
 CONTENT_FIELDS = ("content", "new_string", "edits", "new_source", "old_string")
+# The variables the pinned Lefthook (2.1.14) reads that make it skip work:
+# LEFTHOOK=0|false disables it, LEFTHOOK_EXCLUDE drops commands by name, and
+# LEFTHOOK_CONFIG swaps in another config. The others it reads (_OUTPUT,
+# _VERBOSE, _BIN) change only what is printed or which binary runs (ADR 0032).
+HOOK_SKIP_VARS = {"LEFTHOOK", "LEFTHOOK_EXCLUDE", "LEFTHOOK_CONFIG"}
+DECLARERS = {"export", "declare", "typeset", "readonly", "local"}
+ASSIGNMENT = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*)=(.*)$", re.S)
+HOOKS_RULE = "the Git hooks run the gates and are never bypassed by an agent; report a refused commit instead (ADR 0032)"
 
 class Refuse(Exception):
     pass
@@ -69,6 +77,119 @@ def legacy(path, cwd):
         p = os.path.join(cwd, p)
     p = os.path.realpath(p)
     return any(p == root or p.startswith(root + os.sep) for root in LEGACY)
+
+def hook_path(path, cwd):
+    """Whether writing PATH would change which hooks run, or what they run.
+
+    The hook stubs (.githooks/), Git's own hook directory (.git/hooks/), the
+    repository config that holds core.hooksPath (.git/config), and Lefthook's
+    local override: lefthook-local.* is untracked, so a `skip:` written there
+    turns a gate off without anything showing in a diff. Matched in any
+    repository, not only this one: the path is all the guard can see.
+    """
+    if not path:
+        return False
+    p = os.path.expanduser(os.path.expandvars(path))
+    if not os.path.isabs(p):
+        p = os.path.join(cwd, p)
+    parts = os.path.normpath(p).split(os.sep)
+    if ".githooks" in parts:
+        return True
+    for i, part in enumerate(parts[:-1]):
+        if part == ".git" and parts[i + 1] in ("hooks", "config"):
+            return True
+    return bool(re.match(r"^\.?lefthook-local(\.|$)", parts[-1]))
+
+def check_assignment(word):
+    m = ASSIGNMENT.match(word)
+    if not m:
+        return
+    name, value = m.group(1), m.group(2)
+    if name in HOOK_SKIP_VARS:
+        raise Refuse("setting %s makes Lefthook skip the gates; %s" % (name, HOOKS_RULE))
+    if name == "GIT_CONFIG_PARAMETERS" and "hookspath" in value.lower():
+        raise Refuse("GIT_CONFIG_PARAMETERS would change core.hooksPath; %s" % HOOKS_RULE)
+    if re.match(r"^GIT_CONFIG_KEY_[0-9]+$", name) and value.strip().lower() == "core.hookspath":
+        raise Refuse("%s would change core.hooksPath; %s" % (name, HOOKS_RULE))
+
+def check_assignments(argv):
+    """Assignments before a command, after `env`, or made by a declarer.
+
+    unwrap() discards these to find the command, so they are read first. A
+    bare `LEFTHOOK=0` statement counts too: a later `export LEFTHOOK` or a
+    command in the same shell would see it.
+    """
+    for word in argv:
+        name = os.path.basename(word)
+        if ASSIGNMENT.match(word):
+            check_assignment(word)
+        elif name in WRAPPERS or word.startswith("-"):
+            continue
+        elif name in DECLARERS:
+            for arg in argv[argv.index(word) + 1:]:
+                check_assignment(arg)
+                if arg in HOOK_SKIP_VARS:
+                    raise Refuse("exporting %s makes Lefthook skip the gates; %s" % (arg, HOOKS_RULE))
+            return
+        else:
+            return
+
+def no_verify(arg):
+    """`--no-verify` or an abbreviation Git accepts for it.
+
+    Git takes any unambiguous prefix of a long option. `--no-ver` is ambiguous
+    with `--no-verbose` and fails on its own; `--no-veri` onwards is not. A
+    longer option such as `--no-verify-signatures` is a different one.
+    """
+    return len(arg) >= len("--no-veri") and "--no-verify".startswith(arg)
+
+def commit_skips_hooks(args):
+    """`git commit` with -n, alone or in a cluster such as -anm."""
+    takes_value = set("mFCct")
+    i = 0
+    while i < len(args):
+        a = args[i]
+        i += 1
+        if a == "--":
+            return False
+        if no_verify(a):
+            return True
+        if a.startswith("--") or not a.startswith("-") or a == "-":
+            continue
+        for j, ch in enumerate(a[1:]):
+            if ch == "n":
+                return True
+            if ch in takes_value:
+                if j == len(a) - 2:
+                    i += 1
+                break
+    return False
+
+def config_changes_hooks_path(args):
+    """`git config` that writes core.hooksPath, in either syntax.
+
+    A read (`git config core.hooksPath`, `--get`, `get`) is allowed. `--edit`
+    is refused whatever the key: the editor can change anything.
+    """
+    if args[:1] == ["edit"] or "--edit" in args or "-e" in args:
+        return True
+    if not any(a.lower() == "core.hookspath" for a in args):
+        return False
+    if args[:1] in (["set"], ["unset"]):
+        return True
+    if any(a in ("--unset", "--unset-all", "--add", "--replace-all") for a in args):
+        return True
+    with_value = {"-f", "--file", "--blob", "--type", "--default", "--comment", "--value"}
+    operands, rest = [], list(args)
+    if rest[:1] == ["get"]:
+        return False
+    while rest:
+        a = rest.pop(0)
+        if a in with_value and rest:
+            rest.pop(0)
+        elif not a.startswith("-"):
+            operands.append(a)
+    return len(operands) >= 2
 
 def strip_heredocs(text):
     """Remove heredoc bodies, returning (text, bodies fed to a shell)."""
@@ -269,6 +390,7 @@ def unwrap(argv):
     return argv
 
 def check_argv(argv, state):
+    check_assignments(argv)
     argv = unwrap(argv)
     if not argv:
         return
@@ -305,11 +427,26 @@ def check_argv(argv, state):
             if opt == "-C" and rest:
                 d = os.path.expanduser(rest.pop(0))
                 repo = os.path.realpath(d if os.path.isabs(d) else os.path.join(repo, d))
-            elif opt in ("-c", "--git-dir", "--work-tree") and rest:
+            elif opt == "-c" and rest:
+                if rest.pop(0).split("=", 1)[0].strip().lower() == "core.hookspath":
+                    raise Refuse("git -c core.hooksPath=... runs other hooks than the gates; %s" % HOOKS_RULE)
+            elif opt.startswith("--config-env") and "hookspath" in opt.lower():
+                raise Refuse("git --config-env core.hooksPath runs other hooks than the gates; %s" % HOOKS_RULE)
+            elif opt == "--config-env" and rest:
+                if "hookspath" in rest.pop(0).lower():
+                    raise Refuse("git --config-env core.hooksPath runs other hooks than the gates; %s" % HOOKS_RULE)
+            elif opt in ("--git-dir", "--work-tree") and rest:
                 rest.pop(0)
         sub = rest[0] if rest else ""
+        subargs = rest[1:]
         if sub == "push":
             raise Refuse("git push is the owner's; agents never push (AGENTS.md, ADR 0008)")
+        if any(no_verify(a) for a in subargs) or (sub == "commit" and commit_skips_hooks(subargs)):
+            raise Refuse("git %s without its hooks; %s" % (sub, HOOKS_RULE))
+        if sub == "config" and config_changes_hooks_path(subargs):
+            raise Refuse("git config would change core.hooksPath; %s" % HOOKS_RULE)
+        if sub in ("rm", "mv") and any(hook_path(a, repo) for a in subargs if not a.startswith("-")):
+            raise Refuse("git %s on the hooks or their config; %s" % (sub, HOOKS_RULE))
         if legacy(repo, "/") and sub and sub not in GIT_READ_ONLY:
             raise Refuse("git %s would change a legacy repository, which is read-only (AGENTS.md)" % sub)
         if sub == "commit":
@@ -327,6 +464,8 @@ def check_argv(argv, state):
     for t in targets:
         if legacy(t, cwd):
             raise Refuse("%s would write into a legacy repository, which is read-only (AGENTS.md)" % name)
+        if hook_path(t, cwd):
+            raise Refuse("%s would change the Git hooks or their config; %s" % (name, HOOKS_RULE))
 
 def check_shell(script, state):
     script, bodies, expanding = strip_heredocs(script)
@@ -342,6 +481,8 @@ def check_shell(script, state):
     for i, t in enumerate(tokens):
         if t in (">", ">>") and i + 1 < len(tokens) and legacy(tokens[i + 1], state["cwd"]):
             raise Refuse("output redirection into a legacy repository, which is read-only (AGENTS.md)")
+        if t in (">", ">>") and i + 1 < len(tokens) and hook_path(tokens[i + 1], state["cwd"]):
+            raise Refuse("output redirection into the Git hooks or their config; %s" % HOOKS_RULE)
     for argv in simple_commands(tokens):
         argv = [a for j, a in enumerate(argv) if a not in (">", ">>", "<", "<<") and not (j > 0 and argv[j - 1] in (">", ">>", "<"))]
         check_argv(argv, state)
@@ -380,12 +521,16 @@ def decide(data):
             raise Refuse("the file path has an unexpected shape")
         if legacy(path, state["cwd"]):
             raise Refuse("writing into a legacy repository, which is read-only (AGENTS.md)")
+        if hook_path(path, state["cwd"]):
+            raise Refuse("writing the Git hooks or their config; %s" % HOOKS_RULE)
     for value in ti.values():
         if isinstance(value, str) and "*** Begin Patch" in value:
             for groups in patch_paths(value):
                 p = groups[0] or groups[1]
                 if legacy(p.strip(), state["cwd"]):
                     raise Refuse("a patch that writes into a legacy repository, which is read-only (AGENTS.md)")
+                if hook_path(p.strip(), state["cwd"]):
+                    raise Refuse("a patch that writes the Git hooks or their config; %s" % HOOKS_RULE)
 
     # Codex rejects "ask"; its input is the one carrying turn_id without
     # cursor_version. Claude Code and cursor-agent both honour it.
