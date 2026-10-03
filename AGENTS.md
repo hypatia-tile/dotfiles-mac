@@ -69,6 +69,12 @@ stop, rather than working around it.
 - **Run `preflight` before proposing a PR.** It mirrors every required CI gate
   locally. Skipping it has round-tripped PRs through CI on trivial format
   failures.
+- **Git hooks run the gates on commit and push** (ADR 0032), once
+  `core.hooksPath` is set (`manual-setup`). A commit or push a hook refuses is
+  a finding to report, never one to get past: do not bypass the hooks. If the
+  refusal is `cannot connect to socket at '/nix/var/nix/daemon-socket/socket'`,
+  the cause is your sandbox, not the change. Ask the owner to run that commit
+  outside the sandbox (#196).
 - Work on short-lived feature branches off `main`, with Conventional Commits.
   One concern per branch.
 - **ADRs** live in `docs/adr/NNNN-slug.md` (MADR-lite) and always start as

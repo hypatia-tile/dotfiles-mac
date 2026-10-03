@@ -334,3 +334,46 @@ function, both upstream and both harmless.
 
 Any Emacs version change, which now arrives through `flake.lock` rather than by
 hand — so it can arrive without anyone deciding to change Emacs.
+
+## Install the Git hooks of this repository
+
+The verification gates run as Git hooks (ADR 0032): tracked stubs in
+`.githooks/` enter the check devShell and hand over to Lefthook, which runs the
+checks `lefthook.yml` assigns to each stage. Git never takes hooks from a
+clone, so a fresh checkout runs none of them until it is told where they are.
+
+### What to do
+
+From the repository's main checkout:
+
+```sh
+git config core.hooksPath .githooks
+```
+
+`lefthook install` is deliberately not used: it writes its own scripts into
+the hooks path instead of using the tracked stubs.
+
+### Where the state lands
+
+One line in `.git/config`, which is local to this clone and never committed.
+A linked worktree shares it.
+
+### What proves it worked
+
+```sh
+git config core.hooksPath     # .githooks
+git hook run pre-commit       # runs the checks on what is staged; exit 0 when nothing is
+```
+
+A commit then prints Lefthook's summary of the checks that ran.
+
+### What makes it come undone
+
+- A fresh clone, which has no `.git/config` of its own.
+- `git config --unset core.hooksPath`. `lefthook install` cannot undo it by
+  accident: it refuses while the setting is present (Lefthook 2.1.14).
+- **An agent sandbox** does not undo the setting, but can stop the hooks from
+  reaching Nix. Inside cursor-agent's sandbox the hook cannot connect to the
+  Nix daemon and fails, which refuses the commit. Commits made through it run
+  outside the sandbox (#196). Codex cannot write `.git` inside its sandbox at
+  all, so its commits are already escalated.

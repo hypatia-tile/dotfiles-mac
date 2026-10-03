@@ -1,0 +1,62 @@
+# Which Git hook stage runs which check (ADR 0032). This file holds only that
+# mapping. Every command lives in a bin/check-*.sh script, which CI and
+# preflight call too, and every check decides for itself which files concern
+# it. So nothing here declares a glob.
+#
+# The hooks are the tracked stubs in .githooks/, installed by the owner with
+# `git config core.hooksPath .githooks` (the manual-setup skill). Each stub
+# enters the devShell named below and calls `lefthook run <hook>`:
+#
+#   pre-commit, commit-msg  .#default
+#   pre-push                .#nvim, which includes .#default and adds the editor
+#
+# Files reach a check through bin/lib/hook-files.sh, not through {staged_files}
+# or {push_files}: Lefthook's lists drop deleted paths, and a deleted file must
+# still put its checks in scope (that script's header has the measurement).
+
+# `lefthook run` otherwise re-installs hooks whenever this file's checksum
+# changes. With core.hooksPath set it refuses and only warns (Lefthook 2.1.14,
+# install.go), so the stubs are safe either way. This says so explicitly
+# rather than relying on the refusal, and silences the warning on every commit.
+no_auto_install: true
+
+pre-commit:
+  commands:
+    nix:
+      run: bin/lib/hook-files.sh staged bin/check-nix.sh
+    markdown:
+      run: bin/lib/hook-files.sh staged bin/check-markdown.sh
+    shell:
+      run: bin/lib/hook-files.sh staged bin/check-shell.sh
+    stray-tags:
+      run: bin/lib/hook-files.sh staged bin/check-stray-tags.sh
+    payloads:
+      run: bin/lib/hook-files.sh staged bin/check-payloads.sh
+    skills:
+      run: bin/lib/hook-files.sh staged bin/check-skills.sh
+    agent-guard:
+      run: bin/lib/hook-files.sh staged bin/check-agent-guard.sh
+    nvim-hook-paths:
+      run: bin/lib/hook-files.sh staged bin/check-nvim-hook-paths.sh
+    zsh:
+      run: bin/lib/hook-files.sh staged bin/check-zsh.sh
+    abbr:
+      run: bin/lib/hook-files.sh staged bin/check-abbr.sh --commands
+    stylua:
+      run: bin/lib/hook-files.sh staged bin/check-stylua.sh
+    secrets:
+      run: bin/check-secrets.sh --staged
+
+commit-msg:
+  commands:
+    commitlint:
+      run: bin/check-commits.sh --message {1}
+
+pre-push:
+  commands:
+    flake:
+      run: bin/lib/hook-files.sh pushed bin/check-flake.sh
+    nvim:
+      run: bin/lib/hook-files.sh pushed bin/check-nvim.sh
+    luals:
+      run: bin/lib/hook-files.sh pushed bin/check-luals.sh
