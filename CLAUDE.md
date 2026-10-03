@@ -32,6 +32,13 @@ Claude Code and unchanged since ADR 0013:
   `nix build`, `nix eval`, `nix store diff-closures`, `darwin-rebuild build`,
   `git` status/diff/log/ls-files/branch, `brew list`/`leaves`/`info`).
 
+`gh` is not in these lists, because a prefix cannot tell a write from a read:
+`gh api` merges with `-X PUT` and reads without it. Only the guard decides
+`gh` (#149). It allows reading and authoring PRs and issues, refuses
+`gh pr merge`, writes through `gh api` and changes to the repository, and
+asks about anything else. Merging is the owner's, like pushing, so a skill
+hands it over as `! gh pr merge …`.
+
 Bash-level writes to the legacy repositories still cannot be fully blocked:
 a shell string is not decidable. The guard covers the common write commands,
 redirection and `cd` into a legacy repository; the hard rules in `AGENTS.md`

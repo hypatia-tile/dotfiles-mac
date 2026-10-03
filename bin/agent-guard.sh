@@ -62,6 +62,37 @@ HOOK_SKIP_VARS = {"LEFTHOOK", "LEFTHOOK_EXCLUDE", "LEFTHOOK_CONFIG"}
 DECLARERS = {"export", "declare", "typeset", "readonly", "local"}
 ASSIGNMENT = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*)=(.*)$", re.S)
 HOOKS_RULE = "the Git hooks run the gates and are never bypassed by an agent; report a refused commit instead (ADR 0032)"
+# gh reaches the remote the way `git push` does, so it is sorted the same way
+# (#149). What the workflows need is allowed: reading, and authoring PRs and
+# issues (ship-pr, the roadmap issues). What merges, publishes or changes the
+# repository is the owner's and refused, as push is. Anything on neither list
+# asks, so a verb gh adds later, or an alias, is never allowed by default.
+# None means every verb of that command.
+GH_ALLOWED = {
+    "pr": {"view", "list", "status", "checks", "diff", "checkout", "create", "edit", "comment", "ready"},
+    "issue": {"view", "list", "status", "create", "comment", "edit", "close", "reopen"},
+    "run": {"view", "list", "watch", "download", "rerun"},
+    "workflow": {"view", "list"},
+    "repo": {"view", "list", "clone"},
+    "release": {"view", "list", "download"},
+    "label": {"list"},
+    "cache": {"list"},
+    "secret": {"list"},
+    "variable": {"list", "get"},
+    "auth": {"status"},
+    "search": None,
+    "status": None,
+    "browse": None,
+}
+GH_OWNER = {
+    "pr": {"merge"},
+    "repo": {"create", "delete", "edit", "archive", "unarchive", "rename", "sync", "fork", "deploy-key"},
+    "release": {"create", "delete", "edit", "upload", "delete-asset"},
+    "workflow": {"run", "enable", "disable"},
+    "secret": {"set", "delete"},
+    "variable": {"set", "delete"},
+}
+GH_RULE = "the owner pushes and merges; agents never change the remote repository (AGENTS.md, ADR 0008)"
 
 class Refuse(Exception):
     pass
@@ -190,6 +221,60 @@ def config_changes_hooks_path(args):
         elif not a.startswith("-"):
             operands.append(a)
     return len(operands) >= 2
+
+def gh_api_writes(args):
+    """Whether `gh api ARGS` changes something on the remote.
+
+    gh picks the method itself: GET, unless a field or --input is given, which
+    makes it POST. An explicit -X/--method wins. GraphQL is always POST, so
+    there it is the query that decides: a mutation writes, and a query read
+    from a file (`query=@file`, --input) cannot be seen and is refused.
+    """
+    with_value = {"-H", "--header", "-q", "--jq", "-t", "--template", "--cache", "-p", "--preview", "--hostname"}
+    field = re.compile(r"^(?:-[fF]|--field|--raw-field)(?:=?(.*))?$", re.S)
+    method, body, endpoint, rest = None, [], None, list(args)
+    while rest:
+        a = rest.pop(0)
+        m = re.match(r"^(?:-X|--method)(?:=?(.+))?$", a)
+        f = field.match(a)
+        if m:
+            method = m.group(1) or (rest.pop(0) if rest else "")
+        elif f:
+            body.append(f.group(1) or (rest.pop(0) if rest else ""))
+        elif a == "--input" or a.startswith("--input="):
+            body.append("@" + (a[len("--input="):] if "=" in a else (rest.pop(0) if rest else "")))
+        elif a in with_value:
+            if rest:
+                rest.pop(0)
+        elif not a.startswith("-") and endpoint is None:
+            endpoint = a
+    if endpoint == "graphql":
+        return any(v.split("=", 1)[-1].startswith("@") or re.search(r"\bmutation\b", v) for v in body)
+    method = (method or ("POST" if body else "GET")).upper()
+    return method not in ("GET", "HEAD")
+
+def check_gh(args, state):
+    words, rest = [], list(args)
+    while rest and len(words) < 2:
+        a = rest.pop(0)
+        if a in ("-R", "--repo", "--hostname"):
+            if rest:
+                rest.pop(0)
+        elif not a.startswith("-"):
+            words.append(a)
+    group = words[0] if words else ""
+    verb = words[1] if len(words) > 1 else ""
+    if group == "api":
+        if gh_api_writes(args[args.index("api") + 1:]):
+            raise Refuse("gh api with a write method; %s" % GH_RULE)
+        return
+    if group == "auth" and verb == "token":
+        raise Refuse("gh auth token prints a secret, and secrets are never read (AGENTS.md, ADR 0009)")
+    if verb in GH_OWNER.get(group, ()):
+        raise Refuse("gh %s %s; %s" % (group, verb, GH_RULE))
+    if group in GH_ALLOWED and (GH_ALLOWED[group] is None or verb in GH_ALLOWED[group]):
+        return
+    state["ask"] = "gh %s is neither read-only nor PR or issue authoring, so the owner decides (AGENTS.md)" % " ".join(words)
 
 def strip_heredocs(text):
     """Remove heredoc bodies, returning (text, bodies fed to a shell)."""
@@ -451,6 +536,10 @@ def check_argv(argv, state):
             raise Refuse("git %s would change a legacy repository, which is read-only (AGENTS.md)" % sub)
         if sub == "commit":
             state["ask"] = "git commit needs the owner's explicit instruction (AGENTS.md, ADR 0008)"
+        return
+
+    if name == "gh":
+        check_gh(args, state)
         return
 
     targets = []
