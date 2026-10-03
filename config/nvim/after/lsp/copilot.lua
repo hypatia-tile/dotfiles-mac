@@ -3,9 +3,12 @@ return {
     -- Undesirable file patterns
     local fname = vim.fs.basename(vim.api.nvim_buf_get_name(bufnr))
     local disable_patterns = { "env", "conf", "local", "private" }
-    local is_disabled = vim.iter(disable_patterns):any(function(pattern)
-      return string.match(fname, pattern)
-    end)
+    local is_disabled = vim.iter(disable_patterns):any(
+      ---@param pattern string
+      function(pattern)
+        return string.match(fname, pattern)
+      end
+    )
     if is_disabled then
       return
     end
