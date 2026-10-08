@@ -13,7 +13,9 @@ between.
 
 1. **Confirm the branch state**: commits exist on a feature branch off
    `main`; the working tree is clean. Never commit here — committing
-   requires its own explicit instruction.
+   requires its own explicit instruction. Run `bin/hooks-health.sh`: the
+   owner's push runs the `pre-push` gates only if it passes. If it fails,
+   say so before asking for the push, and point to `manual-setup`.
 2. **Ask the owner to push** (never push yourself):
    suggest `! git push -u origin <branch>`. Start a background wait:
    `until git ls-remote origin <branch> | grep -q <head-sha>; do sleep 15; done`.

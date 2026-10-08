@@ -24,17 +24,19 @@ exists, and the work is judgment rather than editing.
    else on the branch means the workflow misfired — stop and report.
 
 3. **Verify with `preflight`, with one criterion inverted.** Run the skill; do
-   not restate its steps. Its step 5 treats a package version change as a red
-   flag, because nothing should move when the lock is untouched. Here the lock
+   not restate its steps. Its closure diff treats a package version change as
+   a red flag, because nothing should move when the lock is untouched. Here the lock
    *is* the change, so version movement across the closure is the expected
    outcome. Judge these instead:
    - every moved node is an upstream version bump of something the flake
      already had — no unexplained **additions or removals**;
    - the net closure size change is plausible. Bootstrap paths dropping out is
      normal (#41 was ~150 nodes and −0.5 GiB); a large unexplained gain is not;
-   - **re-run preflight step 1 under the new toolchain.** `nixfmt`, `statix`
-     and `deadnix` are themselves in the closure, and a formatter bump can make
-     previously-clean `*.nix` files fail CI.
+   - **a gate that fails in `preflight`'s first step is usually the new
+     toolchain at work, and still a finding.** The linters come from the check
+     devShell, which the lock pins (ADR 0032), so a formatter or linter bump
+     can make previously-clean files fail. That run is the evidence this PR
+     has, since the workflow's PRs get no CI.
    - the eval warning `nixfmt-rfc-style is now the same as pkgs.nixfmt` is a
      rename alias, harmless until the attribute is actually renamed upstream —
      at which point `modules/home/packages.nix` needs the new name and this
