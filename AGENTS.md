@@ -78,7 +78,8 @@ stop, rather than working around it.
   the cause is your sandbox, not the change. Ask the owner to run that commit
   outside the sandbox (#196).
 - Work on short-lived feature branches off `main`, with Conventional Commits.
-  One concern per branch.
+  One concern per branch. The `pre-commit` hook refuses a commit on `main`
+  (`bin/check-branch.sh`).
 - **ADRs** live in `docs/adr/NNNN-slug.md` (MADR-lite) and always start as
   `Status: Proposed`; only the owner promotes one to Accepted. Existing ADRs
   are never edited — a changed decision gets a new ADR that supersedes the

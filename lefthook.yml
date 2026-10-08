@@ -44,6 +44,11 @@ pre-commit:
       run: bin/lib/hook-files.sh staged bin/check-abbr.sh --commands
     stylua:
       run: bin/lib/hook-files.sh staged bin/check-stylua.sh
+    # Outside the file contract, like secrets below. At commit time it refuses
+    # a commit on main; under preflight's whole-tree run it asks instead
+    # whether local main holds commits that origin/main does not.
+    branch:
+      run: if [ "$HOOK_FILES" = all ]; then bin/check-branch.sh; else bin/check-branch.sh --commit; fi
     # Outside the file contract, so bin/lib/hook-files.sh cannot widen it.
     # Under preflight's whole-tree run (HOOK_FILES=all) it scans every commit
     # HEAD reaches, as CI's Secret scan job does, instead of the staged diff.
