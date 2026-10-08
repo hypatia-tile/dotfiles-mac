@@ -84,7 +84,8 @@ stop, rather than working around it.
   `Status: Proposed`; only the owner promotes one to Accepted. Existing ADRs
   are never edited — a changed decision gets a new ADR that supersedes the
   old one. Use the `adr-new` skill.
-- **`flake.lock` moves only in dedicated commits** (ADR 0011). The weekly
+- **`flake.lock` moves only in dedicated commits** (ADR 0011), which
+  `bin/check-lock.sh` enforces at commit time and in CI. The weekly
   workflow opens the PRs and merging is always manual. Build and check
   invocations pass `--no-update-lock-file` so they never mutate the lock as a
   side effect; ad-hoc `nix flake update` is denied in tooling.

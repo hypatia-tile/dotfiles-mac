@@ -49,6 +49,10 @@ pre-commit:
     # whether local main holds commits that origin/main does not.
     branch:
       run: if [ "$HOOK_FILES" = all ]; then bin/check-branch.sh; else bin/check-branch.sh --commit; fi
+    # Outside the file contract too: at commit time it judges the staged
+    # commit, and under the whole-tree run each commit since origin/main.
+    lock:
+      run: if [ "$HOOK_FILES" = all ]; then bin/check-lock.sh; else bin/check-lock.sh --staged; fi
     # Outside the file contract, so bin/lib/hook-files.sh cannot widen it.
     # Under preflight's whole-tree run (HOOK_FILES=all) it scans every commit
     # HEAD reaches, as CI's Secret scan job does, instead of the staged diff.
