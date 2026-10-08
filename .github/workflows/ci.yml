@@ -313,6 +313,15 @@ jobs:
             printf '%s\n' "$TITLE" | nix develop --no-update-lock-file -c bin/check-commits.sh --message -
           fi
 
+      - name: Locked inputs do not ride along with other changes
+        # ADR 0011, each commit judged on its own: on a pull request the
+        # branch's commits, on main what landed. A squash merge that folds a
+        # dedicated lock commit into a feature commit is caught on main.
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: nix develop --no-update-lock-file -c bin/check-lock.sh "$BASE" "$HEAD"
+
       # The four checks below each explain themselves in their script, and each
       # reads its scope from the files it guards. They run here, in the
       # always-on job, because what they guard trips no path filter (#89, #91).
