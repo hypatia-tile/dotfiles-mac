@@ -1,74 +1,36 @@
 ---
 name: preflight
-description: Mirror the required CI gates locally before pushing — nixfmt/statix/deadnix, markdownlint, shellcheck, flake check, system closure build, closure diff against the running system, Home Manager collision check, and a secret scan. Use before merging any flake or config change. Never switches or activates.
+description: Verify a change locally before pushing — run every Git hook stage over the whole tree (the same check scripts CI runs), then judge the closure diff against the running system and the Home Manager collision check. Use before proposing a PR for any change. Never switches or activates.
 ---
 
 # preflight
 
-Build-and-lint verification of this repository against the running system
-(ADR 0003), mirroring every required CI gate so failures are caught **before**
-pushing (CI has round-tripped on format/lint that a local pass would have
-caught). **Under no circumstances run `darwin-rebuild switch`, any activation
-script, or `sudo`.** If a step fails, report and stop — do not "fix" by
-activating anything.
+The fallback for the Git hooks and the review step after them (ADR 0032).
+The gates themselves run on every commit and push once the hooks are
+installed; this runs all of them over the whole tree, then does the two
+checks that need a reader. **Under no circumstances run
+`darwin-rebuild switch`, any activation script, or `sudo`.** If a step fails,
+report and stop — do not "fix" by activating anything, and never get past a
+failing gate by skipping it.
 
 This is the standing gate for every change; `config-change` delegates its
 verification here rather than restating it (ADR 0019).
 
 ## Steps
 
-Run from the repository root. Always pass `--no-update-lock-file`: lock updates
-land as dedicated commits (ADR 0011), so a check or build must never mutate the
-lock — a lock modification here is itself a failure. Steps 1–2 mirror the CI
-lint jobs and are cheap, so run them first to fail fast.
+Run from the repository root.
 
-1. **Nix format & lint** (the CI *Nix format & lint* job runs the same
-   script). Skip if the change touches no `*.nix`.
-   - `nix develop --no-update-lock-file -c bin/check-nix.sh`
-2. **Docs & commit hygiene** (mirrors the CI *Docs & commit hygiene* job).
-   - `nix develop --no-update-lock-file -c bin/check-markdown.sh`
-   - `nix develop --no-update-lock-file -c bin/check-shell.sh`
-   - `bin/check-stray-tags.sh` — the file-writing tool occasionally appends a
-     stray closing tag to a file it creates, which then breaks Nix evaluation
-     or lint.
-   - `nix develop --no-update-lock-file -c bin/check-commits.sh` — the
-     branch's commits are Conventional Commits. CI also checks the pull
-     request's title, which becomes the squash commit's subject when the branch
-     has more than one commit.
-   - `bin/check-payloads.sh`, `bin/check-skills.sh`,
-     `bin/check-agent-guard.sh` and `bin/check-nvim-hook-paths.sh` — each
-     script's header says what it guards. Run them without arguments, even
-     when the change looks unrelated: what they guard trips no CI gate,
-     which is why they sit in CI's always-on job (#89, #91).
-3. **Payload content checks** (mirrors the CI *zsh payload syntax* and *nvim*
-   jobs). Run the one matching what changed; skip if no payload changed.
-   - zsh: `nix develop --no-update-lock-file -c bin/check-zsh.sh`
-   - zsh abbreviations: `nix develop --no-update-lock-file -c bin/check-abbr.sh --commands` — `config/zsh/abbreviations`
-     is zsh-abbr's own user-abbreviations file, loaded by the plugin at every
-     shell start, and its loader ignores any line it does not recognise without
-     a word. The check loads the payload with the pinned zsh-abbr in a sandbox
-     and compares what arrived with what is declared. `--commands` is the part
-     CI cannot run: it asserts every expansion starts with something installed
-     *here*, which is what `dc='docker-compose'` violated for months.
-   - nvim: `nix develop --no-update-lock-file -c bin/check-stylua.sh`, and
-     `nix develop .#nvim --no-update-lock-file -c bin/check-nvim.sh` for a
-     headless startup with the Neovim the machine runs (slow on a cold plugin
-     cache; it restores to `lazy-lock.json`).
-   - nvim LuaLS typecheck:
-     `nix develop .#nvim --no-update-lock-file -c bin/check-luals.sh`.
-   These are the steps that carry the weight for a payload change, because
-   step 5 cannot see one — see the note there.
-
-4. **Flake check** (the CI *Flake check & system closure build* job runs the
-   same script).
-   `bin/check-flake.sh` — `nix flake check`, then a build of every attr in
-   `darwinConfigurations` (currently `Kazukis-MacBook-Air`).
-5. **Build every host closure**
-   Step 4 built them and left no link. Link the one step 6 compares; it is
-   already built, so this is instant:
+1. **Every gate:** `bin/preflight.sh`. Its header says what it runs. Which
+   checks exist, what each runs and which files concern it are decided by
+   `lefthook.yml` and the `bin/check-*.sh` scripts, not here. Its first stage
+   is `bin/hooks-health.sh`, which fails if the hooks are not installed; the
+   fix is the owner's step in `manual-setup`. A failing stage is the finding:
+   report the check's own output.
+2. **Closure diff.** Link the closure step 1 built, for the host being
+   changed (currently `Kazukis-MacBook-Air`), and compare it with the running
+   system:
    `nix build .#darwinConfigurations.<host>.system --no-update-lock-file -o result`
-6. **Closure diff**
-   `nix store diff-closures /run/current-system ./result`
+   then `nix store diff-closures /run/current-system ./result`.
    Present the full diff. A package *version* change is a red flag here: this
    check does not touch the lock, so nothing should move. The one exception is
    a deliberate `flake.lock` update, which is reviewed with the `lock-review`
@@ -79,52 +41,21 @@ lint jobs and are cheap, so run them first to fail fast.
    check.** Since ADR 0021 a link target is a path string, so editing
    `config/**` leaves the closure byte-identical. A closure that *does* move on
    a payload-only change means something still copies that file into the store,
-   and is the finding. The verification for the content itself is step 3.
-7. **Collision check**
-   Enumerate the files the built configuration will place in `$HOME`
-   (e.g. via `nix eval` of `home-manager` file attrs, or by inspecting
-   `./result`'s home-files). For each target that already exists in `$HOME`
-   as a regular file or foreign symlink, report it. Verify
+   and is the finding. The verification for the content itself is step 1.
+3. **Collision check.** Enumerate the files the built configuration will place
+   in `$HOME` (e.g. via `nix eval` of `home-manager` file attrs, or by
+   inspecting `./result`'s home-files). For each target that already exists in
+   `$HOME` as a regular file or foreign symlink, report it. Verify
    `backupFileExtension` is configured before calling this step passed.
-8. **Secret scan** (mirrors the CI *Secret scan* job).
-   - `nix develop --no-update-lock-file -c bin/check-secrets.sh` — every
-     commit HEAD reaches.
-   - It reads commits, so a change not yet committed is not in it: stage the
-     change and run `nix develop --no-update-lock-file -c bin/check-secrets.sh --staged`.
-
-## Scope shortcuts
-
-Whether a step applies is the script's answer, not a list restated here: the
-scopes live in the scripts, and CI's `changes` job asks the same ones. For
-the branch's changes:
-
-```sh
-changed() { git diff --name-only --no-renames main...; }
-bin/check-flake.sh --applies $(changed)   # steps 1, 4, 5, 6 and 7
-bin/check-zsh.sh --applies $(changed) || bin/check-abbr.sh --applies $(changed)
-bin/check-stylua.sh --applies $(changed) || bin/check-nvim.sh --applies $(changed) ||
-  bin/check-luals.sh --applies $(changed)   # step 3, per payload
-```
-
-Exit 0 means the step applies, and 1 that it does not. The list is committed
-changes only, so add any uncommitted files to it. With no changed files,
-`--applies` exits 2, which is a usage error.
-
-**A change to `.github/workflows/ci.yml` runs every step.** It is in no
-script's scope, and CI runs every gate for it, so a change that only edits the
-workflow still needs the flake check and the closure build locally. Leaving
-that out is what #112 caught.
-
-`config/**` is deliberately in no closure scope (ADR 0022): payload content
-cannot move the closure, so a payload-only change runs steps 2, 3 and 8, and
-CI reports the macOS build as *skipping*, which still satisfies the required
-check. For a documentation-only change, run steps 2 and 8 alone.
 
 ## Intentionally CI-only
 
-One hygiene step has no local counterpart, and the reason is the trade it
+Two checks have no local counterpart, and the reason is the trade each
 encodes rather than an omission:
 
+- **The pull request's title** is a Conventional Commit, because it becomes
+  the squash commit's subject when the branch has more than one commit. It
+  exists only once the PR does.
 - **Plugin pins do not ride along with other changes (#98)** — report-only,
   and only on pull requests. It needs the PR base SHA and annotates rather
   than fails: the judgement "pins rode along on purpose" is the author's,
@@ -133,7 +64,7 @@ encodes rather than an omission:
 
 ## Report
 
-End with a pass/fail table for the steps you ran and an explicit statement of
-whether the tree meets the CI-gate, collision, and secret criteria. Never
-conclude with a recommendation to switch — applying is the owner's manual
-decision.
+End with step 1's pass/fail lines, the closure diff and its judgement, and the
+collision result, and state explicitly whether the tree meets the CI-gate,
+collision, and secret criteria. Never conclude with a recommendation to
+switch — applying is the owner's manual decision.

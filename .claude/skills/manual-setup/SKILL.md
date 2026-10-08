@@ -361,7 +361,7 @@ A linked worktree shares it.
 ### What proves it worked
 
 ```sh
-git config core.hooksPath     # .githooks
+bin/hooks-health.sh           # every line ok, exit 0
 git hook run pre-commit       # runs the checks on what is staged; exit 0 when nothing is
 ```
 

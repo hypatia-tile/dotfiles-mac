@@ -24,6 +24,13 @@
 # means nothing to check, and exits 0. For `pushed`, a missing origin/main
 # makes the range unknowable, and CHECK runs with no files, which checks
 # everything: the contract runs more, never less, when the list is lost.
+#
+# HOOK_FILES=all in the environment runs CHECK with no files whatever the mode,
+# which is "everything" by the same contract. bin/preflight.sh runs the hook
+# stages that way over the whole tree (ADR 0032 rollout step 4, #206).
+# `lefthook run --all-files` cannot do it, since no command here takes its file
+# list from Lefthook. The override only ever widens a run, so it is no bypass;
+# any other non-empty value is a usage error rather than a guess.
 set -euo pipefail
 
 usage() {
@@ -34,8 +41,18 @@ usage() {
 [[ $# -ge 2 ]] || usage
 mode=$1
 shift
+case $mode in staged | pushed) ;; *) usage ;; esac
 
 cd "$(git rev-parse --show-toplevel)"
+
+case ${HOOK_FILES-} in
+  '') ;;
+  all) exec "$@" ;;
+  *)
+    echo "$(basename "$0"): HOOK_FILES must be 'all' or unset, not '$HOOK_FILES'" >&2
+    exit 2
+    ;;
+esac
 
 files=()
 case $mode in
