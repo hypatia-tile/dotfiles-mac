@@ -7,9 +7,10 @@ description: Find out which repository owns a piece of this host's environment b
 
 Parts of this host's environment are declared in repositories, and parts are
 not yet. An agent working in some other repository must not change any of it
-in place: a projected file is read-only and is overwritten on the next
-projection, a hand-installed tool drifts from the declaration, and a
-diagnosis that ignores how the host is built reaches the wrong conclusion.
+in place: a linked file is another repository's working tree, so an edit
+through it is an unreviewed change there; a hand-installed tool drifts from
+the declaration; and a diagnosis that ignores how the host is built reaches
+the wrong conclusion.
 
 ## The boundary
 
@@ -34,8 +35,8 @@ repository's own `AGENTS.md`.
 - Edit, `chmod`, replace or delete a file outside the working tree.
 - Install globally: `brew install`, `nix profile install`, `npm -g`,
   `pip install --user`, `cargo install`, `go install`, `curl … | sh`.
-- Run `defaults write`, `sudo`, `darwin-rebuild`, `nixos-rebuild`,
-  `home-manager switch`, or the owners' `bin/project.sh`.
+- Run `defaults write`, `sudo`, `darwin-rebuild`, `nixos-rebuild` or
+  `home-manager switch`.
 
 Reading and observing is always fine, and is the point of the next section.
 
@@ -60,12 +61,11 @@ it. Match the result against this table, top to bottom:
 
 | Observation | Owner |
 |---|---|
-| The target is listed in `${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles-mac/projected` | dotfiles-mac — a payload placed by its `bin/project.sh`, declared in `modules/payloads.tsv` (on any host) |
+| A file under `$HOME` whose `readlink -f` resolves into the dotfiles-mac checkout | dotfiles-mac — a payload, declared in `modules/home/payloads/` (on any host; on NixOS, nixos-config imports that declaration) |
 | macOS, **and** the host is built from dotfiles-mac (below), **and** the thing comes from `/run/current-system`, `/etc/profiles/per-user/$USER`, a `/nix/store` symlink under `$HOME`, or `/opt/homebrew` | dotfiles-mac |
-| NixOS, and the thing comes from `/run/current-system` or `/etc` | nixos-config |
-| NixOS, and it is a `/nix/store` symlink under `$HOME` or comes from `~/.nix-profile` | **ambiguous** — Home Manager may be installed globally there without being declared in any repository |
+| NixOS, and the thing comes from `/run/current-system`, `/etc`, `/etc/profiles/per-user/$USER`, or a `/nix/store/…-home-manager-files` symlink under `$HOME` | nixos-config — Home Manager is declared there as a NixOS module. A link that resolves into another checkout (`dotfiles-nixos`) is still declared by nixos-config; an edit there is live and is not a change to the host's declaration |
 | `/usr/bin`, `/bin`, `/usr/sbin`, `/System` | the operating system — nobody's to change |
-| Anything else (`~/.nix-profile` on macOS, `/usr/local`, `~/.local/bin`, `~/.cargo/bin`, …) | **unknown** — likely an ad hoc install |
+| Anything else (`~/.nix-profile`, `/usr/local`, `~/.local/bin`, `~/.cargo/bin`, …) | **unknown** — likely an ad hoc install |
 
 **Whether a macOS host is built from dotfiles-mac:** `darwin-rebuild` resolves
 under `/run/current-system`, and the host's name (`scutil --get
@@ -78,10 +78,9 @@ nix eval --no-update-lock-file "$(ghq list -p hypatia-tile/dotfiles-mac)#darwinC
 
 If it is not, the second row does not apply and only the first does.
 
-**Ambiguous or unknown: stop and ask.** Report what you observed — the
-commands and their output — and ask the owner who owns it. Do not pick an
-owner, and do not change it. NixOS ownership is not settled yet; expect this
-case there.
+**Unknown: stop and ask.** Report what you observed — the commands and their
+output — and ask the owner who owns it. Do not pick an owner, and do not
+change it.
 
 **Diagnosis follows the owner.** Once the owner is known, read its
 `AGENTS.md` and `docs/README.md` (dotfiles-mac) before explaining why
@@ -126,7 +125,7 @@ owner's approval.
      --title "<title>" --body-file draft.md
    ```
 
-   For an **ambiguous** or **unknown** owner, the owner names the repository
+   For an **unknown** owner, the owner names the repository
    in step 3; there is no default.
 
 Then carry on with the task in the current repository without the change, or

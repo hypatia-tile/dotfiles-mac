@@ -56,8 +56,8 @@ are tracked through an allowlist (`.claude/skills/*` is ignored, with a
 `!.claude/skills/<name>` exception per tracked skill) so that a skill an
 agent creates for itself and skill-manager artifacts stay out of the
 repository. The owner's user-scope skills are not these: they live in
-`config/agents/skills/` and reach `~/.claude/skills` through the projector
-(ADR 0028; see `AGENTS.md`).
+`config/agents/skills/` and reach `~/.claude/skills` through Home Manager
+(ADR 0028, ADR 0034; see `AGENTS.md`).
 A new skill that is not allowlisted is silently untracked — it works here and
 is absent from every clone, with `git status` clean throughout.
 `bin/check-skills.sh` is what makes that fail instead, in CI's always-on job

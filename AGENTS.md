@@ -53,7 +53,8 @@ stop, rather than working around it.
   into a document, that is the mistake this rule exists to prevent.
 - **User-scope agent skills live in `config/agents/skills/<name>/`** (ADR
   0028) — the owner's skills for every repository, linked into
-  `~/.claude/skills` and `~/.codex/skills` by `bin/project.sh`. Add one through
+  `~/.claude/skills` and `~/.codex/skills` by Home Manager (ADR 0034) from
+  `modules/home/payloads/shared.nix`. Add one through
   `config-change`. Whenever you touch one:
   - **An edit is live at once, in every agent session on this machine** —
     before it is committed, in unrelated projects, and it follows the branch

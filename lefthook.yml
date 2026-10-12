@@ -30,14 +30,10 @@ pre-commit:
       run: bin/lib/hook-files.sh staged bin/check-shell.sh
     stray-tags:
       run: bin/lib/hook-files.sh staged bin/check-stray-tags.sh
-    payloads:
-      run: bin/lib/hook-files.sh staged bin/check-payloads.sh
     skills:
       run: bin/lib/hook-files.sh staged bin/check-skills.sh
     agent-guard:
       run: bin/lib/hook-files.sh staged bin/check-agent-guard.sh
-    nvim-hook-paths:
-      run: bin/lib/hook-files.sh staged bin/check-nvim-hook-paths.sh
     zsh:
       run: bin/lib/hook-files.sh staged bin/check-zsh.sh
     abbr:

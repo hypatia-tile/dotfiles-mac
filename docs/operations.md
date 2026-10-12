@@ -104,17 +104,20 @@ merging is always manual, and reviewing one is the `lock-review` skill.
 
 ## 2. Home Manager placement semantics (hard-won)
 
-- **`backupFileExtension` only backs up regular files.** A directory — or a
-  symlink to a directory — in the way of an HM target aborts the activation
-  with "would be clobbered". Remove or move such targets manually before
-  switching (this is what broke the first cutover attempt).
+- **`backupFileExtension` does not back up a symlink Home Manager did not
+  make.** Such a symlink in the way of an HM target aborts the activation with
+  "would be clobbered", before anything is linked; remove it before switching.
+  This broke the first cutover attempt, when it covered directories too. The
+  pinned Home Manager now moves a real file *or directory* aside to `*.hm-bak`
+  — read-only ones included — which the ADR 0034 migration measured; it still
+  aborts if that `*.hm-bak` already exists.
 - **Directory-sourced `xdg.configFile."x"` makes `~/.config/x` a read-only
   store symlink.** If anything inside must stay writable, either link
   file-by-file with `recursive = true` or keep the writable file outside the
   managed tree entirely (nvim user dictionary). Granularity outlives the
-  mechanism: zsh was the worked example here until ADR 0026 projected it, and
-  the same reason — `HISTFILE` and `.zcompdump` live in ZDOTDIR — now makes it
-  a file-by-file entry in `modules/payloads.tsv` instead.
+  mechanism: zsh is linked file by file in
+  `modules/home/payloads/shared.nix` because `HISTFILE` and `.zcompdump` live
+  in ZDOTDIR.
 - **Nothing sources `hm-session-vars.sh` automatically.** HM's zsh
   integration is disabled because the zsh config is shipped as plain files,
   so `config/zsh/.zprofile` sources

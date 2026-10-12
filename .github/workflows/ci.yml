@@ -322,15 +322,9 @@ jobs:
           HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
         run: nix develop --no-update-lock-file -c bin/check-lock.sh "$BASE" "$HEAD"
 
-      # The four checks below each explain themselves in their script, and each
+      # The checks below each explain themselves in their script, and each
       # reads its scope from the files it guards. They run here, in the
       # always-on job, because what they guard trips no path filter (#89, #91).
-      - name: Paths the nvim projection hook depends on still exist
-        run: bin/check-nvim-hook-paths.sh
-
-      - name: Payload declaration is one the projector can act on
-        run: bin/check-payloads.sh
-
       - name: Skill tree is sound
         run: bin/check-skills.sh
 

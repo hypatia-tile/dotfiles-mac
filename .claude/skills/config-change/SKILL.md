@@ -58,13 +58,13 @@ that check is how they know it took.
 | CLI tool, language, LSP, library | `modules/home/packages.nix` | ADR 0005, 0006 |
 | GUI application | `homebrew.casks` in `modules/darwin/homebrew.nix` | ADR 0005 |
 | Formula needing a macOS-specific source build | `homebrew.brews` | ADR 0005 |
-| New tool's configuration file | `config/<tool>/` + `modules/payloads.tsv` | ADR 0020, 0026 |
+| New tool's configuration file | `config/<tool>/` + a `link` entry in `modules/home/payloads/shared.nix`, or `darwin.nix` when the tool is macOS-specific | ADR 0020, 0034 |
 | Editing an existing tool's configuration | the file under `config/<tool>/` | ADR 0020 |
 | Environment variable, `PATH` entry, launchd agent | `modules/home/base.nix` | ADR 0006 |
 | macOS system default or keybinding | `modules/darwin/macos.nix` | ADR 0017 |
 | Neovim configuration | the files under `config/nvim/` | ADR 0021 |
-| Agent skill for every repository (user scope) | `config/agents/skills/<name>/SKILL.md` + two `link` lines in `modules/payloads.tsv` (`.claude/skills/<name>`, `.codex/skills/<name>`) | ADR 0028 |
-| Instructions every agent session loads (user scope) | `config/agents/instructions.md` — already placed as `~/.claude/CLAUDE.md` and `~/.codex/AGENTS.md` (`copy`); keep it to pointers, the substance belongs in a skill | ADR 0033 |
+| Agent skill for every repository (user scope) | `config/agents/skills/<name>/SKILL.md` + its name in the `skills` list of `modules/home/payloads/shared.nix`, which links it into both agents | ADR 0028, 0034 |
+| Instructions every agent session loads (user scope) | `config/agents/instructions.md` — already placed as `~/.claude/CLAUDE.md` and `~/.codex/AGENTS.md` (a store copy, live at the next switch); keep it to pointers, the substance belongs in a skill | ADR 0033, 0034 |
 | Agent skill for this repository only (project scope) | `.claude/skills/<name>/SKILL.md` + a `!.claude/skills/<name>` line in `.gitignore` + a `.codex/skills/<name>` symlink | ADR 0019 |
 | `flake.lock` | **not here** — use `lock-review` | ADR 0011 |
 
@@ -79,12 +79,12 @@ that need a Nix value or a Nix-side integration, such as `programs.direnv`
 - **Declaring a directory hands the whole directory to this repository.** If
   the tool writes runtime state into its own config directory, declare the
   specific files instead (as `herdr/config.toml` and the zsh payload do).
-  Getting this wrong makes the tool fail at runtime, not at build — and under
-  the read-only projection it is worse than under the old symlinks: replacing
-  a directory payload *deletes* what the tool wrote there (#94). The same rule
-  holds for the two entries still in `modules/home/files.nix`, where a
-  directory-sourced `xdg.configFile` makes the target a read-only store
-  symlink unless it is linked file-by-file with `recursive = true`.
+  Getting this wrong does not fail the build: whatever the tool writes lands
+  in this repository's working tree, where `git status` is the only thing
+  that reports it.
+- **A symlink Home Manager did not make blocks the switch.** If the new target
+  is already a symlink from something else, activation aborts before linking
+  anything; remove it first (`docs/operations.md` §2).
 - **A non-official Homebrew tap must be declared `trusted = true`** on the
   `homebrew.taps` entry, or activation refuses to load its formulae.
 - **Whatever a `with-*` build option pulls in must be declared in `brews`
@@ -107,9 +107,9 @@ Name the applicable one in the PR body. "It built" is not one of these.
 | nixpkgs package removed | `command -v <bin>` finds nothing |
 | Homebrew cask | the app is in `/Applications` and launches |
 | Homebrew formula | `brew list --versions <name>` |
-| New config file | `bin/project.sh --check` reports in sync and `ls -ld ~/.config/<tool>/…` shows a read-only copy (`r--`), **and** the tool is run once to confirm it actually reads the setting. For the two entries still in `files.nix`, `readlink` instead: it points into `/nix/store` |
+| New config file | `readlink -f ~/.config/<tool>/…` resolves into this checkout, **and** the tool is run once to confirm it actually reads the setting |
 | Edited config | the specific behavior that changed, exercised directly |
-| User-scope agent skill | `bin/project.sh` places it without a switch; then `bin/project.sh --check` is in sync, `readlink ~/.claude/skills/<name>` and `readlink ~/.codex/skills/<name>` both point into this checkout, and `/skills` in a **new** Claude Code session and a **new** Codex session lists it. For Codex, quit every running Codex process first. At the ADR 0028 cutover the first `/skills` checks listed none of the new skills while a Codex process started before the change was still running, and a later fresh start listed all of them; the stale process is the likely cause, not a confirmed one |
+| User-scope agent skill | after the switch, `readlink -f ~/.claude/skills/<name>` and `readlink -f ~/.codex/skills/<name>` both resolve into this checkout, and `/skills` in a **new** Claude Code session and a **new** Codex session lists it. For Codex, quit every running Codex process first. At the ADR 0028 cutover the first `/skills` checks listed none of the new skills while a Codex process started before the change was still running, and a later fresh start listed all of them; the stale process is the likely cause, not a confirmed one |
 | Session variable / `PATH` | open a **new** shell and `echo $VAR` — the value arrives via `hm-session-vars.sh`, sourced from `config/zsh/.zprofile` |
 | macOS default / keybinding | `activateSettings -u`, then `bin/check-symbolic-hotkeys.sh` (compares the live domain with the declaration, ID by ID — macOS writes this key itself, see ADR 0030), then a behavior spot-check (`docs/operations.md` §1) |
 

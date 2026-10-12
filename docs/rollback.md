@@ -84,36 +84,36 @@ If Home Manager backed a file out of the way during the failed switch, it is
 next to the original with a `.hm-bak` suffix; restore it by renaming.
 `find ~ -maxdepth 3 -name '*.hm-bak'` finds them.
 
-## While payloads move to Home Manager (ADR 0034)
+## Rolling back past ADR 0034
 
-Home Manager places every payload from the switch that applies ADR 0034. Until
-the follow-up change deletes the projector, `bin/project.sh` and
-`modules/payloads.tsv` stay in the checkout **only so that a rollback past that
-switch still works**:
+Generations from before 2026-10-12 did not place most payloads themselves:
+their activation ran `bin/project.sh` from the checkout (ADR 0026), and that
+script has since been deleted (ADR 0034). Rolling back to one of them as things
+stand removes Home Manager's payload links and places nothing in their stead —
+zsh included. **Restore the projector first**, from the last commit that has
+it, then roll back:
 
-- **Do not run `bin/project.sh` by hand.** It still declares every payload, so
-  it would replace Home Manager's links with read-only copies, and the next
-  switch would move those to `*.hm-bak`.
-- **Rolling back to a generation before that switch is safe.** That
-  generation's activation removes Home Manager's payload links as orphans and
-  then runs `bin/project.sh` from the checkout, which places everything again.
-  If that run fails, the section below applies.
+```sh
+git -C ~/ghqrepo/github.com/hypatia-tile/dotfiles-mac \
+  restore --source=0ec5ab0 -- bin/project.sh modules/payloads.tsv
+```
 
-The migration switch itself leaves the projector's read-only copies next to
-each target as `*.hm-bak`. They are identical to the repository, and need
-`chmod -R u+w` before they can be removed.
+Coming forward again is the ADR 0034 migration once more. Remove the
+projector's skill symlinks under `~/.claude/skills` and `~/.codex/skills`
+first — Home Manager will not back up a symlink it did not make, and aborts —
+then switch, then delete the two restored files.
 
-## If the projection is missing: recovering from a bare shell
+## If the shell starts without its configuration
 
-A projection that fails mid-switch leaves payloads neither linked nor placed
-(#91). For the zsh payload that means `~/.config/zsh` is empty and the shell
-starts with none of its configuration: no prompt to speak of, no history, no
-completion, no abbreviations.
+When a payload link is missing or dangling — the checkout moved, or a rollback
+went past ADR 0034 without the step above — the shell starts with none of its
+configuration: no prompt to speak of, no history, no completion, no
+abbreviations.
 
 **That shell is fully capable, and this is the paragraph to trust when it does
 not feel that way.** `PATH` comes from `/etc/zshrc`, which nix-darwin manages in
-the system layer — not a payload, not a Home Manager user file — so a projection
-failure cannot reach it. Measured with `ZDOTDIR` pointed at an empty directory,
+the system layer — not a payload, not a Home Manager user file — so a missing
+payload cannot reach it. Measured with `ZDOTDIR` pointed at an empty directory,
 and again with `~/.zshenv` absent entirely:
 
 | | |
@@ -122,25 +122,10 @@ and again with `~/.zshenv` absent entirely:
 | `git` | `/usr/bin/git` |
 | `nvim` | `/etc/profiles/per-user/$USER/bin/nvim` |
 
-So the repair is one command, and it needs nothing the bare shell lacks:
-
-```sh
-~/ghqrepo/github.com/hypatia-tile/dotfiles-mac/bin/project.sh
-```
-
-Type the absolute path — there is no `$PATH` entry for it and no abbreviation
-in this shell. Then open a new terminal; the configuration is back.
-
-The projector needs nothing beyond `bash` and the utilities in `/usr/bin`. It
-reads `modules/payloads.tsv` with `read`, so no parser and no `nix` are
-involved, and it copies from the working tree, not from the store — a store
-symlink is something it reads and defers to, never something it creates. Nor
-could it have removed `~/.config/nix`: it refuses to place that path at all
-(`SELF_DEPENDENCIES` in `bin/project.sh`, #85).
-
-This is not a rollback. The projection is not part of the closure, so
-`switch --rollback` does not restore it, and re-running the projector is the
-whole recovery.
+So everything the repair needs is there: `readlink ~/.config/zsh/.zshrc` says
+which case it is, and a switch from the checkout (or the section above)
+restores the links. Type absolute paths — there is no abbreviation in this
+shell.
 
 ## If generation rollback is not enough
 
