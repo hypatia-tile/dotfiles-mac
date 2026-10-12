@@ -35,6 +35,7 @@ let
     "grilling"
     "handoff"
     "host-environment"
+    "improvement-chat"
     "scrap-note"
     "step-review"
     "step-setup"
