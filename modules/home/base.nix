@@ -35,7 +35,7 @@ in
   xdg.enable = true;
 
   # Auto-start Hammerspoon at login. The app is a Homebrew cask (phase 3);
-  # its configuration is placed by files.nix (phase 2).
+  # its configuration is placed by payloads/darwin.nix.
   launchd.agents.hammerspoon = {
     enable = true;
     config = {

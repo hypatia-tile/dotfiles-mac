@@ -12,7 +12,7 @@
 # Two trees, since ADR 0028:
 #   .claude/skills        project scope — this repository's own procedures
 #   config/agents/skills  user scope — linked into ~/.claude/skills and
-#                         ~/.codex/skills by bin/project.sh
+#                         ~/.codex/skills by Home Manager (ADR 0034)
 #
 # and one mirror of the first, .codex/skills, because Codex does not read
 # .claude/skills. Measured on codex-cli 0.154.0 through the app server's
@@ -29,8 +29,8 @@
 #     (`.claude/skills/*` ignored, one `!.claude/skills/<name>` per skill), so a
 #     skill nobody allowlists works here and is absent from every clone, with
 #     `git status` clean throughout. CLAUDE.md names the trap.
-#   - declared: a user skill needs both `link` lines in modules/payloads.tsv;
-#     with one, it silently reaches only one agent.
+#   - declared: a user skill needs its name in the `skills` list of
+#     modules/home/payloads/shared.nix; without it, no agent sees it.
 #   - unique across trees: a name in both is ambiguous in a session that sees
 #     both scopes.
 #   - mirrored: a project skill with no .codex/skills link reaches Claude Code
@@ -49,15 +49,17 @@ set -euo pipefail
 # shellcheck source=lib/check.sh source-path=SCRIPTDIR
 . "$(dirname "$0")/lib/check.sh"
 
+PAYLOAD_MODULE=modules/home/payloads/shared.nix
+
 scope '.claude/skills/*' '.codex/skills/*' 'config/agents/skills/*' \
-  modules/payloads.tsv .gitignore
+  "$PAYLOAD_MODULE" .gitignore
 check_gate "$@"
 
 PROJECT_ROOT=.claude/skills
 USER_ROOT=config/agents/skills
-# Inside the checkout, not $HOME. The `.codex/skills/<name>` targets in
-# modules/payloads.tsv are a different thing entirely — those are user-scope
-# skills placed under $HOME by the projector.
+# Inside the checkout, not $HOME. The `.codex/skills/<name>` links that
+# $PAYLOAD_MODULE places are a different thing entirely — those are user-scope
+# skills placed under $HOME by Home Manager.
 CODEX_MIRROR=.codex/skills
 
 fail=0
@@ -147,28 +149,22 @@ while IFS= read -r n; do
   fi
 done <<< "$user_names"
 
-# Declared: both link lines per user skill, and no skill-directory line that
-# points anywhere but the skill of the same name. bin/project.sh --validate
-# already rejects a source that does not exist.
-decl=$(sed -e 's/#.*//' -e '/^[[:space:]]*$/d' modules/payloads.tsv)
+# Declared: every user skill is in the `skills` list of the shared payload
+# module, which links each name into both agents, and every name in that list
+# is a skill. A listed name with no directory is not an evaluation error:
+# mkOutOfStoreSymlink takes a path string, so the link would simply dangle.
+declared=$(awk '/^[[:space:]]*skills = \[/,/\];/' "$PAYLOAD_MODULE" | grep -oE '"[^"]+"' | tr -d '"' || true)
+[[ -n $declared ]] || err "$PAYLOAD_MODULE: no \`skills = [ ... ];\` list found"
 while IFS= read -r n; do
   [[ -n $n ]] || continue
-  for agent in .claude .codex; do
-    if ! printf '%s\n' "$decl" | grep -qxF "$agent/skills/$n	$USER_ROOT/$n	link"; then
-      err "$USER_ROOT/$n: modules/payloads.tsv lacks '$agent/skills/$n<TAB>$USER_ROOT/$n<TAB>link'"
-    fi
-  done
+  printf '%s\n' "$declared" | grep -qxF "$n" ||
+    err "$USER_ROOT/$n: not in the skills list of $PAYLOAD_MODULE, so no agent sees it"
 done <<< "$user_names"
-while IFS=$'\t' read -r target source mode; do
-  case "$target" in
-    .claude/skills/* | .codex/skills/*)
-      n=${target#*/skills/}
-      if [[ $source != "$USER_ROOT/$n" || $mode != link ]]; then
-        err "modules/payloads.tsv: '$target' must link to $USER_ROOT/$n, not '$source' ($mode)"
-      fi
-      ;;
-  esac
-done <<< "$decl"
+while IFS= read -r n; do
+  [[ -n $n ]] || continue
+  printf '%s\n' "$user_names" | grep -qxF "$n" ||
+    err "$PAYLOAD_MODULE: skills lists '$n', which is not a directory under $USER_ROOT"
+done <<< "$declared"
 
 # Mirrored: one relative symlink per project skill, tracked, pointing at the
 # skill of the same name — and nothing else under the mirror, so a skill an

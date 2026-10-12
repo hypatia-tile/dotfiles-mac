@@ -14,7 +14,8 @@
 #   1. structure   every content line is `abbr "<name>"="<expansion>"`
 #   2. unique      no name is declared twice (the later one would win silently)
 #   3. wired       modules/abbr.zsh points ABBR_USER_ABBREVIATIONS_FILE here and
-#                  modules/payloads.tsv projects the file — either one stale and
+#                  modules/home/payloads/shared.nix links the file — either one
+#                  stale and
 #                  the abbreviations are declared but never read
 #   4. loaded      `abbr list` after a real load equals the declaration, name
 #                  for name and expansion for expansion
@@ -42,7 +43,7 @@ set -euo pipefail
 
 ABBREVIATIONS=config/zsh/abbreviations
 MODULE=config/zsh/modules/abbr.zsh
-PAYLOADS=modules/payloads.tsv
+PAYLOADS=modules/home/payloads/shared.nix
 
 check_commands=false
 if [[ ${1-} == --commands ]]; then
@@ -55,8 +56,6 @@ check_gate "$@"
 
 fail=0
 err() { echo "error: $*" >&2; fail=1; }
-tab=$'\t'
-
 [[ -f $ABBREVIATIONS ]] || { echo "check-abbr: $ABBREVIATIONS not found" >&2; exit 2; }
 
 # 1 & 2. Structure and uniqueness, by line number so the message is actionable.
@@ -88,8 +87,8 @@ done < "$ABBREVIATIONS"
 # shellcheck disable=SC2016  # the literal $ZDOTDIR is what must be in the file
 grep -qF 'ABBR_USER_ABBREVIATIONS_FILE=$ZDOTDIR/abbreviations' "$MODULE" ||
   err "$MODULE does not point ABBR_USER_ABBREVIATIONS_FILE at \$ZDOTDIR/abbreviations"
-grep -qxF ".config/zsh/abbreviations${tab}config/zsh/abbreviations${tab}copy" "$PAYLOADS" ||
-  err "$PAYLOADS does not project $ABBREVIATIONS to .config/zsh/abbreviations as a copy"
+grep -qF '"zsh/abbreviations".source = link "config/zsh/abbreviations";' "$PAYLOADS" ||
+  err "$PAYLOADS does not link $ABBREVIATIONS to ~/.config/zsh/abbreviations"
 
 # 4. What the plugin actually loaded.
 plugin=${ABBR_PLUGIN:-}

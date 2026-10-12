@@ -26,11 +26,13 @@
 # does not install (`docker compose` arrives as a CLI plugin), and ten kubectl
 # abbreviations named a binary this machine has never had.
 #
-# `abbr add` and `abbr erase` write *here*, and ~/.config/zsh/abbreviations is a
-# read-only projected copy (ADR 0026): the write replaces the copy, comments and
-# all, and `bin/project.sh --check` then reports the drift. This file in the
-# repository is the editing surface — edit it, then run bin/project.sh. For an
-# abbreviation that should not outlive the shell, `abbr add --session`.
+# Do not use `abbr add` or `abbr erase`. They rewrite this file with an `mv`
+# over ~/.config/zsh/abbreviations, which replaces Home Manager's link with a
+# regular file (ADR 0034): the change never reaches the repository, the next
+# switch moves the file to abbreviations.hm-bak, and the switch after that
+# fails while the backup exists. Edit this file instead — it is live in the
+# next shell. For an abbreviation that should not outlive the shell,
+# `abbr add --session`.
 
 # Git
 abbr "g"="git"

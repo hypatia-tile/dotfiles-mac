@@ -6,7 +6,7 @@
     };
 
     # zsh, git, tmux, kitty, alacritty, helix, etc. are shipped as plain
-    # files by files.nix (phase 2), not as HM program modules.
+    # files by payloads/ (ADR 0020, ADR 0034), not as HM program modules.
 
     home-manager.enable = true;
   };

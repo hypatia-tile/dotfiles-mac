@@ -84,6 +84,25 @@ If Home Manager backed a file out of the way during the failed switch, it is
 next to the original with a `.hm-bak` suffix; restore it by renaming.
 `find ~ -maxdepth 3 -name '*.hm-bak'` finds them.
 
+## While payloads move to Home Manager (ADR 0034)
+
+Home Manager places every payload from the switch that applies ADR 0034. Until
+the follow-up change deletes the projector, `bin/project.sh` and
+`modules/payloads.tsv` stay in the checkout **only so that a rollback past that
+switch still works**:
+
+- **Do not run `bin/project.sh` by hand.** It still declares every payload, so
+  it would replace Home Manager's links with read-only copies, and the next
+  switch would move those to `*.hm-bak`.
+- **Rolling back to a generation before that switch is safe.** That
+  generation's activation removes Home Manager's payload links as orphans and
+  then runs `bin/project.sh` from the checkout, which places everything again.
+  If that run fails, the section below applies.
+
+The migration switch itself leaves the projector's read-only copies next to
+each target as `*.hm-bak`. They are identical to the repository, and need
+`chmod -R u+w` before they can be removed.
+
 ## If the projection is missing: recovering from a bare shell
 
 A projection that fails mid-switch leaves payloads neither linked nor placed

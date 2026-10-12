@@ -9,7 +9,8 @@
     tmux
     # herdr: tmux-alternative, kept alongside tmux (do not nest one in the
     # other — both use the C-q prefix). Config: config/herdr/config.toml
-    # (linked file-only via files.nix). Currently 0.8.0 from the pinned nixpkgs.
+    # (linked file-only via payloads/shared.nix). Currently 0.8.0 from the
+    # pinned nixpkgs.
     herdr
 
     # Shell utilities
@@ -75,8 +76,9 @@
     # declaring them again would only add a second copy to the profile.
     #
     # colima keeps its instance state and its generated colima.yaml under
-    # ~/.colima, so none of it is projected — the granularity rule in
-    # modules/payloads.tsv is what forbids handing that directory over.
+    # ~/.colima, so none of it is linked — the granularity rule in
+    # modules/home/payloads/shared.nix is what forbids handing that directory
+    # over.
     colima
     # The client only, on darwin: nixpkgs defaults clientOnly to !isLinux, so
     # this brings no dockerd — colima's VM provides it. buildxSupport and
