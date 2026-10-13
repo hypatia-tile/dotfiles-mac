@@ -103,9 +103,9 @@
     claude-code
     codex
     # Cursor's terminal agent (the `cursor-agent` binary), on trial. The GUI
-    # editor is a separate package (code-cursor) and is deliberately not
-    # installed. Like claude-code and codex, this moves only with flake.lock,
-    # and its own `cursor-agent update` cannot write to the Nix store.
+    # editor is the `cursor` cask in modules/darwin/homebrew.nix (ADR 0005).
+    # Like claude-code and codex, this moves only with flake.lock, and its own
+    # `cursor-agent update` cannot write to the Nix store.
     cursor-cli
   ];
 }

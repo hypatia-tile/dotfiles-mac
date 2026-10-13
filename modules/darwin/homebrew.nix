@@ -54,6 +54,10 @@
       # container and are set by hand after the switch; ADR 0029 says why
       # declaring them was rejected rather than missed.
       "macskk"
+      # Cursor's GUI editor, on trial beside the cursor-cli agent in
+      # packages.nix. The cask updates itself (auto_updates), so Homebrew
+      # leaves its version alone rather than tracking it.
+      "cursor"
     ];
 
     masApps = { };
