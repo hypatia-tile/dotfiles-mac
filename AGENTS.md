@@ -81,10 +81,11 @@ stop, rather than working around it.
 - Work on short-lived feature branches off `main`, with Conventional Commits.
   One concern per branch. The `pre-commit` hook refuses a commit on `main`
   (`bin/check-branch.sh`).
-- **ADRs** live in `docs/adr/NNNN-slug.md` (MADR-lite) and always start as
-  `Status: Proposed`; only the owner promotes one to Accepted. Existing ADRs
-  are never edited — a changed decision gets a new ADR that supersedes the
-  old one. Use the `adr-new` skill.
+- **ADRs** live in `docs/adr/NNNN-slug.md` (MADR-lite), always start as
+  `Status: Proposed`, and start from an issue they cite (ADR 0035); only the
+  owner promotes one to Accepted. Existing ADRs are never edited — a changed
+  decision gets a new ADR that supersedes the old one. Use the `adr-new`
+  skill.
 - **`flake.lock` moves only in dedicated commits** (ADR 0011), which
   `bin/check-lock.sh` enforces at commit time and in CI. The weekly
   workflow opens the PRs and merging is always manual. Build and check
@@ -92,7 +93,9 @@ stop, rather than working around it.
   side effect; ad-hoc `nix flake update` is denied in tooling.
 - **Deferred work lives in GitHub Issues**, not as TODOs in documents
   (ADR 0019). Before starting a change, check `gh issue list` — the reason
-  something was postponed is usually already written down.
+  something was postponed is usually already written down. An idea that is
+  not an issue yet is one comment on the open inbox issue, and the roadmap
+  issue orders issues only (ADR 0035); the `inbox` skill handles both.
 
 ## Working notes
 

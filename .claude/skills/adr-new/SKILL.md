@@ -9,14 +9,18 @@ Create a new Architecture Decision Record for this repository.
 
 ## Steps
 
-1. Determine the next number: list `docs/adr/`, take the highest `NNNN`
+1. Find the issue the decision starts from (ADR 0035): it records the
+   problem before the solution was chosen. Ask the owner for its number. If
+   there is none — a decision reached in conversation — file one first that
+   states the problem and what was agreed.
+2. Determine the next number: list `docs/adr/`, take the highest `NNNN`
    prefix, add 1, zero-pad to 4 digits.
-2. Derive a short kebab-case slug from the decision title (English).
-3. Create `docs/adr/NNNN-<slug>.md` from the template below. Date is today
+3. Derive a short kebab-case slug from the decision title (English).
+4. Create `docs/adr/NNNN-<slug>.md` from the template below. Date is today
    (YYYY-MM-DD). Content in English.
-4. Fill Context/Decision/Consequences from the conversation; if the decision
-   is not yet settled, leave clearly marked `*TBD*` placeholders rather than
-   inventing content.
+5. Fill Context/Decision/Consequences from the conversation, citing the issue
+   from step 1 as `#N` in Context. If the decision is not yet settled, leave
+   clearly marked `*TBD*` placeholders rather than inventing content.
 
 ## Rules
 
@@ -26,6 +30,8 @@ Create a new Architecture Decision Record for this repository.
   `Superseded` — only the repository owner changes status (ADR 0007).
 - Do not renumber or edit existing ADRs; a changed decision gets a new ADR
   that supersedes the old one.
+- A new ADR cites at least one issue. ADR 0032's step 5-3 check will fail one
+  that does not (#208).
 - Do not commit; leave the file for the owner's review.
 
 ## Template
@@ -38,7 +44,8 @@ Create a new Architecture Decision Record for this repository.
 
 ## Context
 
-<What situation forces a decision? Facts, constraints, prior art.>
+<What situation forces a decision? Facts, constraints, prior art. Cite the
+issue it starts from as #N.>
 
 ## Decision
 

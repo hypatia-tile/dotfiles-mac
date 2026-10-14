@@ -24,6 +24,7 @@ result-*
 !.claude/skills/config-change
 !.claude/skills/lock-review
 !.claude/skills/manual-setup
+!.claude/skills/inbox
 # .codex/skills is deliberately absent from this file. It holds one tracked
 # symlink per project skill — Codex reads a repository's skills from there and
 # not from .claude/skills — and staying visible to `git status` is what shows a
