@@ -20,6 +20,7 @@ different set, in `config/agents/skills/` (ADR 0028).
 | `preflight` | Verifying a change against the CI gates before pushing |
 | `ship-pr` | A committed branch needs to become a green, mergeable PR |
 | `adr-new` | A decision needs recording |
+| `inbox` | An idea worth keeping is not an issue yet, or the inbox and roadmap need triage |
 | `ops-qa` | "How does X work here?" / "Why is it like this?" |
 | `keybinding-doctor` | A key or chord is swallowed, produces the wrong character, or fires the wrong command |
 | `manual-setup` | A fresh machine, or state the flake knowingly does not declare (macSKK's input source, dictionary and 直接入力 list) |
@@ -41,7 +42,7 @@ Merged-but-not-switched is a normal intermediate state.
 | [`../CLAUDE.md`](../CLAUDE.md) | Claude Code specifics: the `settings.json` guardrails, how skills are tracked |
 | [`operations.md`](operations.md) | Day-to-day semantics: Home Manager placement rules, Nix on this machine, CI behavior, known quirks |
 | [`rollback.md`](rollback.md) | Recovery when a switch goes wrong |
-| [`adr/`](adr/) | The decisions, 0001–0034, with their rationale |
+| [`adr/`](adr/) | The decisions, 0001–0035, with their rationale |
 
 ## Pending input
 
@@ -72,3 +73,6 @@ Not in this directory. Deferred work is filed as GitHub issues (ADR 0019):
 ```sh
 gh issue list --state open
 ```
+
+Ideas that are not issues yet are comments on the open `Inbox (…)` issue, and
+the open `Roadmap: …` issue orders the rest (ADR 0035).
