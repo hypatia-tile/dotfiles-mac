@@ -31,6 +31,12 @@
     # licence is the upstream project's and applied equally to the Homebrew
     # build this replaces.
     zsh-abbr
+    # Bookmark manager, on trial. Its database is runtime state under
+    # ~/.local/share/buku, so nothing of it is linked from this repository.
+    buku
+    # Note-taking CLI, on trial. Notes live in ~/.nb (git repositories) and
+    # nb writes ~/.nbrc itself (`nb set`), so neither is linked from here.
+    nb
 
     # Git utilities
     git-filter-repo
