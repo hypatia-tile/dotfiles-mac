@@ -1,7 +1,7 @@
 { pkgs, ... }:
 {
   # Per inventory A-9, TeX never enters the system closure (per-project
-  # flakes instead); alejandra is replaced by nixfmt-rfc-style (ADR 0012).
+  # flakes instead); alejandra is replaced by nixfmt (ADR 0012).
   home.packages = with pkgs; [
     # Terminal emulators and multiplexers
     alacritty
@@ -94,7 +94,7 @@
     docker
 
     # Nix tools
-    nixfmt-rfc-style
+    nixfmt
     statix
     deadnix
     nil

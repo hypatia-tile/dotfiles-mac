@@ -24,7 +24,7 @@ end
 local function formatter_pkg(pos)
   return c(pos, {
     t "nixfmt-tree",
-    t "nixfmt-rfc-style",
+    t "nixfmt",
   })
 end
 

@@ -37,10 +37,6 @@ exists, and the work is judgment rather than editing.
      devShell, which the lock pins (ADR 0032), so a formatter or linter bump
      can make previously-clean files fail. That run is the evidence this PR
      has, since the workflow's PRs get no CI.
-   - the eval warning `nixfmt-rfc-style is now the same as pkgs.nixfmt` is a
-     rename alias, harmless until the attribute is actually renamed upstream —
-     at which point `modules/home/packages.nix` needs the new name and this
-     stops being a lock-only change.
 
 4. **Record the notable bumps.** Name the packages the owner actually uses
    daily with old → new versions. A wall of 150 nodes is not reviewable; a

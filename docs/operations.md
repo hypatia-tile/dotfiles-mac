@@ -243,7 +243,3 @@ here — it is filed as a GitHub issue (`gh issue list`, ADR 0019).
   rule: whatever a `with-*` option pulls in must be declared alongside the
   formula. Symptom to recognize: the build/link succeeds but the program
   aborts on a missing dylib under `/opt/homebrew/opt/<lib>`.
-- The eval warning `nixfmt-rfc-style is now the same as pkgs.nixfmt` is a
-  rename alias in the pinned nixpkgs; harmless until the attribute is actually
-  renamed upstream, at which point `modules/home/packages.nix` needs the new
-  name. Watch for it when reviewing a lock update (`lock-review`).
