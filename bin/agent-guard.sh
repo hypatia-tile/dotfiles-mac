@@ -49,6 +49,18 @@ LEGACY = [os.path.join(HOME, "github", "dotfiles"), os.path.join(HOME, "github",
 WRAPPERS = {"command", "exec", "nohup", "time", "nice", "caffeinate", "xargs", "env", "builtin"}
 SHELLS = {"sh", "bash", "zsh", "dash", "ksh"}
 SEPARATORS = {";", "&&", "||", "|", "&", "|&", "(", ")", "\n", ";;"}
+# shlex joins adjacent operator characters into one token, so `f(){`, `|(` and
+# `);` arrive as "()", "|(" and ");". Any token made only of these characters
+# separates commands, or a command after it went unchecked (#210).
+OPERATOR = re.compile(r"^[;&|()]+$")
+# Reserved words that open a compound command and are followed by a command:
+# the guard reads past them as it reads past a wrapper. Without this,
+# `if x; then git push; fi`, `{ git push; }` and every function body were
+# decided by the reserved word, which is not a command, and allowed (#210).
+RESERVED = {"{", "!", "if", "then", "else", "elif", "do", "while", "until", "coproc"}
+# Output redirections that name a file: >, >>, >|, &>, &>>, and >& when its
+# target is not a file descriptor.
+REDIRECT_OUT = re.compile(r"^(?:&>>?|>>?\|?|>&)$")
 WRITE_ANY_ARG = {"rm", "rmdir", "touch", "mkdir", "chmod", "chown", "chflags", "truncate", "tee", "unlink", "mv"}
 WRITE_DEST_ARG = {"cp", "ln", "install", "rsync", "ditto"}
 GIT_READ_ONLY = {"status", "log", "diff", "show", "ls-files", "rev-parse", "blame", "grep", "cat-file", "describe", "shortlog", "ls-tree", "config", "branch", "remote", "reflog"}
@@ -358,16 +370,22 @@ def tokenize(script):
         raise Refuse("the shell command could not be parsed (%s)" % e)
 
 def simple_commands(tokens):
-    cmd = []
+    """Yield (argv, piped): each simple command, and whether a pipe feeds it."""
+    cmd, piped = [], False
     for t in tokens:
-        if t in SEPARATORS:
+        if t in SEPARATORS or OPERATOR.match(t):
             if cmd:
-                yield cmd
+                yield cmd, piped
+                piped = False
             cmd = []
+            if t.rstrip("(") in ("|", "|&"):
+                piped = True
+            elif t != "(":
+                piped = False
         else:
             cmd.append(t)
     if cmd:
-        yield cmd
+        yield cmd, piped
 
 def end_of_substitution(script, start):
     """Index just past the `)` closing the `$(` whose body starts at `start`.
@@ -447,6 +465,14 @@ def substitutions(script, heredoc=False):
             masked.append(PLACEHOLDER)
             i = j
             continue
+        elif not heredoc and quote is None and c in "<>" and script[i + 1:i + 2] == "(":
+            # Process substitution runs its body as `$(...)` does, and leaves a
+            # path in its place: `cat <(sudo true)` was allowed (#210).
+            j = end_of_substitution(script, i + 2)
+            found.append(script[i + 2:j - 1])
+            masked.append(PLACEHOLDER)
+            i = j
+            continue
         elif c == "`":
             j = i + 1
             while j < n and script[j] != "`":
@@ -466,6 +492,15 @@ def unwrap(argv):
         name = os.path.basename(argv[0])
         if re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", argv[0]):
             argv = argv[1:]
+        elif argv[0] in RESERVED:
+            # `coproc NAME { ...; }` names the coprocess before its body.
+            if argv[0] == "coproc" and len(argv) > 2 and argv[2] == "{":
+                argv = argv[1:]
+            argv = argv[1:]
+        elif argv[0] == "function":
+            # `function f { ...; }`: the body is checked where it is defined,
+            # whether or not it is ever called (#210).
+            argv = argv[2:]
         elif name in WRAPPERS:
             argv = argv[1:]
             while argv and (argv[0].startswith("-") or re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", argv[0])):
@@ -485,8 +520,10 @@ def check_argv(argv, state):
 
     if name in ("sudo", "doas"):
         raise Refuse("sudo is never run by an agent; hand the step to the owner for a real terminal (AGENTS.md)")
-    if name in SHELLS and len(args) >= 2 and re.match(r"^-[a-z]*c[a-z]*$", args[0]):
-        check_shell(args[1], state)
+    if name in SHELLS:
+        check_shell_invocation(args, state)
+    if name in ("source", ".") and args:
+        check_script_file(args[0], state)
     if name == "eval":
         check_shell(" ".join(args), state)
     if name == "cd":
@@ -551,10 +588,69 @@ def check_argv(argv, state):
     elif name in ("sed", "perl") and any(re.match(r"^-[a-zA-Z]*i", a) for a in args):
         targets = [a for a in args if not a.startswith("-")][1:]
     for t in targets:
+        state["written"].add(resolve(t, cwd))
         if legacy(t, cwd):
             raise Refuse("%s would write into a legacy repository, which is read-only (AGENTS.md)" % name)
         if hook_path(t, cwd):
             raise Refuse("%s would change the Git hooks or their config; %s" % (name, HOOKS_RULE))
+
+def resolve(path, cwd):
+    p = os.path.expanduser(os.path.expandvars(path))
+    return os.path.realpath(p if os.path.isabs(p) else os.path.join(cwd, p))
+
+def check_script_file(path, state):
+    """A script the shell reads from a file: `source F`, `. F`, `bash F`.
+
+    The guard cannot read a script that the same command writes first, nor
+    one whose path is generated, so either is refused as undecidable (#210).
+    A file that already exists is not opened: the guard does not follow
+    `./script.sh` either, and reading whole scripts would refuse every one
+    whose syntax its parser does not cover.
+    """
+    if PLACEHOLDER in path:
+        raise Refuse("a shell script read from a generated path or a process substitution cannot be checked")
+    if resolve(path, state["cwd"]) in state["written"]:
+        raise Refuse("a shell script written earlier in the same command cannot be checked")
+
+def check_shell_invocation(args, state):
+    """`bash [options] -c STRING`, `bash [options] FILE`, or a script on stdin.
+
+    Options may come before `-c` (`bash -e -c`, `bash --norc -c`), and `-c`
+    may be in a cluster (`-lc`). With `-c`, every operand is checked as shell:
+    the first is the script and the rest are its arguments, which are usually
+    harmless words, and checking them too cannot fail open.
+    """
+    with_value = {"-o", "+o", "-O", "+O", "--rcfile", "--init-file"}
+    command_string = reads_stdin = False
+    operands, rest = [], list(args)
+    while rest:
+        a = rest.pop(0)
+        if operands:
+            operands.append(a)
+        elif a == "--":
+            operands.extend(rest)
+            break
+        elif a == "-":
+            reads_stdin = True
+        elif a in with_value:
+            if rest:
+                rest.pop(0)
+        elif re.match(r"^[-+][A-Za-z]+$", a):
+            command_string = command_string or "c" in a[1:]
+            reads_stdin = reads_stdin or "s" in a[1:]
+        elif a.startswith("--"):
+            continue
+        else:
+            operands.append(a)
+    if command_string:
+        for operand in operands:
+            check_shell(operand, state)
+    elif operands and not reads_stdin:
+        check_script_file(operands[0], state)
+    elif state.get("piped"):
+        raise Refuse("a shell reading its script from a pipe cannot be checked")
+    elif state.get("stdin"):
+        check_script_file(state["stdin"], state)
 
 def check_shell(script, state):
     script, bodies, expanding = strip_heredocs(script)
@@ -567,14 +663,34 @@ def check_shell(script, state):
     for inner in inners:
         check_shell(inner, state)
     tokens = tokenize(script)
-    for i, t in enumerate(tokens):
-        if t in (">", ">>") and i + 1 < len(tokens) and legacy(tokens[i + 1], state["cwd"]):
-            raise Refuse("output redirection into a legacy repository, which is read-only (AGENTS.md)")
-        if t in (">", ">>") and i + 1 < len(tokens) and hook_path(tokens[i + 1], state["cwd"]):
-            raise Refuse("output redirection into the Git hooks or their config; %s" % HOOKS_RULE)
-    for argv in simple_commands(tokens):
-        argv = [a for j, a in enumerate(argv) if a not in (">", ">>", "<", "<<") and not (j > 0 and argv[j - 1] in (">", ">>", "<"))]
-        check_argv(argv, state)
+    for argv, piped in simple_commands(tokens):
+        words, stdin, here, i = [], None, None, 0
+        while i < len(argv):
+            t = argv[i]
+            target = argv[i + 1] if i + 1 < len(argv) else None
+            if REDIRECT_OUT.match(t) or t in ("<", "<<", "<<<", "<<-", "<>"):
+                i += 2
+                if target is None or (t == ">&" and re.match(r"^(?:[0-9]+|-)$", target)):
+                    continue
+                if t in ("<", "<>"):
+                    stdin = target
+                elif t == "<<<":
+                    here = target
+                elif not t.startswith("<"):
+                    if legacy(target, state["cwd"]):
+                        raise Refuse("output redirection into a legacy repository, which is read-only (AGENTS.md)")
+                    if hook_path(target, state["cwd"]):
+                        raise Refuse("output redirection into the Git hooks or their config; %s" % HOOKS_RULE)
+                    state["written"].add(resolve(target, state["cwd"]))
+                continue
+            words.append(t)
+            i += 1
+        shell = unwrap(list(words))
+        if here is not None and shell and os.path.basename(shell[0]) in SHELLS:
+            check_shell(here, state)
+        state["piped"], state["stdin"] = piped, stdin
+        check_argv(words, state)
+        state["piped"] = state["stdin"] = None
 
 def patch_paths(text):
     return re.findall(r"^\*\*\* (?:Add|Update|Delete) File: (.+)$|^\*\*\* Move to: (.+)$", text, re.M)
@@ -588,7 +704,7 @@ def decide(data):
     # cursor-agent sends cwd as an empty string and names the workspace instead.
     roots = data.get("workspace_roots")
     cwd = data.get("cwd") or (roots[0] if isinstance(roots, list) and roots and isinstance(roots[0], str) else "") or os.getcwd()
-    state = {"cwd": os.path.realpath(cwd), "ask": None}
+    state = {"cwd": os.path.realpath(cwd), "ask": None, "written": set(), "piped": None, "stdin": None}
 
     command = ti.get("command", data.get("command"))
     # Codex's apply_patch carries the patch text in `command`. It is checked as
