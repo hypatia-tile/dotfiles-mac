@@ -2,7 +2,9 @@
 # Pre-tool-use guard for every agent working in this repository (ADR 0027).
 #
 # Registered as a project hook for Claude Code (.claude/settings.json) and
-# Codex (.codex/hooks.json); cursor-agent reads the Claude registration. The
+# Codex (.codex/hooks.json); cursor-agent reads the Claude registration, and
+# so does the Cursor desktop app's agent (measured on 3.24.12 for git push
+# only; #219 records it, since ADR 0027 predates the app). The
 # deny list below is the only place the AGENTS.md hard rules are enforced as
 # code — .claude/settings.json keeps a subset as a second layer for Claude.
 #
