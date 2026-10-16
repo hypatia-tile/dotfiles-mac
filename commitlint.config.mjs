@@ -26,4 +26,33 @@ export default {
   // If that workflow's `commit-msg` ever changes, this stops matching and the
   // next lock PR goes red — loudly, and in the one place that explains why.
   ignores: [(message) => /^chore\(deps\): update flake\.lock(\n|$)/.test(message)],
+
+  // A `#N` anywhere in a body line used to be read as a reference, and the
+  // first reference starts the footer, so a paragraph with `see #12` on a
+  // continuation line warned `footer-leading-blank` with no blank line missing
+  // (#160). `#` now counts as an issue prefix only when the references are
+  // the whole of the text the parser reads for them: a whole line, or what
+  // follows a closing keyword. `Closes #N`, `Fixes #1, #2` and
+  // `Closes owner/repo#N` therefore stay footer references, and so does their
+  // check for a blank line before them; a `#N` with prose around it, even at
+  // the start of a wrapped line, is body.
+  // Nothing in config-conventional reads the references themselves.
+  //
+  // The other options are conventional-changelog-conventionalcommits'
+  // createParserOpts, copied: the pinned commitlint (21.0.0) replaces the
+  // preset's options with an object given here instead of merging into it, so
+  // `issuePrefixes` alone lost the `!` header pattern and refused
+  // `feat(x)!: y`. They move only with the lock (ADR 0011); a lock PR whose
+  // preset changed them is where to compare.
+  parserPreset: {
+    parserOpts: {
+      headerPattern: /^(\w*)(?:\((.*)\))?!?: (.*)$/,
+      breakingHeaderPattern: /^(\w*)(?:\((.*)\))?!: (.*)$/,
+      headerCorrespondence: ['type', 'scope', 'subject'],
+      noteKeywords: ['BREAKING CHANGE', 'BREAKING-CHANGE'],
+      revertPattern: /^(?:Revert|revert:)\s"?([\s\S]+?)"?\s*This reverts commit (\w*)\./i,
+      revertCorrespondence: ['header', 'hash'],
+      issuePrefixes: [/(?<=^\s*[\w./-]*)#(?=[\w-]+(?:(?:\s*,\s*|\s+and\s+)[\w./-]*#[\w-]+)*\s*$)/],
+    },
+  },
 };
