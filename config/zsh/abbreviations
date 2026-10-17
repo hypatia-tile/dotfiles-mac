@@ -108,6 +108,7 @@ abbr "en"="emacs -nw"
 abbr "reload"="source $ZDOTDIR/.zshrc"
 
 # Repositories under ghq (config/bin/repos, #239). `repos` never changes
-# directory itself; it prints the destination, and this changes to it.
+# directory itself; it prints the destination, and these change to it.
 # Cancelling leaves `cd ""`, which zsh treats as a no-op.
 abbr "rp"="cd \"\$(repos pick)\""
+abbr "rn"="cd \"\$(repos new)\""

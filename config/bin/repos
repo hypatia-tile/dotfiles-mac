@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# repos: pick and review the repositories under ghq (#239).
+# repos: pick, create and review the repositories under ghq (#239).
 #
 # Each subcommand does one thing, and none of them changes directory: `pick`
-# prints the destination on stdout, and the `rp` abbreviation in
-# config/zsh/abbreviations wraps it in `cd "$(…)"`.
+# and `new` print the destination on stdout, and the abbreviations in
+# config/zsh/abbreviations wrap them in `cd "$(…)"`. Prompts go to stderr and
+# answers are read from /dev/tty, because stdout is captured.
 #
 # `repos ls` is the contract the rest is built on: one line per repository,
 # tab-separated, raw values, no header.
@@ -39,10 +40,12 @@ usage: repos <command> [args]
   status [--wip]   every repository as a table; --wip keeps work in progress
   show PATH        one repository's state and its last five commits
   pick             choose a repository with fzf; prints its path
+  new [NAME]       create a repository on GitHub and clone it; prints its path
   visit [DIR]      record a visit (called by the zsh chpwd hook)
 
 To change directory, use the abbreviations:
   rp   cd "$(repos pick)"
+  rn   cd "$(repos new)"
 EOF
 }
 
@@ -229,6 +232,44 @@ cmd_pick() {
   printf '%s\n' "${choice%%$'\t'*}"
 }
 
+# ask PROMPT: read one answer from the terminal into $answer.
+ask() {
+  read -r -p "$1" answer </dev/tty
+}
+
+cmd_new() {
+  local name=${1-} answer visibility url slug dir
+  local args=()
+  if [[ -z $name ]]; then
+    ask 'Name: ' || exit 1
+    name=$answer
+  fi
+  [[ -n $name ]] || die "new: no name; nothing created"
+  # Required, with no default: forgetting it is the failure this exists for.
+  # `p` is ambiguous, so the short forms are the second letters.
+  while :; do
+    ask 'Visibility (public/private): ' || exit 1
+    case $answer in
+      public | u) visibility=--public && break ;;
+      private | r) visibility=--private && break ;;
+    esac
+  done
+  args=("$name" "$visibility")
+  while :; do
+    ask 'Add README and MIT license? [Y/n] ' || exit 1
+    case $answer in
+      '' | [Yy] | [Yy]es) args+=(--add-readme --license=MIT) && break ;;
+      [Nn] | [Nn]o) break ;;
+    esac
+  done
+  url=$(gh repo create "${args[@]}") || die "new: gh repo create failed"
+  slug=${url#https://}
+  ghq get -p "$slug" >&2 || die "new: created $url, but ghq get failed"
+  dir=$(ghq list --full-path --exact "$slug")
+  [[ -d $dir ]] || die "new: cloned $slug, but cannot find it under ghq root"
+  printf '%s\n' "$dir"
+}
+
 cmd_visit() {
   local dir=${1:-$PWD} top root last=''
   top=$(git -C "$dir" rev-parse --show-toplevel 2>/dev/null) || return 0
@@ -255,6 +296,7 @@ case $command in
   status) cmd_status "$@" ;;
   show) cmd_show "$@" ;;
   pick) cmd_pick ;;
+  new) cmd_new "$@" ;;
   visit) cmd_visit "$@" ;;
   -h | --help | help) usage ;;
   *)
