@@ -117,8 +117,9 @@ Name the applicable one in the PR body. "It built" is not one of these.
 
 - **Never run `darwin-rebuild switch`, any activation script, or `sudo`.**
   Applying is the owner's manual step (ADR 0003, ADR 0015).
-- **Never commit or push automatically.** Prepare the change and a proposed
-  Conventional Commit message; commit only when told to, and never push.
+- **Commit on the feature branch without asking, and never push** (ADR 0036).
+  Report each commit: the branch, its short hash and subject, and that it is
+  not pushed.
 - If the change turns out to need a new decision rather than an application of
   an existing one, stop and raise an ADR with `adr-new` instead of deciding it
   inside a configuration commit.

@@ -11,9 +11,6 @@
       "Edit(//Users/kazukishinohara/github/nix-darwin/**)",
       "Write(//Users/kazukishinohara/github/nix-darwin/**)"
     ],
-    "ask": [
-      "Bash(git commit:*)"
-    ],
     "allow": [
       "Bash(nix flake check:*)",
       "Bash(nix build:*)",
@@ -25,6 +22,7 @@
       "Bash(git log:*)",
       "Bash(git ls-files:*)",
       "Bash(git branch:*)",
+      "Bash(git commit:*)",
       "Bash(brew list:*)",
       "Bash(brew leaves:*)",
       "Bash(brew info:*)"

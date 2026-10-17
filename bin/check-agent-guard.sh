@@ -206,15 +206,6 @@ expect deny "clobbering redirect into a legacy repo" "$(bash_call 'echo x >| ~/g
 expect deny "&> into a legacy repo"        "$(bash_call 'echo x &> ~/github/dotfiles/a')"
 
 # --- must ask ---------------------------------------------------------------
-expect ask  "git commit"                  "$(bash_call 'git commit -m "feat: x"')"
-expect ask  "git commit from a heredoc mentioning sudo and git push" \
-  "$(bash_call $'git commit -F - <<\'EOF\'\nfix: never run sudo or git push from an agent\nEOF')"
-
-expect ask  "cursor: git commit"            "$(cursor_call 'git commit -m x')"
-expect ask  "commit whose message mentions --no-verify" "$(bash_call 'git commit -m "docs: never use --no-verify"')"
-expect ask  "commit whose message is -n"     "$(bash_call 'git commit -m -n')"
-expect ask  "commit with LEFTHOOK_OUTPUT, which only changes output" "$(bash_call 'LEFTHOOK_OUTPUT=summary git commit -m x')"
-expect ask  "commit whose message names gh pr merge" "$(bash_call 'git commit -m "docs: the owner runs gh pr merge"')"
 # A gh command on neither list is not allowed by default: a verb added later,
 # or an alias that could expand to anything.
 expect ask  "gh pr review"                 "$(bash_call 'gh pr review 1 --approve')"
@@ -222,10 +213,19 @@ expect ask  "gh pr close"                  "$(bash_call 'gh pr close 1')"
 expect ask  "gh extension install"         "$(bash_call 'gh extension install o/gh-x')"
 expect ask  "gh alias"                     "$(bash_call 'gh co 1')"
 expect ask  "bare gh"                      "$(bash_call 'gh')"
-expect ask  "git commit in a function body" "$(bash_call 'f() { git commit -m x; }; f')"
 expect allow "codex: unlisted gh (its own approval applies)" "$(codex_call 'gh pr review 1')"
 
 # --- must allow -------------------------------------------------------------
+# A commit that runs the hooks needs no confirmation (ADR 0036). The messages
+# below name refused commands and flags, and must not be read as them.
+expect allow "git commit"                 "$(bash_call 'git commit -m "feat: x"')"
+expect allow "git commit from a heredoc mentioning sudo and git push" \
+  "$(bash_call $'git commit -F - <<\'EOF\'\nfix: never run sudo or git push from an agent\nEOF')"
+expect allow "cursor: git commit"           "$(cursor_call 'git commit -m x')"
+expect allow "commit whose message mentions --no-verify" "$(bash_call 'git commit -m "docs: never use --no-verify"')"
+expect allow "commit whose message is -n"   "$(bash_call 'git commit -m -n')"
+expect allow "commit with LEFTHOOK_OUTPUT, which only changes output" "$(bash_call 'LEFTHOOK_OUTPUT=summary git commit -m x')"
+expect allow "commit whose message names gh pr merge" "$(bash_call 'git commit -m "docs: the owner runs gh pr merge"')"
 expect allow "git status"                 "$(bash_call 'git status --short')"
 expect allow "darwin-rebuild build"       "$(bash_call 'darwin-rebuild build --flake .')"
 expect allow "nix flake check"            "$(bash_call 'nix flake check --no-update-lock-file')"

@@ -12,8 +12,9 @@ between.
 ## Steps
 
 1. **Confirm the branch state**: commits exist on a feature branch off
-   `main`; the working tree is clean. Never commit here — committing
-   requires its own explicit instruction. Run `bin/hooks-health.sh`: the
+   `main`; the working tree is clean. If it is not, commit what belongs to
+   the change first (ADR 0036) and name the commits in the report. Run
+   `bin/hooks-health.sh`: the
    owner's push runs the `pre-push` gates only if it passes. If it fails,
    say so before asking for the push, and point to `manual-setup`.
 2. **Ask the owner to push** (never push yourself):

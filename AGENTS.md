@@ -22,9 +22,11 @@ everything user-facing. It has been the live single source of truth since the
   Your work is build-only — `nix flake check`, `darwin-rebuild build`, closure
   diff. Applying is the owner's manual step (ADR 0003, ADR 0015). A merged
   change is not an applied change, and saying otherwise is a reporting error.
-- **Never commit or push automatically.** Prepare the change and a proposed
-  Conventional Commit message; commit only when explicitly instructed, and
-  never push — the owner pushes and merges.
+- **Commit on a feature branch without asking; never push** (ADR 0036). The
+  owner pushes and merges. Every commit runs the Git hooks, and the next
+  report names the branch, each new commit's short hash and subject, and
+  that nothing has been pushed. A commit left out of the report is a
+  reporting error.
 - **The legacy repositories are read-only.** `~/github/dotfiles` and
   `~/github/nix-darwin` are archived rollback material (ADR 0010, ADR 0018)
   and must never be modified. Do not run their `bin/dot-link.sh`.
@@ -71,7 +73,10 @@ stop, rather than working around it.
   locally. Skipping it has round-tripped PRs through CI on trivial format
   failures.
 - **Git hooks run the gates on commit and push** (ADR 0032), once
-  `core.hooksPath` is set (`manual-setup`). A commit or push a hook refuses is
+  `core.hooksPath` is set (`manual-setup`). Since a commit needs no approval
+  (ADR 0036), the hooks are its only check: run `bin/hooks-health.sh` before
+  the first commit of a session, and if it fails, report it instead of
+  committing. A commit or push a hook refuses is
   a finding to report, never one to get past. `agent-guard` refuses the
   bypasses (`--no-verify`, `core.hooksPath`, Lefthook's skip variables, and
   writes to the hooks or to an untracked `lefthook-local.*`). If the

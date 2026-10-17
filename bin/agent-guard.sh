@@ -573,8 +573,7 @@ def check_argv(argv, state):
             raise Refuse("git %s on the hooks or their config; %s" % (sub, HOOKS_RULE))
         if legacy(repo, "/") and sub and sub not in GIT_READ_ONLY:
             raise Refuse("git %s would change a legacy repository, which is read-only (AGENTS.md)" % sub)
-        if sub == "commit":
-            state["ask"] = "git commit needs the owner's explicit instruction (AGENTS.md, ADR 0008)"
+        # A commit that runs the hooks is allowed without asking (ADR 0036).
         return
 
     if name == "gh":

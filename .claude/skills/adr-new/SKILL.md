@@ -32,7 +32,8 @@ Create a new Architecture Decision Record for this repository.
   that supersedes the old one.
 - A new ADR cites at least one issue. ADR 0032's step 5-3 check will fail one
   that does not (#208).
-- Do not commit; leave the file for the owner's review.
+- Commit the draft on a feature branch like any other change (ADR 0036). The
+  owner reviews it in the PR, and only the owner changes its status.
 
 ## Template
 

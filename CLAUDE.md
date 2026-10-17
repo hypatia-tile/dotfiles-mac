@@ -21,16 +21,17 @@ catches `sudo` in any position and writes into the legacy repositories that a
 prefix list cannot see.
 
 The `permissions` lists in the same file are a second layer, specific to
-Claude Code and unchanged since ADR 0013:
+Claude Code and unchanged since ADR 0013 apart from `git commit` (ADR 0036):
 
 - **deny** — `darwin-rebuild switch` / `activate`, `sudo darwin-rebuild`,
   `git push`, `nix flake update`, and writes to the two archived legacy
   repositories;
-- **ask** — `git commit`, which is how "commit only on explicit instruction"
-  is implemented;
 - **allow** — the read-only verification commands (`nix flake check`,
   `nix build`, `nix eval`, `nix store diff-closures`, `darwin-rebuild build`,
-  `git` status/diff/log/ls-files/branch, `brew list`/`leaves`/`info`).
+  `git` status/diff/log/ls-files/branch, `brew list`/`leaves`/`info`), and
+  `git commit`. A commit used to be under **ask**; ADR 0036 lets an agent
+  commit on a feature branch without asking, because the Git hooks now gate
+  every commit.
 
 `gh` is not in these lists, because a prefix cannot tell a write from a read:
 `gh api` merges with `-X PUT` and reads without it. Only the guard decides
