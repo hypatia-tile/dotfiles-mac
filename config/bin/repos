@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# repos: pick, create and review the repositories under ghq (#239).
+# repos: pick, create, review and remove the repositories under ghq (#239).
 #
 # Each subcommand does one thing, and none of them changes directory: `pick`
 # and `new` print the destination on stdout, and the abbreviations in
@@ -20,8 +20,8 @@
 #    9  roadmap open    unchecked boxes in docs/roadmap.md; empty without one
 #   10  roadmap done    checked boxes in docs/roadmap.md; empty without one
 #
-# A count that could not be read is empty, never 0, so that nothing reads it
-# as clean.
+# A count that could not be read is empty, never 0, so that `clean` treats it
+# as unsafe.
 set -euo pipefail
 
 if ((BASH_VERSINFO[0] < 5)); then
@@ -31,6 +31,7 @@ fi
 
 self=${BASH_SOURCE[0]}
 visits_file=${XDG_STATE_HOME:-$HOME/.local/state}/repos/visits
+clean_days=30
 
 usage() {
   cat >&2 <<'EOF'
@@ -41,6 +42,7 @@ usage: repos <command> [args]
   show PATH        one repository's state and its last five commits
   pick             choose a repository with fzf; prints its path
   new [NAME]       create a repository on GitHub and clone it; prints its path
+  clean            choose repositories to remove with ghq rm
   visit [DIR]      record a visit (called by the zsh chpwd hook)
 
 To change directory, use the abbreviations:
@@ -270,6 +272,47 @@ cmd_new() {
   printf '%s\n' "$dir"
 }
 
+# A candidate is one a fresh clone restores exactly, not visited for
+# $clean_days days. A repository never visited counts as visited when the
+# record began, so nothing is offered for the first $clean_days days.
+candidates() {
+  local start=$1
+  awk -F '\t' -v now="$EPOCHSECONDS" -v start="$start" -v min=$((clean_days * 86400)) '
+    $4 == "0" && $5 == "0" && $6 == "0" && $7 == "0" && $8 == "0" {
+      v = ($2 == "") ? start : $2
+      if (now - v >= min) print v "\t" $1
+    }'
+}
+
+cmd_clean() {
+  local start chosen dir name
+  [[ -s $visits_file ]] || die "clean: no visits recorded yet, so nothing is a candidate"
+  start=$(head -n 1 "$visits_file" | cut -f 1)
+  chosen=$(
+    cmd_ls | candidates "$start" | sort -t $'\t' -k1,1n |
+      awk -F '\t' -v now="$EPOCHSECONDS" -v roots="$(ghq root --all)" '
+        BEGIN { nroots = split(roots, root, "\n") }
+        {
+          name = $2
+          for (i = 1; i <= nroots; i++)
+            if (index($2, root[i] "/") == 1) { name = substr($2, length(root[i]) + 2); break }
+          printf "%s\t%s\t%dd since visit\n", $2, name, (now - $1) / 86400
+        }' |
+      fzf --multi --delimiter '\t' --with-nth 2,3 --tiebreak index \
+        --header 'Tab selects; Enter removes the selection with ghq rm, which asks for each' \
+        --preview "$(printf '%q' "$self") show {1}"
+  ) || return 0
+  [[ -n $chosen ]] || return 0
+  while IFS=$'\t' read -r dir name _; do
+    # Checked again: the state may have changed while the list was open.
+    if [[ -z $(cmd_ls "$dir" | candidates "$start") ]]; then
+      echo "repos: $name is no longer safe to remove; skipped" >&2
+      continue
+    fi
+    ghq rm "$name" </dev/tty
+  done <<<"$chosen"
+}
+
 cmd_visit() {
   local dir=${1:-$PWD} top root last=''
   top=$(git -C "$dir" rev-parse --show-toplevel 2>/dev/null) || return 0
@@ -297,6 +340,7 @@ case $command in
   show) cmd_show "$@" ;;
   pick) cmd_pick ;;
   new) cmd_new "$@" ;;
+  clean) cmd_clean ;;
   visit) cmd_visit "$@" ;;
   -h | --help | help) usage ;;
   *)
