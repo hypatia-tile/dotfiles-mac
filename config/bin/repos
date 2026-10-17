@@ -285,10 +285,10 @@ candidates() {
 }
 
 cmd_clean() {
-  local start chosen dir name
+  local start list chosen dir name
   [[ -s $visits_file ]] || die "clean: no visits recorded yet, so nothing is a candidate"
   start=$(head -n 1 "$visits_file" | cut -f 1)
-  chosen=$(
+  list=$(
     cmd_ls | candidates "$start" | sort -t $'\t' -k1,1n |
       awk -F '\t' -v now="$EPOCHSECONDS" -v roots="$(ghq root --all)" '
         BEGIN { nroots = split(roots, root, "\n") }
@@ -297,10 +297,16 @@ cmd_clean() {
           for (i = 1; i <= nroots; i++)
             if (index($2, root[i] "/") == 1) { name = substr($2, length(root[i]) + 2); break }
           printf "%s\t%s\t%dd since visit\n", $2, name, (now - $1) / 86400
-        }' |
-      fzf --multi --delimiter '\t' --with-nth 2,3 --tiebreak index \
+        }'
+  )
+  if [[ -z $list ]]; then
+    echo "repos: clean: no candidates; nothing is both clean and unvisited for $clean_days days" >&2
+    return 0
+  fi
+  chosen=$(
+    fzf --multi --delimiter '\t' --with-nth 2,3 --tiebreak index \
         --header 'Tab selects; Enter removes the selection with ghq rm, which asks for each' \
-        --preview "$(printf '%q' "$self") show {1}"
+        --preview "$(printf '%q' "$self") show {1}" <<<"$list"
   ) || return 0
   [[ -n $chosen ]] || return 0
   while IFS=$'\t' read -r dir name _; do
