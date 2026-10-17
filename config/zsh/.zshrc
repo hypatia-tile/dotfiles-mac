@@ -42,7 +42,6 @@ zstyle ':vcs_info:git:*' formats '%b'
 
 # Autoload user defined completion functions
 autoload -Uz gitutils && gitutils
-autoload -Uz repos
 
 export EDITOR=nvim
 eval "$(direnv hook zsh)"

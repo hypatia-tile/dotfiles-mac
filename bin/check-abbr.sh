@@ -138,8 +138,11 @@ env -i \
 [[ -s $sandbox/stderr ]] && { err "loading $ABBREVIATIONS was not silent:"; sed 's/^/    /' "$sandbox/stderr" >&2; }
 
 # `abbr list` prints the declaration's own form without the leading keyword, so
-# the two are comparable line for line.
-sed -n 's/^abbr //p' "$ABBREVIATIONS" | sort > "$sandbox/want"
+# the two are comparable line for line — except that it prints the value
+# without the backslashes a double-quoted declaration needs (`\"`, `\$`, `\\`,
+# `\``), so those are removed from the declared side too. `rp` declares
+# "cd \"\$(repos pick)\"" and is listed as "cd "$(repos pick)"".
+sed -n 's/^abbr //p' "$ABBREVIATIONS" | sed 's/\\\(["$\\`]\)/\1/g' | sort > "$sandbox/want"
 sort "$loaded" > "$sandbox/got"
 if ! diff_out=$(diff "$sandbox/want" "$sandbox/got"); then
   err "the plugin did not load what $ABBREVIATIONS declares (< declared, > loaded):"

@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
-# repos: the repositories under ghq, with their state (#239).
+# repos: pick and review the repositories under ghq (#239).
 #
-# Each subcommand does one thing, and none of them changes directory.
+# Each subcommand does one thing, and none of them changes directory: `pick`
+# prints the destination on stdout, and the `rp` abbreviation in
+# config/zsh/abbreviations wraps it in `cd "$(…)"`.
 #
 # `repos ls` is the contract the rest is built on: one line per repository,
 # tab-separated, raw values, no header.
@@ -34,7 +36,13 @@ usage() {
 usage: repos <command> [args]
 
   ls [PATH...]     one tab-separated line per repository (the contract)
+  status [--wip]   every repository as a table; --wip keeps work in progress
+  show PATH        one repository's state and its last five commits
+  pick             choose a repository with fzf; prints its path
   visit [DIR]      record a visit (called by the zsh chpwd hook)
+
+To change directory, use the abbreviations:
+  rp   cd "$(repos pick)"
 EOF
 }
 
@@ -119,6 +127,108 @@ cmd_ls() {
   done
 }
 
+# The formatter `status` and `show` share. It reads `repos ls` lines and
+# prints each repository's name relative to its ghq root, ages relative to
+# now, blanks for zero, and the roadmap as done/total.
+format() {
+  awk -F '\t' -v mode="$1" -v now="$EPOCHSECONDS" -v roots="$(ghq root --all)" '
+    function age(t, d) {
+      if (t == "") return ""
+      d = now - t
+      if (d < 3600) return int(d / 60) "m"
+      if (d < 86400) return int(d / 3600) "h"
+      return int(d / 86400) "d"
+    }
+    function blank(n) { return (n == "0") ? "" : n }
+    function name(p, i) {
+      for (i = 1; i <= nroots; i++)
+        if (index(p, root[i] "/") == 1) return substr(p, length(root[i]) + 2)
+      return p
+    }
+    function wip() {
+      return $4 > 0 || $5 > 0 || $6 > 0 || ($10 >= 1 && $9 >= 1)
+    }
+    BEGIN {
+      nroots = split(roots, root, "\n")
+      ncols = split("repository visit commit changes unpushed stashes personal worktrees roadmap", head, " ")
+    }
+    mode == "wip" && !wip() { next }
+    {
+      n++
+      cell[n, 1] = name($1)
+      cell[n, 2] = age($2)
+      cell[n, 3] = age($3)
+      cell[n, 4] = blank($4)
+      cell[n, 5] = blank($5)
+      cell[n, 6] = blank($6)
+      cell[n, 7] = blank($7)
+      cell[n, 8] = blank($8)
+      cell[n, 9] = ($9 == "" && $10 == "") ? "" : $10 "/" ($9 + $10)
+    }
+    END {
+      if (mode == "show") {
+        for (r = 1; r <= n; r++) {
+          print cell[r, 1]
+          for (c = 2; c <= ncols; c++)
+            printf "  %-11s %s\n", head[c], (c <= 3 && cell[r, c] != "") ? cell[r, c] " ago" : cell[r, c]
+        }
+        exit
+      }
+      for (c = 1; c <= ncols; c++) width[c] = length(head[c])
+      for (r = 1; r <= n; r++)
+        for (c = 1; c <= ncols; c++)
+          if (length(cell[r, c]) > width[c]) width[c] = length(cell[r, c])
+      for (c = 1; c <= ncols; c++)
+        printf "%-" width[c] "s%s", head[c], (c < ncols) ? "  " : "\n"
+      for (r = 1; r <= n; r++)
+        for (c = 1; c <= ncols; c++)
+          printf "%" (c == 1 ? "-" : "") width[c] "s%s", cell[r, c], (c < ncols) ? "  " : "\n"
+    }'
+}
+
+# Most recent visit first; never visited last, by path.
+by_visit() {
+  sort -t $'\t' -k2,2nr -k1,1
+}
+
+cmd_status() {
+  local mode=table
+  case ${1-} in
+    '') ;;
+    --wip) mode=wip ;;
+    *) die "status: unknown option: $1" ;;
+  esac
+  cmd_ls | by_visit | format "$mode"
+}
+
+cmd_show() {
+  [[ $# -eq 1 ]] || die "show: needs one PATH"
+  cmd_ls "$1" | format show
+  echo
+  git -C "$1" log --oneline --decorate --color=always -5 2>/dev/null || true
+}
+
+cmd_pick() {
+  local choice
+  load_visits
+  choice=$(
+    ghq list --full-path | while IFS= read -r dir; do
+      printf '%s\t%s\n' "$dir" "${last_visit[$dir]-}"
+    done | by_visit | awk -F '\t' -v roots="$(ghq root --all)" '
+      BEGIN { nroots = split(roots, root, "\n") }
+      {
+        name = $1
+        for (i = 1; i <= nroots; i++)
+          if (index($1, root[i] "/") == 1) { name = substr($1, length(root[i]) + 2); break }
+        print $1 "\t" name
+      }' |
+      fzf --delimiter '\t' --with-nth 2 --tiebreak index \
+        --preview "$(printf '%q' "$self") show {1}"
+  ) || return 0
+  [[ -n $choice ]] || return 0
+  printf '%s\n' "${choice%%$'\t'*}"
+}
+
 cmd_visit() {
   local dir=${1:-$PWD} top root last=''
   top=$(git -C "$dir" rev-parse --show-toplevel 2>/dev/null) || return 0
@@ -142,6 +252,9 @@ command=$1
 shift
 case $command in
   ls) cmd_ls "$@" ;;
+  status) cmd_status "$@" ;;
+  show) cmd_show "$@" ;;
+  pick) cmd_pick ;;
   visit) cmd_visit "$@" ;;
   -h | --help | help) usage ;;
   *)

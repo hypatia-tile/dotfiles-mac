@@ -77,8 +77,8 @@ in
       "herdr/config.toml".source = link "config/herdr/config.toml";
 
       # ~/.config/zsh is ZDOTDIR, and zsh writes .zcompdump and `history` into
-      # it, so the directory is not linked; modules/, complete/ and functions/
-      # hold no runtime state and are.
+      # it, so the directory is not linked; modules/ and complete/ hold no
+      # runtime state and are.
       #
       # `abbr add` and `abbr erase` replace `abbreviations` with an `mv`, which
       # turns this link into a regular file the next switch backs up and
@@ -90,7 +90,6 @@ in
       "zsh/abbreviations".source = link "config/zsh/abbreviations";
       "zsh/modules".source = link "config/zsh/modules";
       "zsh/complete".source = link "config/zsh/complete";
-      "zsh/functions".source = link "config/zsh/functions";
 
       # Linked whole, which makes lazy-lock.json and lazyvim.json writable so
       # the editor can record plugin updates. Anything else nvim writes belongs

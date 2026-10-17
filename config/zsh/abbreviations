@@ -106,3 +106,8 @@ abbr "en"="emacs -nw"
 # System. $ZDOTDIR is expanded by the shell when the line runs, not stored
 # expanded, so this follows ZDOTDIR rather than hardcoding ~/.config/zsh.
 abbr "reload"="source $ZDOTDIR/.zshrc"
+
+# Repositories under ghq (config/bin/repos, #239). `repos` never changes
+# directory itself; it prints the destination, and this changes to it.
+# Cancelling leaves `cd ""`, which zsh treats as a no-op.
+abbr "rp"="cd \"\$(repos pick)\""

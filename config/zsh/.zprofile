@@ -10,7 +10,6 @@ export ARCHFLAGS="-arch x86_64" # Compilation flags
 
 export fpath=($fpath \
   $ZDOTDIR/complete \
-  $ZDOTDIR/functions \
 )
 
 # Session variables and PATH from Home Manager (home.sessionVariables and
