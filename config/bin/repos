@@ -1,0 +1,151 @@
+#!/usr/bin/env bash
+# repos: the repositories under ghq, with their state (#239).
+#
+# Each subcommand does one thing, and none of them changes directory.
+#
+# `repos ls` is the contract the rest is built on: one line per repository,
+# tab-separated, raw values, no header.
+#
+#    1  path            full path
+#    2  last visit      epoch; empty if never visited
+#    3  last commit     epoch; empty if there is none
+#    4  uncommitted     changed and untracked files
+#    5  unpushed        commits on no remote, across every local branch
+#    6  stashes         stash entries
+#    7  personal files  files ignored by the global ignore file
+#    8  worktrees       linked worktrees
+#    9  roadmap open    unchecked boxes in docs/roadmap.md; empty without one
+#   10  roadmap done    checked boxes in docs/roadmap.md; empty without one
+#
+# A count that could not be read is empty, never 0, so that nothing reads it
+# as clean.
+set -euo pipefail
+
+if ((BASH_VERSINFO[0] < 5)); then
+  echo "repos: needs bash 5 or later, found $BASH_VERSION" >&2
+  exit 2
+fi
+
+self=${BASH_SOURCE[0]}
+visits_file=${XDG_STATE_HOME:-$HOME/.local/state}/repos/visits
+
+usage() {
+  cat >&2 <<'EOF'
+usage: repos <command> [args]
+
+  ls [PATH...]     one tab-separated line per repository (the contract)
+  visit [DIR]      record a visit (called by the zsh chpwd hook)
+EOF
+}
+
+die() {
+  echo "repos: $*" >&2
+  exit 1
+}
+
+# The file whose patterns mark a file as personal: core.excludesFile, or git's
+# default when it is unset.
+global_ignore() {
+  git config --global --path --get core.excludesFile ||
+    echo "${XDG_CONFIG_HOME:-$HOME/.config}/git/ignore"
+}
+
+# count COMMAND...: the number of lines COMMAND prints, or nothing if it fails.
+count() {
+  local out
+  out=$("$@" 2>/dev/null) || return 0
+  if [[ -z $out ]]; then
+    echo 0
+  else
+    grep -c '' <<<"$out"
+  fi
+}
+
+boxes() {
+  grep -cE "^[[:space:]]*[-*+] \\[$1\\]" "$2" || true
+}
+
+row() {
+  local dir=$1 visit commit uncommitted unpushed stashes personal worktrees
+  local open='' done='' ignore list
+  visit=${last_visit[$dir]-}
+  commit=$(git -C "$dir" log -1 --format=%ct 2>/dev/null) || commit=
+  uncommitted=$(count git -C "$dir" status --porcelain)
+  unpushed=$(git -C "$dir" rev-list --count --branches --not --remotes 2>/dev/null) || unpushed=
+  stashes=$(count git -C "$dir" stash list)
+  ignore=$(global_ignore)
+  if [[ -f $ignore ]]; then
+    personal=$(count git -C "$dir" ls-files --others --ignored --exclude-from="$ignore")
+  else
+    personal=0
+  fi
+  if list=$(git -C "$dir" worktree list --porcelain 2>/dev/null); then
+    worktrees=$(grep -c '^worktree ' <<<"$list" || true)
+    worktrees=$((worktrees - 1))
+  else
+    worktrees=
+  fi
+  if [[ -f $dir/docs/roadmap.md ]]; then
+    open=$(boxes ' ' "$dir/docs/roadmap.md")
+    done=$(boxes '[xX]' "$dir/docs/roadmap.md")
+  fi
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$dir" "$visit" "$commit" \
+    "$uncommitted" "$unpushed" "$stashes" "$personal" "$worktrees" "$open" "$done"
+}
+
+declare -A last_visit=()
+load_visits() {
+  local time path
+  [[ -f $visits_file ]] || return 0
+  # Lines are appended in time order, so the last one for a path wins.
+  while IFS=$'\t' read -r time path; do
+    last_visit[$path]=$time
+  done <"$visits_file"
+}
+
+cmd_ls() {
+  local dir
+  if [[ $# -eq 0 ]]; then
+    # One repository at a time takes seconds; batches run in parallel.
+    ghq list --full-path | tr '\n' '\0' | xargs -0 -n 8 -P 8 "$self" ls |
+      sort -t $'\t' -k1,1
+    return
+  fi
+  load_visits
+  for dir in "$@"; do
+    dir=${dir%/}
+    [[ -d $dir ]] || die "not a directory: $dir"
+    row "$dir"
+  done
+}
+
+cmd_visit() {
+  local dir=${1:-$PWD} top root last=''
+  top=$(git -C "$dir" rev-parse --show-toplevel 2>/dev/null) || return 0
+  while IFS= read -r root; do
+    [[ $top == "$root"/* ]] || continue
+    if [[ -f $visits_file ]]; then
+      last=$(tail -n 1 "$visits_file" | cut -f 2)
+    fi
+    [[ $last == "$top" ]] && return 0
+    mkdir -p "${visits_file%/*}"
+    printf '%s\t%s\n' "$EPOCHSECONDS" "$top" >>"$visits_file"
+    return 0
+  done < <(ghq root --all)
+}
+
+[[ $# -gt 0 ]] || {
+  usage
+  exit 1
+}
+command=$1
+shift
+case $command in
+  ls) cmd_ls "$@" ;;
+  visit) cmd_visit "$@" ;;
+  -h | --help | help) usage ;;
+  *)
+    usage
+    exit 1
+    ;;
+esac

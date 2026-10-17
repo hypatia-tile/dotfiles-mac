@@ -102,12 +102,18 @@ in
       # The ZDOTDIR bootstrap: zsh reads it before ZDOTDIR exists.
       ".zshenv".source = link "config/zshenv";
 
+      # Executables of this repository's own, on PATH through sessionPath
+      # below. Linked whole: nothing else writes into the directory.
+      ".local/share/dotfiles/bin".source = link "config/bin";
+
       # User-scope agent instructions (ADR 0033). A store copy, not a link: it
       # is the entry point to a safeguard, and a safeguard the agents it guards
       # can rewrite is not one. A change goes live at the next switch.
       ".claude/CLAUDE.md".source = ../../../config/agents/instructions.md;
       ".codex/AGENTS.md".source = ../../../config/agents/instructions.md;
     };
+
+    home.sessionPath = [ "${config.home.homeDirectory}/.local/share/dotfiles/bin" ];
 
     # SKK L dictionary for skkeleton in Neovim. A package output, not a payload
     # of this repository; the writable user dictionary lives in nvim's own data

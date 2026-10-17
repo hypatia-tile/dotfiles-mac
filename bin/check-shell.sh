@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # Shell lint with shellcheck, at the version the check devShell pins
 # (ADR 0032). It reads *.sh and *.bash files, and extensionless executables
-# with a shell shebang under bin/ and .githooks/, whose names Git fixes — an
-# extensionless script anywhere else is not in scope, so it belongs in bin/ or
-# gets an extension. config/ is
-# excluded: it holds dotfile payloads, zsh among them, which shellcheck cannot
-# parse (SC1071). .shellcheckrc applies to every file, so a change to it
-# checks everything.
+# with a shell shebang under bin/, config/bin/ and .githooks/, whose names Git
+# fixes — an extensionless script anywhere else is not in scope, so it belongs
+# in bin/ or gets an extension. The rest of config/ is excluded: it holds
+# dotfile payloads, zsh among them, which shellcheck cannot parse (SC1071).
+# config/bin/ holds the executables placed on PATH (#239), which are bash.
+# .shellcheckrc applies to every file, so a change to it checks everything.
 #
 # Usage: nix develop -c bin/check-shell.sh [--applies] [FILE...]
 #        (the contract is in bin/lib/check.sh)
@@ -14,8 +14,9 @@ set -euo pipefail
 # shellcheck source=lib/check.sh source-path=SCRIPTDIR
 . "$(dirname "$0")/lib/check.sh"
 
-scope '*.sh' '*.bash' 'bin/*' '.githooks/*' .shellcheckrc
-exclude 'config/*'
+shopt -s extglob
+scope '*.sh' '*.bash' 'bin/*' 'config/bin/*' '.githooks/*' .shellcheckrc
+exclude 'config/!(bin)/*' 'config/!(*/*)'
 
 is_shell() {
   case $1 in
