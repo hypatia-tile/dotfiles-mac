@@ -102,6 +102,19 @@ stop, rather than working around it.
   not an issue yet is one comment on the open inbox issue, and the roadmap
   issue orders issues only (ADR 0035); the `inbox` skill handles both.
 
+- **Some work is started without being asked** (#255). When an agent comes
+  across one of these, it does the work on its own branch, commits it, and
+  reports it as it would any commit (ADR 0036). It still never pushes:
+  - fixing a gate that a `flake.lock` update broke;
+  - fixing an `agent-guard` refusal of something the rules allow, never a
+    change that lets through more than the rules allow;
+  - recording a gap it finds as an inbox entry (`inbox`);
+  - reviewing an open lock PR (`lock-review`) and naming the check after a
+    switch. The merge and the switch stay the owner's.
+
+  The outcome of an inbox entry at triage is not on this list; it stays the
+  owner's. An issue is taken up when the owner asks (`take-issue`).
+
 ## Working notes
 
 Lessons that cost something to learn and are not tied to one procedure.

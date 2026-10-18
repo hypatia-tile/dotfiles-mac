@@ -1,6 +1,6 @@
 ---
 name: ship-pr
-description: Drive a committed feature branch through push, PR creation, and CI to a mergeable state — waiting for the owner's push, creating the PR with the house-style body, watching the checks, and reporting. Use after commits exist on a branch and the owner wants a PR.
+description: Drive a committed feature branch, or a stack of them, through push, PR creation, and CI to a mergeable state — waiting for the owner's push, creating the PR with the house-style body, watching the checks, reporting, and for a stack the merge order and the retarget and rebase after each merge. Use after commits exist on a branch and the owner wants a PR.
 ---
 
 # ship-pr
@@ -12,7 +12,8 @@ between.
 ## Steps
 
 1. **Confirm the branch state**: commits exist on a feature branch off
-   `main`; the working tree is clean. If it is not, commit what belongs to
+   `main`, or on a stack of them (see "A stack of branches" below); the
+   working tree is clean. If it is not, commit what belongs to
    the change first (ADR 0036) and name the commits in the report. Run
    `bin/hooks-health.sh`: the
    owner's push runs the `pre-push` gates only if it passes. If it fails,
@@ -63,6 +64,43 @@ between.
      unchanged tree produces the identical store path. It drifts when the tree
      really differs — review edits on the PR, or `main` having moved ahead —
      which is exactly when it is worth knowing.
+
+## A stack of branches
+
+`take-issue` can leave several branches, each based on the one before. Each
+becomes its own PR, and they merge from the bottom up. Every step below comes
+from shipping #239 as #241, #242, #246 and #244 (#255).
+
+- **Create the PRs.** Each PR's base is the branch below it, and only the
+  bottom one's base is `main`. Each body names the PR it is stacked on.
+  Watch every PR's CI, not only the top one's.
+- **Merge the bottom PR without `--delete-branch`.** Hand the owner
+  `! gh pr merge <n> --squash`. Deleting the head branch makes GitHub
+  **close** every PR based on it, instead of retargeting them, and a PR whose
+  base is gone cannot be reopened. On #239 that closed #243, which #246 had
+  to replace.
+- **Check the checkout after each merge.** Run `git branch --show-current`.
+  A merge with `--delete-branch` once moved the checkout to another branch,
+  which changed the live configuration (ADR 0034).
+- **Move the rest of the stack onto `main`**, in this order:
+  1. Retarget the next PR first, with `gh pr edit <next> --base main`. A push
+     made while its base was still the merged branch, followed by a
+     retarget, started no CI run on #242.
+  2. Rebase the rest of the stack, with `git fetch origin` and then
+     `git rebase --onto origin/main <merged branch> <top branch> --update-refs`.
+     `<merged branch>` is the local branch of the PR just merged, which
+     still points at its pre-squash commits.
+  3. Check that nothing but the base changed: `git diff <old top> <top>`
+     shows only what `main` gained besides the merged PR. Take `<old top>`
+     from `git rev-parse <top branch>` before the rebase.
+  4. Hand the owner the push of every rebased branch, for example
+     `! git push --force-with-lease origin <next> <top>`. CI starts on that
+     push.
+- **Delete the merged branch only after nothing is based on it.** Hand the
+  owner `! git push origin --delete <merged branch>`. The local branch goes
+  with `git branch -D <merged branch>`.
+- Repeat from the merge for each PR, up to the top one. The top PR can be
+  merged with `--delete-branch`, because nothing is based on it.
 
 ## Rules
 

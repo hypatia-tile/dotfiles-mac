@@ -18,7 +18,8 @@ different set, in `config/agents/skills/` (ADR 0028).
 | `config-change` | Installing or removing a package, adding or editing a tool's configuration, a Homebrew entry, an environment variable, a macOS default. **The default entry point.** |
 | `lock-review` | A weekly `chore(deps): update flake.lock` PR is open |
 | `preflight` | Verifying a change against the CI gates before pushing |
-| `ship-pr` | A committed branch needs to become a green, mergeable PR |
+| `take-issue` | The owner asks to work on an issue: it becomes committed branches, stacked when it has stages |
+| `ship-pr` | A committed branch, or a stack of them, needs to become a green, mergeable PR |
 | `adr-new` | A decision needs recording |
 | `inbox` | An idea worth keeping is not an issue yet, or the inbox and roadmap need triage |
 | `ops-qa` | "How does X work here?" / "Why is it like this?" |
