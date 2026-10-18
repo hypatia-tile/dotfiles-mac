@@ -21,8 +21,10 @@ between.
    suggest `! git push -u origin <branch>`. Start a background wait:
    `until git ls-remote origin <branch> | grep -q <head-sha>; do sleep 15; done`.
 3. **Create the PR** with `gh pr create` once the push lands:
-   - Title: the head commit's Conventional Commit subject (or a summary
-     when the branch has several commits).
+   - Title: a Conventional Commit subject, however many commits the branch
+     has: the head commit's subject, or a summary in the same form. A squash
+     merge makes the title the commit's subject, so commitlint checks it in
+     "Docs & commit hygiene" (#249).
    - Body: `## Summary` (what and why, per commit), a `## Verification`
      section stating what was checked (preflight results, lint,
      lock untouched), any owner-attention items, and the
@@ -38,6 +40,18 @@ between.
      infrastructure: rerun with `gh run rerun <run-id> --failed` once.
    - A real failure: fetch the failed log, diagnose, and propose the fix;
      do not rerun to make a legitimate failure pass.
+   - **A failed title.** Fix it with `gh pr edit <n> --title …`. Editing the
+     title starts no run, and `gh run rerun` checks the old title again, so a
+     new run has to be started (#249):
+     1. Check that the merge ref GitHub tests is current. Run
+        `git fetch origin main`, then `git fetch origin refs/pull/<n>/merge`
+        as a separate command (`FETCH_HEAD` names the first ref of a fetch),
+        and compare `git rev-parse FETCH_HEAD^1` with
+        `git rev-parse origin/main`.
+     2. If they match, hand the owner `! gh pr close <n> && gh pr reopen <n>`.
+     3. If they differ, closing and reopening would test the old base (#154).
+        Hand the owner `! gh pr update-branch <n> --rebase` instead: moving
+        the head recomputes the merge ref and starts a run.
 5. **Report**: state mergeability, suggest `! gh pr merge <n> --squash`
    (or `--rebase` when separate commits should survive, e.g. a dedicated
    input-update commit per ADR 0011), and name any post-merge owner step
