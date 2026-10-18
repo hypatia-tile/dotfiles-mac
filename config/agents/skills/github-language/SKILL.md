@@ -8,8 +8,9 @@ description: Write GitHub artifacts in the language of the repository they belon
 Text published to GitHub is written for the repository's readers, not for the
 person in this conversation. The conversation language never decides it: a
 Japanese session on an English repository still writes English. How to speak
-*in* that Japanese session — keep English terminology and procedure vocabulary
-— is `conversation-language`, not this skill.
+*in* that Japanese session — keep standard terminology in English, and no
+words whose meaning depends on the conversation — is `conversation-language`,
+not this skill.
 
 ## Which language
 

@@ -1,14 +1,13 @@
 ---
 name: conversation-language
-description: Keep English terminology and procedure vocabulary when the conversation is Japanese — do not force-translate agent-native terms. Use whenever the owner is writing in Japanese (grilling, design talk, everyday ops), including when other skills are also in play.
+description: Keep standard terminology in English when the conversation is Japanese, translate everything else, and never rely on words whose meaning depends on the conversation — confirm unclear ones and rephrase into standard terms. Use whenever the owner is writing in Japanese (grilling, design talk, everyday ops), including when other skills are also in play.
 ---
 
-# Conversation stays bilingual on purpose
+# A conversation both sides can verify
 
-When the owner writes in Japanese, reply in Japanese for framing and
-explanation. Do **not** translate the terms an English-native agent already
-uses cleanly — forced Japanese for those makes the exchange harder to follow,
-not easier.
+When the owner writes in Japanese, reply in Japanese. Keep a word in English
+only when it is standard terminology. The aim is a conversation in which each
+side can check what the other meant.
 
 This skill is about the **conversation**. GitHub artifacts (issues, PRs,
 commits, review comments) follow `github-language` instead, even in a Japanese
@@ -21,18 +20,37 @@ from this skill.
 
 ## What stays English
 
-Leave these in English (ASCII / their usual spelling), even inside a Japanese
-sentence:
+**Standard terminology**: words with a fixed meaning in their field, that
+the owner would find in that tool's documentation or the field's usual
+vocabulary.
 
-- **Terminology** — tool and file names, attributes, ADR numbers, skill names
+- Tool, file, attribute and skill names, ADR and issue numbers
   (`flake.lock`, `preflight`, `lazy-lock.json`, `conversation-language`, …).
-- **Procedure vocabulary** — the verbs and nouns the agent normally uses for
-  git and apply steps: `commit`, `push`, `merge`, `rebase`, `switch`,
-  `checkout`, Conventional Commit types (`feat`, `fix`, `chore`, …), and
-  the names of skills being invoked.
+- The terms of the tools themselves: `commit`, `push`, `merge`, `rebase`,
+  `switch`, `checkout`, Conventional Commit types (`feat`, `fix`, `chore`, …).
 
-Japanese is fine for connective prose, questions, and recommendations around
-those terms.
+**Not every English word is terminology.** An ordinary word left in English
+inside a Japanese sentence makes the reply harder to follow, not easier.
+Translate it.
+
+## No words whose meaning depends on the conversation
+
+A word that means something only because this conversation, an issue or a
+plan gave it that meaning confuses in both languages. That includes labels
+the agent coins ("signal", "stage" used as a name) and words the owner coins.
+
+- **Describe the thing concretely** instead of naming it. If a name is
+  needed, define it in standard terms the first time it appears.
+- **Before sending, scan the reply** for words a reader outside this
+  conversation would not understand.
+
+## Confirm and rephrase
+
+- **When unsure whether a word the owner uses is project-local or standard
+  terminology, ask.** Do not guess, and do not leave it vague.
+- **Rephrase into standard terminology actively**, the owner's words
+  included. A misunderstanding then shows up as a mismatch between the two
+  phrasings, early, instead of later as wrong work.
 
 ## What this is not
 
