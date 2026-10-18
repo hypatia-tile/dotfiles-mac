@@ -350,7 +350,9 @@ def normalise(script):
         elif c in "'\"":
             quote = c
             out.append(c)
-        elif c == "#" and (not out or out[-1] in " \t\r\n;&|()"):
+        # The last character, not the last element: a newline is appended
+        # as " ; ", which is not a member of the string below (#245).
+        elif c == "#" and (not out or out[-1][-1:] in " \t\r\n;&|()"):
             while i < n and script[i] != "\n":
                 i += 1
             continue
