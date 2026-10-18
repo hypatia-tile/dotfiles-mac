@@ -22,6 +22,7 @@ different set, in `config/agents/skills/` (ADR 0028).
 | `ship-pr` | A committed branch, or a stack of them, needs to become a green, mergeable PR |
 | `adr-new` | A decision needs recording |
 | `inbox` | An idea worth keeping is not an issue yet, or the inbox and roadmap need triage |
+| `session-close` | The owner wants to end a session: retrospective, memory review, recording, and a check that the next session can start stateless |
 | `ops-qa` | "How does X work here?" / "Why is it like this?" |
 | `keybinding-doctor` | A key or chord is swallowed, produces the wrong character, or fires the wrong command |
 | `manual-setup` | A fresh machine, or state the flake knowingly does not declare (macSKK's input source, dictionary and 直接入力 list) |
