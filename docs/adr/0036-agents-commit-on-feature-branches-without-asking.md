@@ -1,6 +1,6 @@
 # 0036. Agents commit on feature branches without asking
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-10-17
 
 ## Context
