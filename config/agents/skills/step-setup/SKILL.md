@@ -5,7 +5,7 @@ description: Settle how a learning project runs its steps, and write that down a
 
 Carve a learning repository's own `step-start` and `step-review` out of a
 conversation with the owner. The user-scope pair of the same names is
-deprecated and goes away once nothing depends on it (dotfiles-mac #126).
+deprecated and goes away once nothing depends on it (dotfiles-mac #221).
 **This skill decides nothing about how a project should work.** It removes the
 setup friction around the conversation that decides it, and writes the outcome
 where the agents will find it.
