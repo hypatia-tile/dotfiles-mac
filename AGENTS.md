@@ -118,6 +118,9 @@ stop, rather than working around it.
 ## Working notes
 
 Lessons that cost something to learn and are not tied to one procedure.
+ADR 0019 moved procedures out of this file; working practices like these stay
+here by the owner's decision of 2026-08-24, so this section is not a leftover
+of that ADR.
 
 - **Verify empirically; do not conclude from inference.** Confirm a claim
   about the running system with a real query before stating it. Do not declare
