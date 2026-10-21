@@ -1,37 +1,38 @@
 ---
 name: conversation-language
-description: Keep standard terminology in English when the conversation is Japanese, translate everything else, and never rely on words whose meaning depends on the conversation — confirm unclear ones and rephrase into standard terms. Use whenever the owner is writing in Japanese (grilling, design talk, everyday ops), including when other skills are also in play.
+description: Reply in plain English even when the owner writes in Japanese — Japanese only when the owner asks for it — restating each Japanese request in one English sentence first, and never rely on words whose meaning depends on the conversation. Use whenever the owner is writing in Japanese (grilling, design talk, everyday ops), including when other skills are also in play.
 ---
 
 # A conversation both sides can verify
 
-When the owner writes in Japanese, reply in Japanese. Keep a word in English
-only when it is standard terminology. The aim is a conversation in which each
-side can check what the other meant.
+The owner may write in Japanese. Reply in English anyway: the owner wants
+English input, and reading it in their own sessions is part of the point.
+The aim is still a conversation in which each side can check what the other
+meant.
 
 This skill is about the **conversation**. GitHub artifacts (issues, PRs,
-commits, review comments) follow `github-language` instead, even in a Japanese
-session.
+commits, review comments) follow `github-language` instead.
 
-## When it applies
+## Reply in English
 
-Only while the owner is writing in Japanese. An English session needs nothing
-from this skill.
+- **Every reply is in English**, whatever language the owner writes in.
+- **Japanese only when the owner asks for it** ("日本語で説明して", or the
+  same in English). It applies to what they asked to have in Japanese; go back
+  to English afterwards unless they say otherwise.
+- **Plain English.** Short sentences and common words. Keep standard
+  terminology as it is: tool, file, attribute and skill names, ADR and issue
+  numbers, and the terms of the tools themselves (`commit`, `push`, `merge`,
+  `rebase`, `switch`, …).
 
-## What stays English
+## Restate a Japanese request first
 
-**Standard terminology**: words with a fixed meaning in their field, that
-the owner would find in that tool's documentation or the field's usual
-vocabulary.
+When the owner's message is in Japanese, the reply opens with one short
+English sentence saying what they asked for. Then answer or act.
 
-- Tool, file, attribute and skill names, ADR and issue numbers
-  (`flake.lock`, `preflight`, `lazy-lock.json`, `conversation-language`, …).
-- The terms of the tools themselves: `commit`, `push`, `merge`, `rebase`,
-  `switch`, `checkout`, Conventional Commit types (`feat`, `fix`, `chore`, …).
-
-**Not every English word is terminology.** An ordinary word left in English
-inside a Japanese sentence makes the reply harder to follow, not easier.
-Translate it.
+It does two jobs: the owner sees their own request in English, and a
+misunderstanding shows up as a mismatch between the two phrasings, before
+any work is done on it. Restate the request, not every sentence: a reply to
+"はい" or a pasted log needs no restatement.
 
 ## No words whose meaning depends on the conversation
 
@@ -49,12 +50,10 @@ the agent coins ("signal", "stage" used as a name) and words the owner coins.
 - **When unsure whether a word the owner uses is project-local or standard
   terminology, ask.** Do not guess, and do not leave it vague.
 - **Rephrase into standard terminology actively**, the owner's words
-  included. A misunderstanding then shows up as a mismatch between the two
-  phrasings, early, instead of later as wrong work.
+  included.
 
 ## What this is not
 
-- Not a reason to write repository files or GitHub text in Japanese — that is
-  still `github-language` / the repository's own rules.
-- Not a glossary. If a term is already clear in English, do not invent a
-  Japanese stand-in.
+- Not a rule about repository files or GitHub text — that is still
+  `github-language` and the repository's own rules.
+- Not a glossary, and not a translation service for every reply.
