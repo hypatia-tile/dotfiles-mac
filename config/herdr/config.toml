@@ -1,4 +1,4 @@
-# Herdr configuration — kept alongside tmux while #48 is open.
+# Herdr configuration — kept alongside tmux; #48 decided to keep both.
 #
 # The binary is declared in modules/home/packages.nix and this file is linked
 # to ~/.config/herdr/config.toml (modules/home/payloads/shared.nix, ADR 0034).

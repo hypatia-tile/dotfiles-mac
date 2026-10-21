@@ -76,7 +76,7 @@ abbr "di"="docker images"
 abbr "dex"="docker exec -it"
 abbr "dlog"="docker logs -f"
 
-# tmux. Kept while #48 decides whether herdr replaces it.
+# tmux. Kept alongside herdr; #48 decided to keep both.
 abbr "ta"="tmux attach"
 abbr "tat"="tmux attach -t"
 abbr "tl"="tmux list-sessions"
