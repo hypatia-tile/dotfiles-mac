@@ -37,6 +37,9 @@
     # Note-taking CLI, on trial. Notes live in ~/.nb (git repositories) and
     # nb writes ~/.nbrc itself (`nb set`), so neither is linked from here.
     nb
+    # The `dict` client (and dictd, which the launchd agent in base.nix runs
+    # from the same package). `def` in config/zsh/modules/dict.zsh wraps it.
+    dict
 
     # Git utilities
     git-filter-repo
