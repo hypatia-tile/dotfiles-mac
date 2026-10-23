@@ -40,6 +40,7 @@ let
     "step-review"
     "step-setup"
     "step-start"
+    "vuln-triage"
   ];
   skillLinks = lib.listToAttrs (
     lib.concatMap (

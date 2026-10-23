@@ -377,3 +377,65 @@ A commit then prints Lefthook's summary of the checks that ran.
   Nix daemon and fails, which refuses the commit. Commits made through it run
   outside the sandbox (#196). Codex cannot write `.git` inside its sandbox at
   all, so its commits are already escalated.
+
+## Register the vulns hook in Claude Code
+
+`vulns hook` (`config/bin/vulns`, #289) reports vulnerable tool versions at the
+start of every Claude Code session, so that `vuln-triage` runs before any other
+work. The script is declared; its registration is not. It lives in
+`~/.claude/settings.json`, which Claude Code writes itself (for example when a
+permission is set to always allow), so Home Manager does not own that file.
+Codex has no hook here: it reaches `vuln-triage` through the pointer in
+`config/agents/instructions.md`.
+
+### What to do
+
+Add this to `~/.claude/settings.json`, merged into an existing `hooks` key if
+there is one:
+
+```json
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.local/share/dotfiles/bin/vulns hook",
+            "timeout": 180
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+The timeout is generous because the first session of the day fetches
+endoflife.date and Node's release index, evaluates the repository's devShells
+and, for a runtime behind a patch, asks nixpkgs-unstable for its version. That
+last step downloaded nixpkgs for about 1 min 45 s the first time it ran here.
+Later sessions that day read `~/.cache/vulns`.
+
+### Where the state lands
+
+`~/.claude/settings.json`, one entry under `hooks.SessionStart`. The results go
+to `~/.cache/vulns`, and deferrals for clones the owner does not own go to
+`~/.local/state/vulns`.
+
+### What proves it worked
+
+```sh
+jq '.hooks.SessionStart' ~/.claude/settings.json   # names vulns hook
+echo '{"cwd":"'"$PWD"'"}' | vulns hook | jq .        # the context it injects
+```
+
+Then start a new Claude Code session in any repository: before anything else,
+it opens with the findings, or with "no blocking findings".
+
+### What makes it come undone
+
+- A fresh machine, or a reset of `~/.claude/settings.json`.
+- Moving the dotfiles checkout's `config/bin` link: the command names
+  `~/.local/share/dotfiles/bin`, where `modules/home/payloads/shared.nix`
+  places it.

@@ -6,3 +6,6 @@ inspecting or changing anything outside the current repository's working
 tree — PATH, the login shell, globally installed tools, dotfiles under
 `$HOME`, keybindings, system settings — use the `host-environment` skill.
 Never change those directly from another repository.
+
+**Vulnerabilities come first.** At the start of every session in a
+repository, before the owner's request, use the `vuln-triage` skill.
