@@ -1,0 +1,428 @@
+#!/usr/bin/env bash
+# vulns: find vulnerable tool versions on this host and in a repository, and
+# the version that fixes each (#289).
+#
+#   vulns repo [PATH]   lockfiles (osv-scanner) and the runtimes the
+#                       repository's devShell and version files ask for
+#   vulns host          the runtimes installed globally on this host
+#   vulns hook          both, for the current directory, as a Claude Code
+#                       SessionStart hook (reads the hook's JSON on stdin)
+#
+# Options: --tsv prints the raw contract below; --fresh ignores the cache.
+#
+# One finding per line, tab-separated, no header:
+#
+#    1  level     block, info or deferred
+#    2  kind      package or runtime
+#    3  name      package or runtime name
+#    4  version   the version in use
+#    5  fixed     the version that fixes it; - if none is known
+#    6  severity  CVSS score, eol, security, unmarked or - (no score)
+#    7  id        advisory ID (GHSA-…, CVE-…), or the runtime's release line
+#    8  source    lockfile, devShell, version file or host
+#    9  note      what to do, or why it is deferred
+#
+# A finding blocks when its CVSS score is 7.0 or more or it has none, or when
+# a runtime is on an end-of-life line or behind a newer patch of its line.
+# Node marks its security releases, so a Node runtime behind a release that
+# is not one only informs; other runtimes have no such mark and block, because
+# an unknown is treated as serious (#289).
+#
+# Exit status: 0 nothing blocks, 1 something blocks, 2 the check failed.
+#
+# Deferrals carry a date and a reason and lapse on that date. In the owner's
+# repositories they are committed: osv-scanner.toml ([[IgnoredVulns]]) for
+# packages, .vulns-defer for runtimes. For any other clone they live under
+# ~/.local/state/vulns/. A .vulns-defer line is
+#   <name>@<version> <TAB> <YYYY-MM-DD> <TAB> <reason>
+set -euo pipefail
+
+if ((BASH_VERSINFO[0] < 5)); then
+  echo "vulns: needs bash 5 or later, found $BASH_VERSION" >&2
+  exit 2
+fi
+
+OWNER=hypatia-tile
+BLOCK_CVSS=7.0
+# A runtime behind a patch when nothing says whether it is a security release.
+UNMARKED_LEVEL=block
+CACHE_DIR=${XDG_CACHE_HOME:-$HOME/.cache}/vulns
+STATE_DIR=${XDG_STATE_HOME:-$HOME/.local/state}/vulns
+CHANNEL=github:NixOS/nixpkgs/nixpkgs-unstable
+SYSTEM=$(uname -m | sed 's/arm64/aarch64/')-$(uname -s | tr '[:upper:]' '[:lower:]')
+TODAY=$(date +%Y-%m-%d)
+LOCKFILES=(package-lock.json pnpm-lock.yaml yarn.lock bun.lock composer.lock
+  Cargo.lock go.mod poetry.lock uv.lock Pipfile.lock Gemfile.lock pubspec.lock
+  mix.lock)
+
+die() {
+  echo "vulns: $*" >&2
+  exit 2
+}
+
+need() {
+  local c
+  for c in "$@"; do
+    command -v "$c" >/dev/null || die "$c is not on PATH"
+  done
+}
+
+# Fetch a URL once a day.
+fetch() {
+  local url=$1 file
+  file=$CACHE_DIR/http/$(printf '%s' "$url" | shasum | cut -c1-16)
+  if [[ ! -s $file || $(date -r "$file" +%Y-%m-%d) != "$TODAY" ]]; then
+    mkdir -p "${file%/*}"
+    curl -fsS --max-time 30 "$url" -o "$file.tmp" || return 1
+    mv "$file.tmp" "$file"
+  fi
+  cat "$file"
+}
+
+# version_lt A B: A sorts before B as a version.
+version_lt() {
+  [[ $1 != "$2" && $(printf '%s\n%s\n' "$1" "$2" | sort -V | head -1) == "$1" ]]
+}
+
+# The repository's state directory, for clones the owner does not own.
+state_dir_for() {
+  printf '%s/%s' "$STATE_DIR" "$(printf '%s' "$1" | sed 's|^/||; s|/|%|g')"
+}
+
+owned() {
+  git -C "$1" remote get-url origin 2>/dev/null | grep -Eq "github\.com[:/]$OWNER/"
+}
+
+# Where a repository's deferrals live: its own tree, or the state directory.
+defer_dir() {
+  if owned "$1"; then printf '%s' "$1"; else state_dir_for "$1"; fi
+}
+
+# runtime_deferral DIR NAME VERSION: print "until<TAB>reason" if deferred.
+runtime_deferral() {
+  local file=$1/.vulns-defer
+  [[ -f $file ]] || file=$1/vulns-defer
+  [[ -f $file ]] || return 1
+  awk -F'\t' -v key="$2@$3" -v today="$TODAY" '
+    /^#/ || NF < 2 { next }
+    $1 == key && $2 >= today { print $2 "\t" $3; found = 1; exit }
+    END { exit !found }' "$file"
+}
+
+# ---------------------------------------------------------------- runtimes
+
+# product NAME-VERSION: print "product<TAB>version<TAB>cycle<TAB>attr" for a
+# runtime this checks, from a Nix store name or a version-file entry.
+product() {
+  local s=$1 v
+  case $s in
+    nodejs-slim-[0-9]* | nodejs-[0-9]*)
+      v=${s##*-}
+      printf 'nodejs\t%s\t%s\tnodejs_%s\n' "$v" "${v%%.*}" "${v%%.*}"
+      ;;
+    php-[0-9]*)
+      v=${s#php-}
+      IFS=. read -r a b _ <<<"$v"
+      printf 'php\t%s\t%s.%s\tphp%s%s\n' "$v" "$a" "$b" "$a" "$b"
+      ;;
+    python3-[0-9]*)
+      v=${s#python3-}
+      IFS=. read -r a b _ <<<"$v"
+      printf 'python\t%s\t%s.%s\tpython%s%s\n' "$v" "$a" "$b" "$a" "$b"
+      ;;
+    ruby-[0-9]*)
+      v=${s#ruby-}
+      IFS=. read -r a b _ <<<"$v"
+      printf 'ruby\t%s\t%s.%s\truby_%s_%s\n' "$v" "$a" "$b" "$a" "$b"
+      ;;
+    go-[0-9]*)
+      v=${s#go-}
+      IFS=. read -r a b _ <<<"$v"
+      printf 'go\t%s\t%s.%s\tgo_%s_%s\n' "$v" "$a" "$b" "$a" "$b"
+      ;;
+    *) return 1 ;;
+  esac
+}
+
+# channel_note ATTR FIXED: whether nixpkgs-unstable already has the fix.
+channel_note() {
+  local attr=$1 fixed=$2 file have
+  file=$CACHE_DIR/channel/$attr
+  if [[ ! -f $file || $(date -r "$file" +%Y-%m-%d) != "$TODAY" ]]; then
+    mkdir -p "${file%/*}"
+    nix eval --raw "$CHANNEL#legacyPackages.$SYSTEM.$attr.version" \
+      >"$file" 2>/dev/null || : >"$file"
+  fi
+  have=$(<"$file")
+  if [[ -z $have ]]; then
+    echo "not in nixpkgs-unstable: move to a newer line"
+  elif version_lt "$have" "$fixed"; then
+    echo "patched upstream, not in nixpkgs-unstable yet (it has $have): wait for the channel"
+  else
+    echo "nixpkgs-unstable has $have: update the nixpkgs pin"
+  fi
+}
+
+# check_runtime STORE-OR-ENTRY SOURCE DEFER-DIR NIX: print a finding, if any.
+check_runtime() {
+  local entry=$1 source=$2 ddir=$3 nix=$4
+  local prod ver cycle attr data line latest eol level sev fixed note d
+  IFS=$'\t' read -r prod ver cycle attr < <(product "$entry") || return 0
+  data=$(fetch "https://endoflife.date/api/$prod.json") || {
+    printf 'info\truntime\t%s\t%s\t-\t-\t%s\t%s\tendoflife.date did not answer\n' \
+      "$prod" "$ver" "$cycle" "$source"
+    return 0
+  }
+  line=$(jq -r --arg c "$cycle" \
+    '.[] | select(.cycle == $c) | "\(.latest)\t\(.eol)"' <<<"$data")
+  if [[ -z $line ]]; then
+    printf 'info\truntime\t%s\t%s\t-\t-\t%s\t%s\tline %s is unknown to endoflife.date\n' \
+      "$prod" "$ver" "$cycle" "$source" "$cycle"
+    return 0
+  fi
+  IFS=$'\t' read -r latest eol <<<"$line"
+  if [[ $eol == true || ($eol != false && ! $eol > $TODAY) ]]; then
+    level=block sev=eol fixed=- note="line $cycle is end-of-life ($eol): move to a supported line"
+  elif version_lt "$ver" "$latest"; then
+    fixed=$latest level=$UNMARKED_LEVEL sev=unmarked
+    note="behind $latest; this runtime does not mark security releases"
+    if [[ $prod == nodejs ]]; then
+      local sec
+      sec=$(fetch https://nodejs.org/dist/index.json | jq -r --arg m "v$cycle." '
+        [.[] | select((.version | startswith($m)) and .security)] | .[0].version // empty')
+      sec=${sec#v}
+      if [[ -n $sec ]] && version_lt "$ver" "$sec"; then
+        sev=security note="behind security release $sec"
+      else
+        level=info sev=- note="behind $latest, which is not a security release"
+      fi
+    fi
+    if [[ $nix == nix && $level == block ]]; then
+      note="$note; $(channel_note "$attr" "$fixed")"
+    fi
+  else
+    return 0
+  fi
+  if d=$(runtime_deferral "$ddir" "$prod" "$ver"); then
+    level=deferred note="deferred until ${d%%$'\t'*}: ${d#*$'\t'}"
+  fi
+  printf '%s\truntime\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+    "$level" "$prod" "$ver" "$fixed" "$sev" "$cycle" "$source" "$note"
+}
+
+# The runtimes a repository's devShells provide, as "shell<TAB>store-name".
+devshell_entries() {
+  local repo=$1
+  [[ -f $repo/flake.nix ]] || return 0
+  nix eval --no-write-lock-file --json "$repo#devShells.$SYSTEM" --apply '
+    ds: builtins.mapAttrs (_: d: map (p: p.name or "")
+      ((d.nativeBuildInputs or [ ]) ++ (d.buildInputs or [ ]))) ds' 2>/dev/null |
+    jq -r 'to_entries[] | .key as $k | .value[] | "\($k)\t\(.)"' || true
+}
+
+# The runtimes version files ask for, as "file<TAB>name-version".
+version_file_entries() {
+  local repo=$1 v
+  if [[ -f $repo/.nvmrc ]]; then
+    v=$(tr -d ' \nv' <"$repo/.nvmrc")
+    [[ $v =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] && printf '.nvmrc\tnodejs-%s\n' "$v"
+  fi
+  if [[ -f $repo/.tool-versions ]]; then
+    awk '{ n = $1; sub(/^golang$/, "go", n); sub(/^python$/, "python3", n)
+           if ($2 ~ /^[0-9]+\.[0-9]+\.[0-9]+$/) print ".tool-versions\t" n "-" $2 }' \
+      "$repo/.tool-versions"
+  fi
+}
+
+# ---------------------------------------------------------------- packages
+
+lockfiles() {
+  local repo=$1 pattern
+  if git -C "$repo" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    pattern=$(printf '(^|/)%s$|' "${LOCKFILES[@]}")
+    git -C "$repo" ls-files --cached --others --exclude-standard |
+      grep -E "${pattern%|}" | sed "s|^|$repo/|" || true
+  else
+    local args=() n
+    for n in "${LOCKFILES[@]}"; do args+=(-o -name "$n"); done
+    find "$repo" -maxdepth 4 -name node_modules -prune -o \( "${args[@]:1}" \) -print
+  fi
+}
+
+check_packages() {
+  local repo=$1 ddir=$2 files=() args=() out rc=0
+  mapfile -t files < <(lockfiles "$repo")
+  ((${#files[@]})) || return 0
+  local f
+  for f in "${files[@]}"; do args+=(--lockfile "$f"); done
+  [[ -f $ddir/osv-scanner.toml ]] && args+=(--config "$ddir/osv-scanner.toml")
+  out=$(osv-scanner scan source "${args[@]}" --format json 2>/dev/null) || rc=$?
+  # 0 is clean, 1 is findings, 128 is nothing it could read.
+  case $rc in 0 | 128) return 0 ;; 1) ;; *) die "osv-scanner failed ($rc)" ;; esac
+  jq -r --arg repo "$repo/" --argjson block "$BLOCK_CVSS" '
+    .results[] | (.source.path | ltrimstr($repo)) as $src | .packages[] |
+    .package as $p | .vulnerabilities as $vs | .groups[] |
+    (.max_severity // "") as $sev | .ids[0] as $id |
+    ([$vs[] | select(.id == $id) | .affected[]? |
+      select(.package.name == $p.name) | .ranges[]?.events[]? | .fixed // empty]
+      | unique | join(" ")) as $fixed |
+    [ (if $sev == "" or ($sev | tonumber) >= $block then "block" else "info" end),
+      "package", $p.name, $p.version, $fixed, (if $sev == "" then "-" else $sev end),
+      $id, $src, "" ] | @tsv' <<<"$out" |
+    while IFS=$'\t' read -r level kind name ver fixed sev id src note; do
+      # Of the fixed versions an advisory lists, the first one above the
+      # version in use is the one to move to.
+      local best=-
+      for f in $fixed; do
+        if version_lt "$ver" "$f" && { [[ $best == - ]] || version_lt "$f" "$best"; }; then
+          best=$f
+        fi
+      done
+      [[ $best == - ]] && note="no fixed version yet"
+      printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+        "$level" "$kind" "$name" "$ver" "$best" "$sev" "$id" "$src" "$note"
+    done
+}
+
+# ---------------------------------------------------------------- modes
+
+dotfiles_root() {
+  local self
+  self=$(readlink -f "${BASH_SOURCE[0]}")
+  git -C "${self%/*}" rev-parse --show-toplevel 2>/dev/null
+}
+
+scan_repo() {
+  local repo=$1 ddir shell entry
+  ddir=$(defer_dir "$repo")
+  check_packages "$repo" "$ddir"
+  while IFS=$'\t' read -r shell entry; do
+    [[ -n $entry ]] && check_runtime "$entry" "devShell $shell" "$ddir" nix
+  done < <(devshell_entries "$repo")
+  while IFS=$'\t' read -r shell entry; do
+    check_runtime "$entry" "$shell" "$ddir" plain
+  done < <(version_file_entries "$repo")
+}
+
+scan_host() {
+  local ddir profile p
+  ddir=$(dotfiles_root) || ddir=$(state_dir_for host)
+  for profile in /etc/profiles/per-user/"$USER" /run/current-system/sw; do
+    [[ -e $profile ]] || continue
+    # A profile is an environment whose references are the packages; the
+    # per-user one has one more level, home-manager-path.
+    for p in $(nix-store -q --references "$(readlink -f "$profile")"); do
+      case $p in
+        *-home-manager-path) nix-store -q --references "$p" ;;
+        *) echo "$p" ;;
+      esac
+    done
+  done | sed 's|^/nix/store/[a-z0-9]*-||' | sort -u | while read -r p; do
+    check_runtime "$p" host "$ddir" nix
+  done
+}
+
+# cached KEY CMD...: run CMD, or reuse its output from earlier today. Newer
+# deferral files invalidate the cache.
+cached() {
+  local key=$1 file deps=()
+  shift
+  file=$CACHE_DIR/results/$(printf '%s' "$key" | shasum | cut -c1-16)
+  local d
+  for d in "${DEFER_FILES[@]}"; do [[ -f $d ]] && deps+=("$d"); done
+  if [[ $FRESH == 0 && -f $file && $(date -r "$file" +%Y-%m-%d) == "$TODAY" ]] &&
+    ! { ((${#deps[@]})) && [[ -n $(find "${deps[@]}" -newer "$file") ]]; }; then
+    cat "$file"
+    return
+  fi
+  mkdir -p "${file%/*}"
+  "$@" >"$file.tmp"
+  mv "$file.tmp" "$file"
+  cat "$file"
+}
+
+show() {
+  if [[ $TSV == 1 ]]; then
+    cat
+    return
+  fi
+  local rows
+  rows=$(cat)
+  if [[ -z $rows ]]; then
+    echo "No findings."
+    return
+  fi
+  {
+    printf 'LEVEL\tKIND\tNAME\tVERSION\tFIXED\tSEVERITY\tID\tSOURCE\tNOTE\n'
+    sort -t$'\t' -k1,1 -k6,6r <<<"$rows"
+  } | column -t -s$'\t'
+}
+
+hook() {
+  local dir rows blocking text
+  dir=$(jq -r '.cwd // empty' 2>/dev/null || true)
+  [[ -n $dir ]] || dir=$PWD
+  dir=$(git -C "$dir" rev-parse --show-toplevel 2>/dev/null || printf '%s' "$dir")
+  set_defer_files "$dir"
+  rows=$( (cached "repo:$dir" scan_repo "$dir" | sed 's/$/\trepo/') 2>/dev/null || true)
+  rows+=${rows:+$'\n'}$( (cached host scan_host | sed 's/$/\thost/') 2>/dev/null || true)
+  blocking=$(awk -F'\t' '$1 == "block"' <<<"$rows")
+  if [[ -z $blocking ]]; then
+    text="vulns: no blocking findings for $dir or this host."
+  else
+    text="vulns found blocking findings. Use the vuln-triage skill before anything else."
+    text+=$'\n'"level kind name version fixed severity id source note scope"
+    text+=$'\n'$(tr '\t' ' ' <<<"$blocking")
+  fi
+  local rest
+  rest=$(awk -F'\t' '$1 != "block" && NF' <<<"$rows" | wc -l | tr -d ' ')
+  ((rest)) && text+=$'\n'"$rest more finding(s) below the threshold or deferred: run vulns repo / vulns host."
+  jq -n --arg t "$text" \
+    '{hookSpecificOutput: {hookEventName: "SessionStart", additionalContext: $t}}'
+}
+
+set_defer_files() {
+  local ddir
+  ddir=$(defer_dir "$1")
+  DEFER_FILES=("$ddir/osv-scanner.toml" "$ddir/.vulns-defer" "$ddir/vulns-defer")
+  local root
+  if root=$(dotfiles_root); then DEFER_FILES+=("$root/.vulns-defer"); fi
+}
+
+TSV=0 FRESH=0 DEFER_FILES=()
+args=()
+for a in "$@"; do
+  case $a in
+    --tsv) TSV=1 ;;
+    --fresh) FRESH=1 ;;
+    -h | --help)
+      sed -n '2,/^set -euo/p' "${BASH_SOURCE[0]}" | sed '$d; s/^# \{0,1\}//'
+      exit 0
+      ;;
+    *) args+=("$a") ;;
+  esac
+done
+set -- "${args[@]}"
+
+need curl jq git nix nix-store
+case ${1:-} in
+  repo)
+    need osv-scanner
+    repo=$(readlink -f "${2:-.}")
+    repo=$(git -C "$repo" rev-parse --show-toplevel 2>/dev/null || printf '%s' "$repo")
+    set_defer_files "$repo"
+    rows=$(cached "repo:$repo" scan_repo "$repo")
+    ;;
+  host)
+    set_defer_files /
+    rows=$(cached host scan_host)
+    ;;
+  hook)
+    need osv-scanner
+    hook
+    exit 0
+    ;;
+  *) die "usage: vulns repo [PATH] | host | hook [--tsv] [--fresh]" ;;
+esac
+show <<<"$rows"
+[[ -z $(awk -F'\t' '$1 == "block"' <<<"$rows") ]] || exit 1

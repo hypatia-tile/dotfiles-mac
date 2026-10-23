@@ -41,6 +41,10 @@
     # from the same package). `def` in config/zsh/modules/dict.zsh wraps it.
     dict
 
+    # Vulnerability scanner for lockfiles, run by `vulns` (config/bin/vulns,
+    # #289), which adds the runtime checks osv-scanner does not make.
+    osv-scanner
+
     # Git utilities
     git-filter-repo
 
