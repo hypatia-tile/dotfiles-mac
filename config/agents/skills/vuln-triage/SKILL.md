@@ -98,6 +98,30 @@ tools, not to the current one. Find it with the `host-environment` skill.
 
   Once it is filed or found open, it counts as handled for this session.
 
+## 5. What may be written in public
+
+Deferral reasons, commit messages and issues are often public. Check the
+repository's visibility (`gh repo view --json visibility`) before writing one.
+
+**Public is fine for a publicly disclosed advisory about a tool**: its ID,
+the version in use, the fixed version, why the fix waits, and which tools
+use the vulnerable version. That adds little an outsider could not already
+read: the advisory is published, and in a repository with public lock files
+the versions can be derived from them. Recording it in an issue is what lets
+other repositories, and later sessions, find the decision without relying on
+any agent's memory.
+
+**Never public:**
+
+- a vulnerability that has not been publicly disclosed;
+- a finding in a private repository's own code;
+- anything about what a machine exposes to a network: listening services,
+  ports, hostnames, addresses.
+
+For these, ask the owner where the record goes: a private repository, or
+the repository's private security advisories for a flaw in its own code. Do
+not post first and ask afterwards; a public post cannot be taken back.
+
 ## When it is done
 
 Every blocking finding is fixed, deferred, or, for a host finding, filed. Say
