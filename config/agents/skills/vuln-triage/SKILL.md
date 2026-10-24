@@ -83,20 +83,46 @@ repository is a decision that belongs in its history.
 A deferral names one version. When the version changes, the finding comes
 back, and that is intended.
 
-## 4. Host findings outside the repository that owns the host
+## 4. Host findings: one tracked issue per tool
 
 A `vulns host` finding belongs to the repository that declares the host's
-tools, not to the current one. Find it with the `host-environment` skill.
+tools, not to the current one. Find it with the `host-environment` skill. So
+does a finding in that repository's own devShells. A project's own findings
+stay in that project (step 3).
 
-- **In that repository:** handle it like any other finding.
-- **Anywhere else:**
-  - show it and stop, as for any blocking finding;
-  - with the owner's approval, file it as an issue in the owning repository,
-    following that repository's conventions for issues filed from elsewhere,
-    unless an open issue already covers it;
-  - never fix it in place.
+**Deferred host findings need nothing here.** `vulns host` reads the owner
+repository's `.vulns-defer` from anywhere, so a decided finding shows as
+`deferred` with its issue number and does not block.
 
-  Once it is filed or found open, it counts as handled for this session.
+For each **blocking** host finding, the owner repository may track it with
+one issue per tool, under a `vulnerability` label and from its template
+`.github/ISSUE_TEMPLATE/vulnerability.md`. `hypatia-tile/dotfiles-mac` does.
+Look for an open one by the tool's name:
+
+```sh
+gh issue list -R <owner> --label vulnerability --state open --search "<tool> in:title"
+```
+
+- **Found:** say "tracked in #N". If the version in use differs from the
+  issue's, offer a comment on it saying so. Do not open a second issue.
+- **Not found:** file one from the template. Fetch it, and fill every
+  section; an empty one is an omission, and "none" is an answer:
+
+  ```sh
+  gh api repos/<owner>/contents/.github/ISSUE_TEMPLATE/vulnerability.md \
+    -H 'Accept: application/vnd.github.raw'
+  ```
+
+  Use the template's title format, and drop its front matter and comments
+  from the body.
+  - **In the owner repository:** file it with the `vulnerability` label,
+    after the owner has seen it.
+  - **Anywhere else:** through `host-environment`'s procedure for an issue to
+    the owner. That means the gitleaks check, the owner's approval, and the
+    choice of naming the originating repository. Label it `vulnerability` as
+    well as `from-agent`. Never fix the finding in place.
+
+Once it is filed or found open, it counts as handled for this session.
 
 ## 5. What may be written in public
 
@@ -124,5 +150,6 @@ not post first and ask afterwards; a public post cannot be taken back.
 
 ## When it is done
 
-Every blocking finding is fixed, deferred, or, for a host finding, filed. Say
+Every blocking finding is fixed, deferred, or, for a host finding, tracked
+in an issue. Say
 so in one line, then turn to the owner's request.
