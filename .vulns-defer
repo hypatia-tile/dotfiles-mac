@@ -1,3 +1,3 @@
 # Runtime deferrals read by vulns (config/bin/vulns): name@version<TAB>until<TAB>reason.
 nodejs@24.21.0	2026-10-30	fix in NixOS/nixpkgs#576777, not in nixpkgs-unstable yet (#292)
-python@3.14.7	2026-10-30	3.14.9 not in nixpkgs-unstable yet, which has 3.14.8 (#292)
+python@3.14.8	2026-10-30	3.14.9 security release (tempfile race, tarfile filter) not in nixpkgs-unstable yet (#292)
