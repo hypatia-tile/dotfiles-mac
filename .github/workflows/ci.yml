@@ -119,7 +119,7 @@ jobs:
       - name: Restore and save Nix store
         # The key prefix changed with the store, so the entries saved from the
         # multi-user store are never restored into this one.
-        uses: nix-community/cache-nix-action@v6
+        uses: nix-community/cache-nix-action@v7
         with:
           primary-key: nix-single-user-${{ runner.os }}-${{ hashFiles('flake.lock') }}
           restore-prefixes-first-match: nix-single-user-${{ runner.os }}-
@@ -210,7 +210,7 @@ jobs:
         uses: nixbuild/nix-quick-install-action@v35
 
       - name: Restore and save Nix store
-        uses: nix-community/cache-nix-action@v6
+        uses: nix-community/cache-nix-action@v7
         with:
           primary-key: nix-nvim-single-user-${{ runner.os }}-${{ hashFiles('flake.lock', 'flake.nix') }}
           restore-prefixes-first-match: nix-nvim-single-user-${{ runner.os }}-
@@ -240,7 +240,7 @@ jobs:
 
       - name: Restore and save Nix store
         # Shares the key with nvim-check, so a warm cache serves both.
-        uses: nix-community/cache-nix-action@v6
+        uses: nix-community/cache-nix-action@v7
         with:
           primary-key: nix-nvim-single-user-${{ runner.os }}-${{ hashFiles('flake.lock', 'flake.nix') }}
           restore-prefixes-first-match: nix-nvim-single-user-${{ runner.os }}-
