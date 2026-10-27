@@ -35,6 +35,10 @@ decorations = "Buttonless"
 opacity = 0.75
 blur = false
 startup_mode = "Windowed"
+# Left Option sends Meta (ESC-prefixed), as kitty's `macos_option_as_alt left`
+# does, so zsh's Emacs bindings (M-b, M-f, M-.) work in both terminals. Right
+# Option still types macOS special characters.
+option_as_alt = "OnlyLeft"
 
 [window.padding]
 x = 10
