@@ -22,14 +22,14 @@ typeset -g ABBR_USER_ABBREVIATIONS_FILE=$ZDOTDIR/abbreviations
 source /etc/profiles/per-user/$USER/share/zsh/zsh-abbr/zsh-abbr.zsh
 
 # The key bindings zsh-abbr makes in the `main` keymap, in one place so that
-# vimode.zsh does not have to know what they are. `bindkey -v` there replaces
+# keymap.zsh does not have to know what they are. `bindkey -e` there replaces
 # the whole keymap and takes both with it — space falls back to `self-insert`
 # and control-space becomes `undefined-key`, which is worse than the plain
-# space it is supposed to insert. vimode.zsh calls this afterwards.
+# space it is supposed to insert. keymap.zsh calls this afterwards.
 #
 # Only these two: `accept-line` is redefined as a widget
 # (`zle -N accept-line abbr-expand-and-accept`) rather than bound to a key, so
-# `bindkey -v` leaves expansion-on-Enter alone, and the `isearch` bindings live
+# `bindkey -e` leaves expansion-on-Enter alone, and the `isearch` bindings live
 # in their own keymap, which it does not touch. Both measured, not assumed.
 abbr-bindkeys() {
   # Space expands an abbreviation; control-space is a plain space.
