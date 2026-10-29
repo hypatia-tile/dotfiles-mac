@@ -89,7 +89,10 @@
     # declaring them again would only add a second copy to the profile.
     #
     # colima keeps its instance state and its generated colima.yaml under
-    # ~/.colima, so none of it is linked — the granularity rule in
+    # $XDG_CONFIG_HOME/colima (~/.config/colima), because xdg.enable in
+    # base.nix sets XDG_CONFIG_HOME and no ~/.colima exists; an existing
+    # ~/.colima, or COLIMA_HOME, would win over it (config/files.go in
+    # colima 0.10.3). None of it is linked — the granularity rule in
     # modules/home/payloads/shared.nix is what forbids handing that directory
     # over.
     colima
