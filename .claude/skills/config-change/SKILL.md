@@ -1,6 +1,6 @@
 ---
 name: config-change
-description: The entry point for everyday changes to this machine's configuration — installing or removing a package, adding or editing a tool's config file, changing a Homebrew entry, a session variable, or a macOS default. Decides which layer the change belongs in, makes the edit, and names the check that proves it worked after the switch. Use whenever the owner wants to change what is installed or how a tool is configured.
+description: The entry point for everyday changes to this machine's configuration — installing or removing a package, adding or editing a tool's config file, changing a Homebrew entry, a session variable, or a macOS default. Decides which layer the change belongs in (what is installed now lives in hypatia-tile/nix-packages), makes the edit, and names the check that proves it worked after the switch. Use whenever the owner wants to change what is installed or how a tool is configured.
 ---
 
 # config-change
@@ -30,7 +30,7 @@ step only for a change that plainly cannot have a history (a brand-new tool).
 
 ### 2. Decide the layer
 
-Use the table below. It is a **summary of ADRs 0005, 0006 and 0020 and has no
+Use the table below. It is a **summary of ADRs 0005, 0006, 0020 and 0037 and has no
 independent authority**: if a case is not covered, say so and ask rather than
 extending the policy yourself.
 
@@ -55,9 +55,10 @@ that check is how they know it took.
 
 | Change | Goes in | Authority |
 |---|---|---|
-| CLI tool, language, LSP, library | `modules/home/packages.nix` | ADR 0005, 0006 |
-| GUI application | `homebrew.casks` in `modules/darwin/homebrew.nix` | ADR 0005 |
-| Formula needing a macOS-specific source build | `homebrew.brews` | ADR 0005 |
+| CLI tool, language, LSP, library | **not here** — `modules/home/shared.nix` in nix-packages, or `modules/home/darwin.nix` there when the tool is macOS-specific; see below | ADR 0037, 0005, 0006 |
+| GUI application | **not here** — `homebrew.casks` in nix-packages' `modules/darwin/homebrew.nix` | ADR 0037, 0005 |
+| Formula needing a macOS-specific source build | **not here** — `homebrew.brews` there | ADR 0037, 0005 |
+| Font | **not here** — nix-packages' `modules/darwin/fonts.nix` | ADR 0037 |
 | New tool's configuration file | `config/<tool>/` + a `link` entry in `modules/home/payloads/shared.nix`, or `darwin.nix` when the tool is macOS-specific | ADR 0020, 0034 |
 | Editing an existing tool's configuration | the file under `config/<tool>/` | ADR 0020 |
 | Environment variable, `PATH` entry, launchd agent | `modules/home/base.nix` | ADR 0006 |
@@ -74,6 +75,27 @@ for configuration — plain files are, and `programs.*` is reserved for cases
 that need a Nix value or a Nix-side integration, such as `programs.direnv`
 (ADR 0020).
 
+### What is installed lives in nix-packages
+
+[hypatia-tile/nix-packages](https://github.com/hypatia-tile/nix-packages)
+declares the packages, Homebrew, fonts, `nixpkgs` and the overlays, and this
+flake imports it as an input (ADR 0037). A row above marked **not here** is
+made there:
+
+- **From a session in that checkout,** where its own `AGENTS.md` applies, as
+  a PR there. Do not edit it from a session here.
+- **A tool that needs both sides** is added package first, then config, and
+  removed config first, then package, so neither repository is broken in
+  between. Adding: the PR there merges, then a branch here moves the input
+  and adds the config. Removing: the config leaves here first.
+- **Moving the input** is a commit that changes `flake.lock` alone (ADR
+  0011). Its command is `nix flake update nix-packages`, which agents are
+  denied; hand it to the owner, or let the weekly lock PR bring it.
+- **The closure diff of that commit** is the evidence: it must show the
+  package change and nothing else. Until `preflight` can build against a
+  local nix-packages checkout (#310, stage 4), this is the first point at
+  which this host is built with the change.
+
 ### Traps that have already cost a PR
 
 - **Declaring a directory hands the whole directory to this repository.** If
@@ -85,6 +107,9 @@ that need a Nix value or a Nix-side integration, such as `programs.direnv`
 - **A symlink Home Manager did not make blocks the switch.** If the new target
   is already a symlink from something else, activation aborts before linking
   anything; remove it first (`docs/operations.md` §2).
+The next two apply to nix-packages' `homebrew.nix`; they stay here because
+the switch that fails is this host's.
+
 - **A non-official Homebrew tap must be declared `trusted = true`** on the
   `homebrew.taps` entry, or activation refuses to load its formulae.
 - **Whatever a `with-*` build option pulls in must be declared in `brews`
