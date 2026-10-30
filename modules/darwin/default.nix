@@ -3,8 +3,6 @@
   imports = [
     ./nix.nix
     ./users.nix
-    ./fonts.nix
-    ./homebrew.nix
     ./macos.nix
   ];
 }
