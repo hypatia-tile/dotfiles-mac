@@ -21,6 +21,7 @@
     "flake-parts": {
       "inputs": {
         "nixpkgs-lib": [
+          "nix-packages",
           "neovim-nightly-overlay",
           "nixpkgs"
         ]
@@ -64,6 +65,7 @@
         "flake-parts": "flake-parts",
         "neovim-src": "neovim-src",
         "nixpkgs": [
+          "nix-packages",
           "nixpkgs"
         ]
       },
@@ -118,6 +120,33 @@
         "type": "github"
       }
     },
+    "nix-packages": {
+      "inputs": {
+        "emacs-flake": "emacs-flake",
+        "home-manager": [
+          "home-manager"
+        ],
+        "neovim-nightly-overlay": "neovim-nightly-overlay",
+        "nix-darwin": [
+          "nix-darwin"
+        ],
+        "nixpkgs": "nixpkgs_2",
+        "rust-overlay": "rust-overlay"
+      },
+      "locked": {
+        "lastModified": 1793400275,
+        "narHash": "sha256-TqObvkaEo9d+llGxhKoMW6MjJ9XvDVIdBTKtRmvQuyc=",
+        "owner": "hypatia-tile",
+        "repo": "nix-packages",
+        "rev": "c19d423a6f6e58de3da5548e810adf60ec15c564",
+        "type": "github"
+      },
+      "original": {
+        "owner": "hypatia-tile",
+        "repo": "nix-packages",
+        "type": "github"
+      }
+    },
     "nixpkgs": {
       "locked": {
         "lastModified": 1792506237,
@@ -152,17 +181,19 @@
     },
     "root": {
       "inputs": {
-        "emacs-flake": "emacs-flake",
         "home-manager": "home-manager",
-        "neovim-nightly-overlay": "neovim-nightly-overlay",
         "nix-darwin": "nix-darwin",
-        "nixpkgs": "nixpkgs_2",
-        "rust-overlay": "rust-overlay"
+        "nix-packages": "nix-packages",
+        "nixpkgs": [
+          "nix-packages",
+          "nixpkgs"
+        ]
       }
     },
     "rust-overlay": {
       "inputs": {
         "nixpkgs": [
+          "nix-packages",
           "nixpkgs"
         ]
       },

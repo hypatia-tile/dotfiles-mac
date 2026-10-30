@@ -2,7 +2,17 @@
   description = "macOS configuration: nix-darwin + Home Manager in a single flake";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    # What is installed and at which version: Nix packages, Homebrew, fonts,
+    # and the overlays they need (ADR 0037). This flake takes nixpkgs from it,
+    # so a new package set arrives by moving this input in its own commit
+    # (ADR 0011). nix-darwin and Home Manager are its inputs only for its own
+    # checks; they follow this flake's, so the lock carries one of each.
+    nix-packages = {
+      url = "github:hypatia-tile/nix-packages";
+      inputs.nix-darwin.follows = "nix-darwin";
+      inputs.home-manager.follows = "home-manager";
+    };
+    nixpkgs.follows = "nix-packages/nixpkgs";
     nix-darwin = {
       url = "github:nix-darwin/nix-darwin/master";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -11,22 +21,6 @@
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    neovim-nightly-overlay = {
-      url = "github:nix-community/neovim-nightly-overlay";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-    rust-overlay = {
-      url = "github:oxalica/rust-overlay";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-    # Emacs, pinned and patched in its own flake (ADR 0031).
-    #
-    # Deliberately no `inputs.nixpkgs.follows`. That flake applies a patch, so
-    # its Emacs is not in cache.nixos.org and it publishes to a cache of its
-    # own, built by its CI against its own lock. Making it follow this
-    # repository's nixpkgs would build a different derivation, miss that cache
-    # every time, and put a twenty-minute Emacs build back on the machine.
-    emacs-flake.url = "github:hypatia-tile/emacs-flake";
   };
 
   outputs =
@@ -34,9 +28,7 @@
       nixpkgs,
       nix-darwin,
       home-manager,
-      neovim-nightly-overlay,
-      rust-overlay,
-      emacs-flake,
+      nix-packages,
       ...
     }:
     let
@@ -60,14 +52,13 @@
             };
             modules = [
               ./modules/darwin
+              # Homebrew, fonts and the overlays (neovim-nightly, rust,
+              # emacs-flake, in that order). The Home Manager side,
+              # home.packages, is imported by modules/home.
+              nix-packages.darwinModules.default
               home-manager.darwinModules.home-manager
               {
                 nixpkgs.hostPlatform = host.system;
-                nixpkgs.overlays = [
-                  neovim-nightly-overlay.overlays.default
-                  rust-overlay.overlays.default
-                  emacs-flake.overlays.default
-                ];
                 home-manager = {
                   useGlobalPkgs = true;
                   useUserPackages = true;
@@ -97,7 +88,7 @@
           # The overlay the hosts apply, so the Neovim checked is the one the
           # machine runs: on the machine it is the same store path. No cache
           # carries it for this nixpkgs, so CI builds it once per lock.
-          nvimPkgs = pkgs.extend neovim-nightly-overlay.overlays.default;
+          nvimPkgs = pkgs.extend nix-packages.inputs.neovim-nightly-overlay.overlays.default;
         in
         rec {
           # The nvim checks' shell: the startup check and LuaLS need the
