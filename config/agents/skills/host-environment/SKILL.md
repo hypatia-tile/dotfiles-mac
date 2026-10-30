@@ -62,10 +62,26 @@ it. Match the result against this table, top to bottom:
 | Observation | Owner |
 |---|---|
 | A file under `$HOME` whose `readlink -f` resolves into the dotfiles-mac checkout | dotfiles-mac — a payload, declared in `modules/home/payloads/` (on any host; on NixOS, nixos-config imports that declaration) |
-| macOS, **and** the host is built from dotfiles-mac (below), **and** the thing comes from `/run/current-system`, `/etc/profiles/per-user/$USER`, a `/nix/store` symlink under `$HOME`, or `/opt/homebrew` | dotfiles-mac |
+| macOS, **and** the host is built from dotfiles-mac (below), **and** the thing comes from `/run/current-system`, `/etc/profiles/per-user/$USER`, a `/nix/store` symlink under `$HOME`, or `/opt/homebrew` | dotfiles-mac, with nix-packages for what is installed (below) |
 | NixOS, and the thing comes from `/run/current-system`, `/etc`, `/etc/profiles/per-user/$USER`, or a `/nix/store/…-home-manager-files` symlink under `$HOME` | nixos-config — Home Manager is declared there as a NixOS module. A link that resolves into another checkout (`dotfiles-nixos`) is still declared by nixos-config; an edit there is live and is not a change to the host's declaration |
 | `/usr/bin`, `/bin`, `/usr/sbin`, `/System` | the operating system — nobody's to change |
 | Anything else (`~/.nix-profile`, `/usr/local`, `~/.local/bin`, `~/.cargo/bin`, …) | **unknown** — likely an ad hoc install |
+
+**On a host built from dotfiles-mac, what is installed and how it is
+configured have different owners.** hypatia-tile/nix-packages declares the
+Nix packages, Homebrew casks and brews, fonts, and their versions;
+dotfiles-mac imports it and declares everything else, including its
+`programs.*` modules, which install their own tool. So adding, removing or
+upgrading a tool goes to nix-packages, unless a dotfiles-mac `programs.*`
+module installs it; how a tool behaves goes to dotfiles-mac. To tell which,
+look for the name in nix-packages' declarations:
+
+```sh
+grep -rnw -- '<name>' "$(ghq list -p hypatia-tile/nix-packages)/modules"
+```
+
+A change that needs both is one issue to each, and the package comes first
+when adding and last when removing.
 
 **Whether a macOS host is built from dotfiles-mac:** `darwin-rebuild` resolves
 under `/run/current-system`, and the host's name (`scutil --get
@@ -83,7 +99,7 @@ output — and ask the owner who owns it. Do not pick an owner, and do not
 change it.
 
 **Diagnosis follows the owner.** Once the owner is known, read its
-`AGENTS.md` and `docs/README.md` (dotfiles-mac) before explaining why
+`AGENTS.md`, and `docs/README.md` in dotfiles-mac, before explaining why
 something behaves as it does — the layering is written down there, and a
 general answer about how Nix, Home Manager or Homebrew usually work is often
 wrong for this host.
