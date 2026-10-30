@@ -22,7 +22,7 @@
 #
 # Every expansion must begin with something this machine can actually run;
 # `bin/check-abbr.sh --commands` enforces it. That check is the one that was
-# missing: `dc` expanded to `docker-compose`, which packages.nix deliberately
+# missing: `dc` expanded to `docker-compose`, which nix-packages deliberately
 # does not install (`docker compose` arrives as a CLI plugin), and ten kubectl
 # abbreviations named a binary this machine has never had.
 #
@@ -66,7 +66,7 @@ abbr "la"="ls -A"
 abbr "l"="ls -CF"
 
 # Docker. `dc` is `docker compose`, the CLI plugin the docker package brings
-# (see modules/home/packages.nix) — not the `docker-compose` binary, which is
+# (see nix-packages' modules/home/shared.nix) — not the `docker-compose` binary, which is
 # deliberately not installed.
 abbr "d"="docker"
 abbr "dc"="docker compose"

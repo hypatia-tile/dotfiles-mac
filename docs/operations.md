@@ -208,7 +208,7 @@ here — it is filed as a GitHub issue (`gh issue list`, ADR 0019).
   dependencies and proposed removing all 40 of them. A core formula is
   unaffected because its `full_name` *is* its bare name, which is why
   `imagemagick` never showed the problem. Do not shorten the name in
-  `modules/darwin/homebrew.nix`.
+  nix-packages' `modules/darwin/homebrew.nix` (ADR 0037).
 
   This cost two incidents. At the 2026-07-14 cutover the formula was still
   being built, so no installed dependent existed to trigger the protection

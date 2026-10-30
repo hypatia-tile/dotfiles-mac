@@ -24,8 +24,8 @@
 # Step 5 is opt-in because only this machine knows what is installed: the CI
 # runner has no docker, tmux or nvim, so it runs steps 1-4 and `preflight` adds
 # --commands locally. It is the check that was missing when `dc` expanded to
-# `docker-compose`, a binary modules/home/packages.nix deliberately does not
-# install, and when ten kubectl abbreviations named one this machine never had.
+# `docker-compose`, a binary nix-packages' modules/home/shared.nix deliberately
+# does not install, and when ten kubectl abbreviations named one this machine never had.
 #
 # Usage: nix develop -c bin/check-abbr.sh [--commands] [--applies] [FILE...]
 #        (the contract is in bin/lib/check.sh; FILE only decides whether the
@@ -157,7 +157,7 @@ if $check_commands; then
     [[ -n $head ]] || continue
     # shellcheck disable=SC2016  # $1 is the head, passed as an argument below
     if ! zsh -f -c 'whence -w -- "$1" >/dev/null 2>&1' zsh "$head"; then
-      err "\`$head\` does not resolve on this machine — every abbreviation expanding to it is dead. Declare it in modules/home/packages.nix or change the expansion:"
+      err "\`$head\` does not resolve on this machine — every abbreviation expanding to it is dead. Declare it in hypatia-tile/nix-packages (modules/home/shared.nix) or change the expansion:"
       grep -n "^abbr \"[^\"]*\"=\"$head" "$ABBREVIATIONS" | sed 's/^/    /' >&2
     fi
   done <<< "$heads"

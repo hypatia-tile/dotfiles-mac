@@ -63,7 +63,7 @@ path and ADRs are immutable (ADR 0019).
 | Document | What it was |
 |---|---|
 | [`requirements.md`](requirements.md) | The migration requirements R-01 to R-20, all satisfied |
-| [`design/flake-design.md`](design/flake-design.md) | The design ADR 0014 adopted. Its §5 Homebrew block no longer matches `modules/darwin/homebrew.nix`, and its §3 note about converting git to `programs.git` was withdrawn by ADR 0020 |
+| [`design/flake-design.md`](design/flake-design.md) | The design ADR 0014 adopted. Its §5 Homebrew block no longer matches the Homebrew declarations, which have since moved to nix-packages (ADR 0037), and its §3 note about converting git to `programs.git` was withdrawn by ADR 0020 |
 | [`discovery/inventory.md`](discovery/inventory.md) | The 2026-07-13 scan of the machine and the legacy repositories, with the owner's per-row verdicts |
 | [`discovery/keybindings-inventory.md`](discovery/keybindings-inventory.md) | The 2026-07-29 keybinding survey behind ADR 0017. Its four-layer table is still the reference for *where* a keybinding fix belongs |
 | [`runbook.md`](runbook.md) | The cutover procedure, the post-cutover checklist, and the legacy-restore path |

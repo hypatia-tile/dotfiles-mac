@@ -31,7 +31,8 @@ only lists clicks gets re-derived the first time it silently reverts.
 
 ## macSKK — the system input method
 
-Declared: the cask, in `modules/darwin/homebrew.nix`. Everything else below is
+Declared: the cask, in hypatia-tile/nix-packages' `modules/darwin/homebrew.nix`
+(ADR 0037). Everything else below is
 by hand (ADR 0029). Do the steps in order — each one depends on the last.
 
 ### 1. Add the input source
@@ -137,7 +138,7 @@ declaration cannot hold this key on its own.
 ### What makes it come undone
 
 - Adding another input source, ever: step 4 again.
-- Removing the cask from `homebrew.nix`: the application goes, the container,
+- Removing the cask from nix-packages: the application goes, the container,
   the dictionary and the input source stay behind.
 - A fresh machine: all four steps, in order.
 

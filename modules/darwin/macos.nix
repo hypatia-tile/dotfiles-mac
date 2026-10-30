@@ -202,7 +202,7 @@
       ## ---- disabled to free a chord for an application ----
 
       # Show Finder search window (Cmd+Opt+Space) — freed for Raycast, whose
-      # hotkey is that chord (homebrew.nix). Unlike every other ID here this
+      # hotkey is that chord (the cask is in nix-packages). Unlike every other ID here this
       # one was never in the 2026-07-29 inventory: macOS does not write 64/65
       # into the plist until they are changed, so both were live at their
       # built-in defaults. Declaring 65 off is what makes the chord Raycast's
