@@ -16,6 +16,12 @@ nix-darwin for the system layer, Home Manager (as a nix-darwin module) for
 everything user-facing. It has been the live single source of truth since the
 2026-07-14 cutover (ADR 0015, finalized by ADR 0018).
 
+What is installed, and at which version, is not declared here: Nix packages,
+Homebrew casks and brews, fonts, `nixpkgs` and the overlays live in
+[hypatia-tile/nix-packages](https://github.com/hypatia-tile/nix-packages),
+which this flake imports as an input (ADR 0037). This repository configures
+the tools; a tool that needs both is added there first and removed here first.
+
 ## Hard rules
 
 - **Never run `darwin-rebuild switch`, any activation script, or `sudo`.**

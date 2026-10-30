@@ -15,7 +15,7 @@
 typeset -g ABBR_USER_ABBREVIATIONS_FILE=$ZDOTDIR/abbreviations
 
 # Load the plugin from the Home Manager profile (zsh-abbr in
-# modules/home/packages.nix). Note the path differs from the Homebrew layout
+# nix-packages' modules/home/shared.nix, ADR 0037). Note the path differs from the Homebrew layout
 # this replaced: share/zsh/zsh-abbr, not share/zsh-abbr.
 # The plugin resolves its own directory with ${0:A:h}, so sourcing through the
 # profile symlink still finds the zsh-job-queue it bundles.

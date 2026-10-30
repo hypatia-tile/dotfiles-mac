@@ -1,7 +1,8 @@
 # Herdr configuration — kept alongside tmux; #48 decided to keep both.
 #
-# The binary is declared in modules/home/packages.nix and this file is linked
-# to ~/.config/herdr/config.toml (modules/home/payloads/shared.nix, ADR 0034).
+# The binary is declared in nix-packages (modules/home/shared.nix, ADR 0037)
+# and this file is linked to ~/.config/herdr/config.toml
+# (modules/home/payloads/shared.nix, ADR 0034).
 # herdr writes its logs, session.json, sessions/ and .plugins.lock beside it,
 # which is why the declaration names this file and not the directory.
 #
