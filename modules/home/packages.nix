@@ -3,6 +3,16 @@
   # Per inventory A-9, TeX never enters the system closure (per-project
   # flakes instead); alejandra is replaced by nixfmt (ADR 0012).
   home.packages = with pkgs; [
+    # Emacs 31.1 with the frame-transparency patch, from the emacs-flake
+    # overlay (ADR 0031). Replaces Homebrew's emacs-plus@30. Its configuration
+    # is not managed here: ~/.emacs.d is its own repository and stays a live
+    # checkout.
+    #
+    # It comes first, ahead of the Editors group, because it is the only
+    # macOS-only entry: hypatia-tile/nix-packages defines its macOS-only list
+    # with lib.mkBefore, and the order of home.packages is part of the system
+    # derivation. With it first here, the split keeps the store path (#314).
+    myEmacs
     # Terminal emulators and multiplexers
     alacritty
     kitty
@@ -52,11 +62,6 @@
     neovim
     vim
     helix
-    # Emacs 31.1 with the frame-transparency patch, from the emacs-flake
-    # overlay (ADR 0031). Replaces Homebrew's emacs-plus@30. Its configuration
-    # is not managed here: ~/.emacs.d is its own repository and stays a live
-    # checkout.
-    myEmacs
 
     # Development tools
     cargo
