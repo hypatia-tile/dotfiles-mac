@@ -33,7 +33,9 @@
 # Deferrals carry a date and a reason and lapse on that date. In the owner's
 # repositories they are committed: osv-scanner.toml ([[IgnoredVulns]]) for
 # packages, .vulns-defer for runtimes. For any other clone they live under
-# ~/.local/state/vulns/. A .vulns-defer line is
+# ~/.local/state/vulns/. The host's runtime deferrals are nix-packages',
+# which declares what the host has installed (dotfiles-mac ADR 0037), read
+# from its checkout beside dotfiles-mac's. A .vulns-defer line is
 #   <name>@<version> <TAB> <YYYY-MM-DD> <TAB> <reason>
 set -euo pipefail
 
@@ -292,6 +294,17 @@ dotfiles_root() {
   git -C "${self%/*}" rev-parse --show-toplevel 2>/dev/null
 }
 
+# Where the host's deferrals live: the nix-packages checkout next to the
+# dotfiles-mac one this script is linked from (both are ghq clones under
+# hypatia-tile/). Fails if there is none, and the host then uses the state
+# directory like any other clone.
+packages_root() {
+  local root dir
+  root=$(dotfiles_root) || return 1
+  dir=${root%/*}/nix-packages
+  [[ -d $dir/.git ]] && owned "$dir" && printf '%s' "$dir"
+}
+
 scan_repo() {
   local repo=$1 ddir shell entry
   ddir=$(defer_dir "$repo")
@@ -306,7 +319,7 @@ scan_repo() {
 
 scan_host() {
   local ddir profile p
-  ddir=$(dotfiles_root) || ddir=$(state_dir_for host)
+  ddir=$(packages_root) || ddir=$(state_dir_for host)
   for profile in /etc/profiles/per-user/"$USER" /run/current-system/sw; do
     [[ -e $profile ]] || continue
     # A profile is an environment whose references are the packages; the
@@ -386,7 +399,7 @@ set_defer_files() {
   ddir=$(defer_dir "$1")
   DEFER_FILES=("$ddir/osv-scanner.toml" "$ddir/.vulns-defer" "$ddir/vulns-defer")
   local root
-  if root=$(dotfiles_root); then DEFER_FILES+=("$root/.vulns-defer"); fi
+  if root=$(packages_root); then DEFER_FILES+=("$root/.vulns-defer"); fi
 }
 
 TSV=0 FRESH=0 DEFER_FILES=()
