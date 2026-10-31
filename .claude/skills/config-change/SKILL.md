@@ -91,10 +91,12 @@ made there:
 - **Moving the input** is a commit that changes `flake.lock` alone (ADR
   0011). Its command is `nix flake update nix-packages`, which agents are
   denied; hand it to the owner, or let the weekly lock PR bring it.
-- **The closure diff of that commit** is the evidence: it must show the
-  package change and nothing else. Until `preflight` can build against a
-  local nix-packages checkout (#310, stage 4), this is the first point at
-  which this host is built with the change.
+- **Before the PR there merges,** build this host against it: `preflight`'s
+  step 4 (`bin/nix-packages-diff.sh`), with the nix-packages checkout on the
+  change's branch. That is the only check of what the change does to this
+  host; nix-packages' own CI builds its modules in a minimal system.
+- **The closure diff of the input move** must then show the same change and
+  nothing else, apart from whatever else nix-packages merged in between.
 
 ### Traps that have already cost a PR
 
