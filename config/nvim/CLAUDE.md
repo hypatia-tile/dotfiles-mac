@@ -77,7 +77,7 @@ Use `nvim --startuptime /tmp/startup.log` to profile startup time.
 3. `autocmds` — global autocmds
 4. `config.lazy` — lazy.nvim bootstrap, loads all `lua/plugins/*.lua`
 5. `shino.commands` — user commands (`:InitLua`)
-6. `lsp.init` — global `LspAttach` handler; enables `denols` and `copilot`
+6. `lsp.init` — global `LspAttach` handler; enables `denols`, `copilot` and `lua_ls`
 
 ### Plugin Structure
 

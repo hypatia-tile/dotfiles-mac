@@ -11,3 +11,6 @@ au.autocmd("LspAttach", "Attach global LSP keymaps on every client attach", {
 -- Attaches under a Deno project, or for a lone JS/TS file with no package.json.
 vim.lsp.enable "denols"
 vim.lsp.enable "copilot"
+
+-- lua_ls: config in after/lsp/lua_ls.lua; the binary comes from PATH, not Mason.
+vim.lsp.enable "lua_ls"
