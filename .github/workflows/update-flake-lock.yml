@@ -3,6 +3,10 @@
 # Enabled post-cutover: opens a PR on schedule. Merging the opened PRs is
 # always manual, and applying the merged lock is the owner's manual
 # `darwin-rebuild switch`.
+#
+# Since ADR 0037 the update moves nix-darwin, Home Manager and nix-packages.
+# nixpkgs and the overlays come from nix-packages' own lock, so new package
+# versions arrive here only once its weekly PR has been merged there.
 
 name: Update flake.lock
 
