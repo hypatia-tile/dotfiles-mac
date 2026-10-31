@@ -6,8 +6,9 @@ description: Review a weekly update-flake-lock pull request, or the owner's move
 # lock-review
 
 The `update-flake-lock` workflow opens a `chore(deps): update flake.lock` PR
-every Saturday at 06:00 JST. Merging is always manual (ADR 0011, ADR 0012,
-ADR 0018) — this is the procedure for deciding.
+every Sunday at 06:00 JST, a day after nix-packages' own update. Merging is
+always manual (ADR 0011, ADR 0012, ADR 0018) — this is the procedure for
+deciding.
 
 The entry point is inverted compared to `config-change`: the diff already
 exists, and the work is judgment rather than editing.
