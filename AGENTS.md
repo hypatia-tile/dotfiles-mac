@@ -139,3 +139,10 @@ of that ADR.
   appends a stray closing tag (e.g. `</content>`) to a file it creates, which
   then breaks Nix evaluation or lint. `bin/check-stray-tags.sh` catches it,
   and CI and `preflight` run it.
+- **A matching store path proves nothing about comments.** When files are
+  copied or moved between repositories, compare them as text too. Stage 2
+  of #310 met its bar, the same store path as before, while
+  nix-packages' `shared.nix` still had a comment that #315 had corrected
+  here after the copy was taken; hypatia-tile/nix-packages#13 found it.
+  The same goes for what is not a file: the copy took no repository
+  settings (hypatia-tile/nix-packages#16).
