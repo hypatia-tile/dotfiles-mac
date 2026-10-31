@@ -1,6 +1,6 @@
 ---
 name: lock-review
-description: Review a weekly update-flake-lock pull request and drive it to a merge decision — confirm the diff is lock-only, verify the updated closure, judge the closure diff (where version changes are the expected outcome rather than a red flag), merge by rebase so the dedicated lock commit survives, and name the post-switch check for the tools that moved. Use when a chore(deps) flake.lock PR is open.
+description: Review a weekly update-flake-lock pull request, or the owner's move of the nix-packages input, and drive it to a merge decision — confirm the diff is lock-only, verify the updated closure, judge the closure diff (where version changes are the expected outcome rather than a red flag), merge by rebase so the dedicated lock commit survives, and name the post-switch check for the tools that moved. Use when a chore(deps) flake.lock PR is open.
 ---
 
 # lock-review
@@ -11,6 +11,15 @@ ADR 0018) — this is the procedure for deciding.
 
 The entry point is inverted compared to `config-change`: the diff already
 exists, and the work is judgment rather than editing.
+
+This lock moves three inputs: nix-darwin, Home Manager and
+[hypatia-tile/nix-packages](https://github.com/hypatia-tile/nix-packages)
+(ADR 0037). `nixpkgs` and the overlays are not pinned here: they follow
+nix-packages' own lock, whose updates are reviewed there with its own
+`lock-review`, including whether a bump fixes or brings a vulnerability.
+What this review decides is whether this host takes them. The same steps
+apply to a lock-only commit that moves `nix-packages` alone, after a
+package change there (`config-change`).
 
 ## Steps
 
@@ -30,6 +39,11 @@ exists, and the work is judgment rather than editing.
    outcome. Judge these instead:
    - every moved node is an upstream version bump of something the flake
      already had — no unexplained **additions or removals**;
+   - **when `nix-packages` moved,** every package change is accounted for
+     by what nix-packages merged between the two revisions. List them with
+     `git -C "$(ghq list -p hypatia-tile/nix-packages)" log --oneline <old>..<new>`,
+     taking `<old>` and `<new>` from `git diff main... -- flake.lock`. A
+     package change no merged commit there explains is the finding;
    - the net closure size change is plausible. Bootstrap paths dropping out is
      normal (#41 was ~150 nodes and −0.5 GiB); a large unexplained gain is not;
    - **a gate that fails in `preflight`'s first step is usually the new
@@ -40,7 +54,9 @@ exists, and the work is judgment rather than editing.
 
 4. **Record the notable bumps.** Name the packages the owner actually uses
    daily with old → new versions. A wall of 150 nodes is not reviewable; a
-   dozen named bumps is.
+   dozen named bumps is. When `nix-packages` moved, cite the nix-packages
+   PRs that brought them, and the `vulnerability` issues there that the
+   switch will close.
 
 5. **Report, and leave the merge to the owner.** Merge with **`--rebase`,
    never `--squash`**: ADR 0011 requires the lock update to survive as its own
