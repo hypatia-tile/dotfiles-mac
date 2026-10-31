@@ -47,6 +47,16 @@ Run from the repository root.
    inspecting `./result`'s home-files). For each target that already exists in
    `$HOME` as a regular file or foreign symlink, report it. Verify
    `backupFileExtension` is configured before calling this step passed.
+4. **A nix-packages change, before it merges there.** When the change under
+   review is in hypatia-tile/nix-packages (ADR 0037), run
+   `bin/nix-packages-diff.sh [CHECKOUT]` from this repository, with the
+   nix-packages checkout on the change's branch; it defaults to the checkout
+   beside this one. It builds this host with the locked nix-packages and with
+   that checkout, and prints the closure diff and the Brewfile diff. Judge
+   them as step 2's: they must show the change and nothing else. Read the
+   Brewfile diff too, because a cask or brew change leaves the closure diff
+   empty while the store path still moves. It writes no `flake.lock`; this
+   host takes the change only when its input moves (`lock-review`).
 
 ## Intentionally CI-only
 
@@ -64,7 +74,7 @@ encodes rather than an omission:
 
 ## Report
 
-End with step 1's pass/fail lines, the closure diff and its judgement, and the
-collision result, and state explicitly whether the tree meets the CI-gate,
+End with step 1's pass/fail lines, the closure diff and its judgement, the
+collision result, and step 4's diffs when it applies, and state explicitly whether the tree meets the CI-gate,
 collision, and secret criteria. Never conclude with a recommendation to
 switch — applying is the owner's manual decision.
