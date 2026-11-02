@@ -48,6 +48,13 @@ import json, os, re, shlex, sys
 
 HOME = os.path.expanduser("~")
 LEGACY = [os.path.join(HOME, "github", "dotfiles"), os.path.join(HOME, "github", "nix-darwin")]
+# The nix-packages checkout, beside this repository's as ghq places both and
+# as bin/nix-packages-diff.sh finds it. From a session here only Claude Code's
+# nix-packages sub-agent writes into it; its calls carry agent_type (measured
+# on Claude Code 2.1.312, #329), the main session's and other agents' do not.
+NIX_PACKAGES = os.path.join(os.path.dirname(os.path.realpath(sys.argv[2])), "nix-packages")
+NIX_PACKAGES_AGENT = "nix-packages"
+NIX_PACKAGES_RULE = "from a session here only the nix-packages sub-agent writes into the nix-packages checkout; hand the change to it (ADR 0038)"
 WRAPPERS = {"command", "exec", "nohup", "time", "nice", "caffeinate", "xargs", "env", "builtin"}
 SHELLS = {"sh", "bash", "zsh", "dash", "ksh"}
 SEPARATORS = {";", "&&", "||", "|", "&", "|&", "(", ")", "\n", ";;"}
@@ -114,14 +121,22 @@ class Refuse(Exception):
 class Ask(Exception):
     pass
 
-def legacy(path, cwd):
+def under(path, cwd, roots):
     if not path:
         return False
     p = os.path.expanduser(os.path.expandvars(path))
     if not os.path.isabs(p):
         p = os.path.join(cwd, p)
     p = os.path.realpath(p)
-    return any(p == root or p.startswith(root + os.sep) for root in LEGACY)
+    return any(p == root or p.startswith(root + os.sep) for root in roots)
+
+def legacy(path, cwd):
+    return under(path, cwd, LEGACY)
+
+def nix_packages(path, cwd, state):
+    """Whether writing PATH would change the nix-packages checkout from
+    anything but the nix-packages sub-agent."""
+    return state["agent"] != NIX_PACKAGES_AGENT and under(path, cwd, [NIX_PACKAGES])
 
 def hook_path(path, cwd):
     """Whether writing PATH would change which hooks run, or what they run.
@@ -575,6 +590,8 @@ def check_argv(argv, state):
             raise Refuse("git %s on the hooks or their config; %s" % (sub, HOOKS_RULE))
         if legacy(repo, "/") and sub and sub not in GIT_READ_ONLY:
             raise Refuse("git %s would change a legacy repository, which is read-only (AGENTS.md)" % sub)
+        if nix_packages(repo, "/", state) and sub and sub not in GIT_READ_ONLY:
+            raise Refuse("git %s would change the nix-packages checkout; %s" % (sub, NIX_PACKAGES_RULE))
         # A commit that runs the hooks is allowed without asking (ADR 0036).
         return
 
@@ -594,6 +611,8 @@ def check_argv(argv, state):
         state["written"].add(resolve(t, cwd))
         if legacy(t, cwd):
             raise Refuse("%s would write into a legacy repository, which is read-only (AGENTS.md)" % name)
+        if nix_packages(t, cwd, state):
+            raise Refuse("%s would write into the nix-packages checkout; %s" % (name, NIX_PACKAGES_RULE))
         if hook_path(t, cwd):
             raise Refuse("%s would change the Git hooks or their config; %s" % (name, HOOKS_RULE))
 
@@ -682,6 +701,8 @@ def check_shell(script, state):
                 elif not t.startswith("<"):
                     if legacy(target, state["cwd"]):
                         raise Refuse("output redirection into a legacy repository, which is read-only (AGENTS.md)")
+                    if nix_packages(target, state["cwd"], state):
+                        raise Refuse("output redirection into the nix-packages checkout; %s" % NIX_PACKAGES_RULE)
                     if hook_path(target, state["cwd"]):
                         raise Refuse("output redirection into the Git hooks or their config; %s" % HOOKS_RULE)
                     state["written"].add(resolve(target, state["cwd"]))
@@ -707,7 +728,7 @@ def decide(data):
     # cursor-agent sends cwd as an empty string and names the workspace instead.
     roots = data.get("workspace_roots")
     cwd = data.get("cwd") or (roots[0] if isinstance(roots, list) and roots and isinstance(roots[0], str) else "") or os.getcwd()
-    state = {"cwd": os.path.realpath(cwd), "ask": None, "written": set(), "piped": None, "stdin": None}
+    state = {"cwd": os.path.realpath(cwd), "ask": None, "written": set(), "piped": None, "stdin": None, "agent": data.get("agent_type")}
 
     command = ti.get("command", data.get("command"))
     # Codex's apply_patch carries the patch text in `command`. It is checked as
@@ -729,6 +750,8 @@ def decide(data):
             raise Refuse("the file path has an unexpected shape")
         if legacy(path, state["cwd"]):
             raise Refuse("writing into a legacy repository, which is read-only (AGENTS.md)")
+        if nix_packages(path, state["cwd"], state):
+            raise Refuse("writing into the nix-packages checkout; %s" % NIX_PACKAGES_RULE)
         if hook_path(path, state["cwd"]):
             raise Refuse("writing the Git hooks or their config; %s" % HOOKS_RULE)
     for value in ti.values():
@@ -737,6 +760,8 @@ def decide(data):
                 p = groups[0] or groups[1]
                 if legacy(p.strip(), state["cwd"]):
                     raise Refuse("a patch that writes into a legacy repository, which is read-only (AGENTS.md)")
+                if nix_packages(p.strip(), state["cwd"], state):
+                    raise Refuse("a patch that writes into the nix-packages checkout; %s" % NIX_PACKAGES_RULE)
                 if hook_path(p.strip(), state["cwd"]):
                     raise Refuse("a patch that writes the Git hooks or their config; %s" % HOOKS_RULE)
 
@@ -769,5 +794,6 @@ except Exception as e:
 PY
 
 trap - ERR
-python3 -c "$GUARD" "$input" || deny "the checker exited abnormally; refusing rather than failing open"
+repo=$(cd "$(dirname "$0")/.." && pwd -P) || deny "could not find this repository's root"
+python3 -c "$GUARD" "$input" "$repo" || deny "the checker exited abnormally; refusing rather than failing open"
 exit 0

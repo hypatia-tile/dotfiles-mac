@@ -238,6 +238,32 @@ expect allow "reading a legacy repo"      "$(bash_call 'cat ~/github/dotfiles/RE
 expect allow "git log in a legacy repo"   "$(bash_call 'git -C ~/github/dotfiles log --oneline')"
 expect allow "cp out of a legacy repo"    "$(bash_call 'cp ~/github/dotfiles/a /tmp/a')"
 expect allow "Read of a legacy file"      "$(jq -cn --arg p "$HOME/github/dotfiles/x" '{tool_name:"Read",cwd:"/tmp",tool_input:{file_path:$p}}')"
+
+# The nix-packages checkout beside this one: written only by the nix-packages
+# sub-agent, whose calls carry agent_type (ADR 0038). The main session's carry
+# none, and neither do Codex's.
+np="$(cd .. && pwd -P)/nix-packages"
+sub_call() { jq -cn --arg c "$1" --arg a "${2:-nix-packages}" '{hook_event_name:"PreToolUse",tool_name:"Bash",cwd:"/tmp",agent_type:$a,agent_id:"x",tool_input:{command:$c}}'; }
+sub_write() { jq -cn --arg p "$1" --arg a "${2:-nix-packages}" '{tool_name:"Write",cwd:"/tmp",agent_type:$a,agent_id:"x",tool_input:{file_path:$p,content:"x"}}'; }
+expect deny  "nix-packages: Write from the main session"  "$(jq -cn --arg p "$np/flake.nix" '{tool_name:"Write",cwd:"/tmp",tool_input:{file_path:$p,content:"x"}}')"
+expect deny  "nix-packages: Edit from the main session"   "$(jq -cn --arg p "$np/modules/home/shared.nix" '{tool_name:"Edit",cwd:"/tmp",tool_input:{file_path:$p,old_string:"a",new_string:"b"}}')"
+expect deny  "nix-packages: rm from the main session"     "$(bash_call "rm $np/README.md")"
+expect deny  "nix-packages: redirect from the main session" "$(bash_call "echo x > $np/a")"
+expect deny  "nix-packages: cd then relative write"       "$(bash_call "cd $np && touch x")"
+expect deny  "nix-packages: git -C commit from the main session" "$(bash_call "git -C $np commit -m x")"
+expect deny  "nix-packages: git switch, cwd in the checkout" "$(bash_call 'git switch -c feat/x' "$np")"
+expect deny  "nix-packages: patch from the main session"  "$(jq -cn --arg p "$np/x" '{tool_name:"apply_patch",cwd:"/tmp",tool_input:{input:("*** Begin Patch\n*** Update File: "+$p+"\n*** End Patch")}}')"
+expect deny  "nix-packages: codex write"                  "$(codex_call 'touch x' "$np")"
+expect deny  "nix-packages: Write from another sub-agent" "$(sub_write "$np/flake.nix" general-purpose)"
+expect deny  "nix-packages sub-agent: git push"           "$(sub_call "git -C $np push -u origin feat/x")"
+expect deny  "nix-packages sub-agent: sudo"               "$(sub_call 'sudo true')"
+expect deny  "nix-packages sub-agent: legacy write"       "$(sub_write "$HOME/github/dotfiles/x")"
+expect allow "nix-packages sub-agent: Write"              "$(sub_write "$np/modules/home/shared.nix")"
+expect allow "nix-packages sub-agent: fetch and branch"   "$(sub_call "git -C $np fetch origin && git -C $np switch -c feat/x origin/main")"
+expect allow "nix-packages sub-agent: commit"             "$(sub_call "cd $np && git commit -m 'feat(shared): add x'")"
+expect allow "nix-packages: read from the main session"   "$(bash_call "cat $np/AGENTS.md && git -C $np status --short")"
+expect allow "nix-packages: Read from the main session"   "$(jq -cn --arg p "$np/flake.nix" '{tool_name:"Read",cwd:"/tmp",tool_input:{file_path:$p}}')"
+expect allow "nix-packages: diff build from the main session" "$(bash_call 'bin/nix-packages-diff.sh')"
 expect allow "Write elsewhere"            '{"tool_name":"Write","cwd":"/tmp","tool_input":{"file_path":"/tmp/x","content":"sudo git push"}}'
 expect allow "no command, no path"        '{"tool_name":"Grep","cwd":"/tmp","tool_input":{"pattern":"sudo"}}'
 expect allow "hash inside quotes is not a comment" "$(bash_call "echo '# sudo' && git status")"
