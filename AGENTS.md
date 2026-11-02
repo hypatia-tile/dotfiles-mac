@@ -21,6 +21,9 @@ Homebrew casks and brews, fonts, `nixpkgs` and the overlays live in
 [hypatia-tile/nix-packages](https://github.com/hypatia-tile/nix-packages),
 which this flake imports as an input (ADR 0037). This repository configures
 the tools; a tool that needs both is added there first and removed here first.
+From a session here, nix-packages is changed only through Claude Code's
+`nix-packages` sub-agent; any other agent works on it from a session in that
+checkout (ADR 0038).
 
 ## Hard rules
 

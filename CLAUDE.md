@@ -68,3 +68,11 @@ It also needs the `.codex/skills/<name>` symlink `AGENTS.md` describes, for
 the same reason: without it the skill reaches Claude Code and no other agent,
 and nothing says so. `.codex/skills` is tracked normally rather than through
 an allowlist, so a skill an agent drops there shows up in `git status`.
+
+## Sub-agents
+
+Sub-agents are defined in `.claude/agents/<name>.md` and tracked normally,
+with no allowlist and no Codex counterpart: Codex has no equivalent file.
+Today there is one, `nix-packages`. From a session here it is the only way
+to change hypatia-tile/nix-packages, and `config-change` starts it
+(ADR 0038).

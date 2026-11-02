@@ -82,8 +82,17 @@ declares the packages, Homebrew, fonts, `nixpkgs` and the overlays, and this
 flake imports it as an input (ADR 0037). A row above marked **not here** is
 made there:
 
-- **From a session in that checkout,** where its own `AGENTS.md` applies, as
-  a PR there. Do not edit it from a session here.
+- **From a session here, only through the `nix-packages` sub-agent**
+  (`.claude/agents/nix-packages.md`, ADR 0038). This session never edits
+  that checkout itself. Give the sub-agent the one change, any nix-packages
+  issue it closes, and this session's `Co-Authored-By:` trailer. It stops at
+  a committed, preflighted branch and reports it with a draft PR body. Pass
+  its commits on in your own report, run the build below, hand the owner
+  `! git -C ../nix-packages push -u origin <branch>`, and after the push
+  open the PR with `gh pr create -R hypatia-tile/nix-packages`, adding the
+  build's result to the body. A session opened in that checkout, under its
+  own `AGENTS.md`, is the other way; a Codex session here has no sub-agent
+  and uses that one.
 - **A tool that needs both sides** is added package first, then config, and
   removed config first, then package, so neither repository is broken in
   between. Adding: the PR there merges, then a branch here moves the input
