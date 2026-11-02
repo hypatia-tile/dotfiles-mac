@@ -75,4 +75,6 @@ Sub-agents are defined in `.claude/agents/<name>.md` and tracked normally,
 with no allowlist and no Codex counterpart: Codex has no equivalent file.
 Today there is one, `nix-packages`. From a session here it is the only way
 to change hypatia-tile/nix-packages, and `config-change` starts it
-(ADR 0038).
+(ADR 0038). `agent-guard` enforces that: it refuses writes into the
+nix-packages checkout from any call whose hook input does not carry
+`agent_type` `nix-packages`, which leaves out the main session and Codex.
