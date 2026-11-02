@@ -27,6 +27,12 @@ different set, in `config/agents/skills/` (ADR 0028).
 | `keybinding-doctor` | A key or chord is swallowed, produces the wrong character, or fires the wrong command |
 | `manual-setup` | A fresh machine, or state the flake knowingly does not declare (macSKK's input source, dictionary and 直接入力 list) |
 
+One sub-agent, specific to Claude Code, is defined in `.claude/agents/`:
+
+| Sub-agent | Use it when |
+|---|---|
+| `nix-packages` | A change needs a package, Homebrew entry or font added or removed in hypatia-tile/nix-packages: from a session here, this is the only way (ADR 0038). `config-change` starts it |
+
 Applying is always the owner's manual step, and nothing else in this
 repository performs it:
 
@@ -44,7 +50,7 @@ Merged-but-not-switched is a normal intermediate state.
 | [`../CLAUDE.md`](../CLAUDE.md) | Claude Code specifics: the `settings.json` guardrails, how skills are tracked |
 | [`operations.md`](operations.md) | Day-to-day semantics: Home Manager placement rules, Nix on this machine, CI behavior, known quirks |
 | [`rollback.md`](rollback.md) | Recovery when a switch goes wrong |
-| [`adr/`](adr/) | The decisions, 0001–0037, with their rationale |
+| [`adr/`](adr/) | The decisions, 0001–0038, with their rationale |
 
 ## Pending input
 
