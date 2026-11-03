@@ -1,6 +1,6 @@
 # 0038. Change nix-packages from here only through a sub-agent
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-11-03
 
 ## Context
