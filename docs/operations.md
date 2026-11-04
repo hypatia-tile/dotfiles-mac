@@ -17,7 +17,7 @@ For those, the loop is:
 
 1. Branch off `main`, edit, and verify with the `preflight` skill
    (build-only — nothing in that skill ever switches).
-2. **Try it if you want to**: `sudo darwin-rebuild switch --flake .#Kazukis-MacBook-Air`
+2. **Try it if you want to**: `sudo darwin-rebuild switch --flake .`
    from the branch is allowed, including from a dirty working tree (ADR 0022).
    Record the generation first — `docs/rollback.md` opens with why.
 3. PR with Conventional Commits; all CI checks are required; self-merge

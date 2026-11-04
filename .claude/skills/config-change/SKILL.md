@@ -48,7 +48,7 @@ change under review and nothing else should move.
 
 Hand over to the **`ship-pr`** skill. Its PR body needs the post-switch check
 from the table below, stated concretely — the owner applies the change with
-`sudo darwin-rebuild switch --flake .#Kazukis-MacBook-Air` after merge, and
+`sudo darwin-rebuild switch --flake .` after merge, and
 that check is how they know it took.
 
 ## Decision table

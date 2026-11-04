@@ -37,7 +37,7 @@ Applying is always the owner's manual step, and nothing else in this
 repository performs it:
 
 ```sh
-sudo darwin-rebuild switch --flake .#Kazukis-MacBook-Air
+sudo darwin-rebuild switch --flake .
 ```
 
 Merged-but-not-switched is a normal intermediate state.

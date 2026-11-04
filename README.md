@@ -1,6 +1,6 @@
 # dotfiles-mac
 
-Declarative macOS configuration for `Kazukis-MacBook-Air`: one Nix flake
+Declarative macOS configuration for one Mac (the host in `hosts/`): one Nix flake
 combining **nix-darwin** for the system layer and **Home Manager** (as a
 nix-darwin module) for everything user-facing.
 
@@ -34,7 +34,7 @@ tools' own config.
 ## Applying it
 
 ```sh
-sudo darwin-rebuild switch --flake .#Kazukis-MacBook-Air
+sudo darwin-rebuild switch --flake .
 ```
 
 This is always run by hand. Merging a change does not apply it —
