@@ -46,6 +46,9 @@ switch; nothing else in the repository names them, apart from records.
 3. **The Codex hook path:** change the absolute path in `.codex/hooks.json` to
    match. Codex needs an absolute path (ADR 0027), and
    `bin/check-agent-guard.sh` fails until it equals `checkoutPath`.
+   hypatia-tile/nix-packages has the same pair for its own checkout: its
+   `.codex/hooks.json` and the `checkout=` line of its
+   `bin/check-agent-guard.sh`, which must agree.
 4. **The machine name:** rename `hosts/<name>.nix` and set its `hostname` to
    the new machine's name. Set `system.stateVersion` there for the new
    machine, rather than keeping the old one's.
@@ -59,8 +62,8 @@ switch; nothing else in the repository names them, apart from records.
 
 ### Where the state lands
 
-Three tracked files (`modules/common.nix`, `.codex/hooks.json`,
-`hosts/<name>.nix`), and the machine's `LocalHostName`, which the switch
+Three tracked files here (`modules/common.nix`, `.codex/hooks.json`,
+`hosts/<name>.nix`), two in nix-packages, and the machine's `LocalHostName`, which the switch
 writes with `scutil --set`.
 
 ### What proves it worked
