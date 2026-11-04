@@ -64,7 +64,7 @@ expect deny "sudo behind env assignment"  "$(bash_call 'FOO=1 sudo true')"
 expect deny "sudo inside bash -c"         "$(bash_call "bash -c 'sudo true'")"
 expect deny "sudo in command substitution" "$(bash_call 'echo "$(sudo whoami)"')"
 expect deny "sudo in a heredoc fed to bash" "$(bash_call $'bash <<\'EOF\'\nsudo true\nEOF')"
-expect deny "darwin-rebuild switch"       "$(bash_call 'darwin-rebuild switch --flake .#Kazukis-MacBook-Air')"
+expect deny "darwin-rebuild switch"       "$(bash_call 'darwin-rebuild switch --flake .#my-mac')"
 expect deny "darwin-rebuild activate"     "$(bash_call 'darwin-rebuild activate')"
 expect deny "activation script"           "$(bash_call './result/activate')"
 expect deny "git push"                    "$(bash_call 'git push -u origin feat/x')"
@@ -85,7 +85,7 @@ expect deny "Edit into a legacy repo"     "$(jq -cn --arg p "$HOME/github/nix-da
 expect deny "patch into a legacy repo"    "$(jq -cn --arg p "$HOME/github/dotfiles/x" '{tool_name:"apply_patch",cwd:"/tmp",tool_input:{input:("*** Begin Patch\n*** Update File: "+$p+"\n*** End Patch")}}')"
 expect deny "argv-form command"           '{"tool_name":"shell","cwd":"/tmp","tool_input":{"command":["sudo","true"]}}'
 expect deny "top-level command (cursor)"  '{"hook_event_name":"beforeShellExecution","cwd":"/tmp","command":"git push"}'
-expect deny "flake ref with # before git push" "$(bash_call 'nix build .#Kazukis-MacBook-Air && git push')"
+expect deny "flake ref with # before git push" "$(bash_call 'nix build .#my-mac && git push')"
 expect deny "# inside a word before sudo"  "$(bash_call 'echo a#b; sudo true')"
 expect deny "comment line then sudo"       "$(bash_call $'ls # just listing\nsudo true')"
 expect deny "line-start comment, then git push" "$(bash_call $'echo hi\n# note\ngit push')"
@@ -268,7 +268,7 @@ expect allow "nix-packages: diff build from the main session" "$(bash_call 'bin/
 expect allow "Write elsewhere"            '{"tool_name":"Write","cwd":"/tmp","tool_input":{"file_path":"/tmp/x","content":"sudo git push"}}'
 expect allow "no command, no path"        '{"tool_name":"Grep","cwd":"/tmp","tool_input":{"pattern":"sudo"}}'
 expect allow "hash inside quotes is not a comment" "$(bash_call "echo '# sudo' && git status")"
-expect allow "flake ref alone"             "$(bash_call 'nix build .#darwinConfigurations.Kazukis-MacBook-Air.system --no-update-lock-file')"
+expect allow "flake ref alone"             "$(bash_call 'nix build .#darwinConfigurations.my-mac.system --no-update-lock-file')"
 expect allow "codex: git commit (no ask in Codex; its own approval applies)" "$(codex_call 'git commit -m x')"
 expect allow "codex: patch with a quote in it" "$(codex_patch $'*** Begin Patch\n*** Add File: notes.md\n+it\'s fine, don\'t worry\n*** End Patch\n')"
 expect allow "codex: plain command"          "$(codex_call 'git status')"

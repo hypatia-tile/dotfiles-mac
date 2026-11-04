@@ -6,10 +6,10 @@
       "Bash(sudo darwin-rebuild:*)",
       "Bash(git push:*)",
       "Bash(nix flake update:*)",
-      "Edit(//Users/kazukishinohara/github/dotfiles/**)",
-      "Write(//Users/kazukishinohara/github/dotfiles/**)",
-      "Edit(//Users/kazukishinohara/github/nix-darwin/**)",
-      "Write(//Users/kazukishinohara/github/nix-darwin/**)"
+      "Edit(~/github/dotfiles/**)",
+      "Write(~/github/dotfiles/**)",
+      "Edit(~/github/nix-darwin/**)",
+      "Write(~/github/nix-darwin/**)"
     ],
     "allow": [
       "Bash(nix flake check:*)",
