@@ -262,6 +262,7 @@ expect allow "nix-packages sub-agent: Write"              "$(sub_write "$np/modu
 expect allow "nix-packages sub-agent: fetch and branch"   "$(sub_call "git -C $np fetch origin && git -C $np switch -c feat/x origin/main")"
 expect allow "nix-packages sub-agent: commit"             "$(sub_call "cd $np && git commit -m 'feat(shared): add x'")"
 expect allow "nix-packages: read from the main session"   "$(bash_call "cat $np/AGENTS.md && git -C $np status --short")"
+expect allow "nix-packages: git ls-remote from the main session" "$(bash_call "git -C $np ls-remote origin HEAD")"
 expect allow "nix-packages: Read from the main session"   "$(jq -cn --arg p "$np/flake.nix" '{tool_name:"Read",cwd:"/tmp",tool_input:{file_path:$p}}')"
 expect allow "nix-packages: diff build from the main session" "$(bash_call 'bin/nix-packages-diff.sh')"
 expect allow "Write elsewhere"            '{"tool_name":"Write","cwd":"/tmp","tool_input":{"file_path":"/tmp/x","content":"sudo git push"}}'

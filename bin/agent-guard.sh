@@ -72,7 +72,7 @@ RESERVED = {"{", "!", "if", "then", "else", "elif", "do", "while", "until", "cop
 REDIRECT_OUT = re.compile(r"^(?:&>>?|>>?\|?|>&)$")
 WRITE_ANY_ARG = {"rm", "rmdir", "touch", "mkdir", "chmod", "chown", "chflags", "truncate", "tee", "unlink", "mv"}
 WRITE_DEST_ARG = {"cp", "ln", "install", "rsync", "ditto"}
-GIT_READ_ONLY = {"status", "log", "diff", "show", "ls-files", "rev-parse", "blame", "grep", "cat-file", "describe", "shortlog", "ls-tree", "config", "branch", "remote", "reflog"}
+GIT_READ_ONLY = {"status", "log", "diff", "show", "ls-files", "rev-parse", "blame", "grep", "cat-file", "describe", "shortlog", "ls-tree", "config", "branch", "remote", "reflog", "ls-remote"}
 PLACEHOLDER = "__agent_guard_substitution__"
 CONTENT_FIELDS = ("content", "new_string", "edits", "new_source", "old_string")
 # The variables the pinned Lefthook (2.1.14) reads that make it skip work:
