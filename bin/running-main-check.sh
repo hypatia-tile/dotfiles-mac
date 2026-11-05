@@ -23,8 +23,9 @@ repo_root=$(cd "$(dirname "$0")/.." && pwd)
 flake="git+file://${repo_root}?ref=refs/heads/main"
 
 # Ask the flake for the host rather than deriving it from a filename: the
-# attribute is the `hostname` inside hosts/*.nix ("Kazukis-MacBook-Air"), not
-# the file's basename ("kazukis-macbook-air"), and guessing gets it wrong.
+# attribute is the `hostname` inside hosts/*.nix, which need not match the
+# file's basename (it is capitalised, the file is not), and guessing gets it
+# wrong.
 if ! host=$(
   nix eval --raw --no-update-lock-file "${flake}#darwinConfigurations" \
     --apply 'cs: builtins.head (builtins.attrNames cs)' 2>/dev/null
