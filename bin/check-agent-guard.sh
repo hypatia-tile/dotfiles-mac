@@ -353,7 +353,8 @@ if ! registered "$root/.claude/settings.json" '"$CLAUDE_PROJECT_DIR"/bin/agent-g
 fi
 
 total=$((total + 1))
-checkout=$(sed -n 's/^[[:space:]]*checkoutPath = "\([^"]*\)";.*/\1/p' "$root/modules/common.nix")
+# Evaluated, not parsed: checkoutPath is built from username (#340).
+checkout=$(nix eval --raw --file "$root/modules/common.nix" checkoutPath 2>/dev/null || true)
 if [[ -z $checkout ]] || ! registered "$root/.codex/hooks.json" "$checkout/bin/agent-guard.sh"; then
   echo "FAIL  .codex/hooks.json does not register the guard at checkoutPath ($checkout)" >&2
   fail=1

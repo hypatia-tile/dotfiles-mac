@@ -59,6 +59,11 @@
               home-manager.darwinModules.home-manager
               {
                 nixpkgs.hostPlatform = host.system;
+                # The machine's local name is the host file's, so that
+                # `darwin-rebuild --flake .` (which looks the configuration
+                # up by `scutil --get LocalHostName`) finds it with no `#name`
+                # after the first switch (#340).
+                networking.localHostName = host.hostname;
                 home-manager = {
                   useGlobalPkgs = true;
                   useUserPackages = true;
