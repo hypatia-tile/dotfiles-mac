@@ -29,6 +29,61 @@ needs a hand afterwards. Record four things, in this order: **what** to do,
 undone**. The last one is what turns a checklist into knowledge — an entry that
 only lists clicks gets re-derived the first time it silently reverts.
 
+## A new Mac — the user name and the machine name
+
+The flake names one user and one machine, each in one place (#340). A new Mac
+with a different user name or machine name needs both edited before its first
+switch; nothing else in the repository names them, apart from records.
+
+### What to do
+
+1. Clone this repository to `~/ghqrepo/github.com/hypatia-tile/dotfiles-mac`,
+   the path `checkoutPath` in `modules/common.nix` builds from the home
+   directory. Payloads link into the checkout (ADR 0034), so a clone elsewhere
+   needs that line changed too.
+2. **The user name:** set `username` in `modules/common.nix`. The home
+   directory and the checkout path follow it.
+3. **The Codex hook path:** change the absolute path in `.codex/hooks.json` to
+   match. Codex needs an absolute path (ADR 0027), and
+   `bin/check-agent-guard.sh` fails until it equals `checkoutPath`.
+   hypatia-tile/nix-packages has the same pair for its own checkout: its
+   `.codex/hooks.json` and the `checkout=` line of its
+   `bin/check-agent-guard.sh`, which must agree.
+4. **The machine name:** rename `hosts/<name>.nix` and set its `hostname` to
+   the new machine's name. Set `system.stateVersion` there for the new
+   machine, rather than keeping the old one's.
+5. **The first switch names the host once:**
+   `sudo darwin-rebuild switch --flake .#<hostname>`. It sets the machine's
+   `LocalHostName` from the host file (`networking.localHostName`), and from
+   then on `sudo darwin-rebuild switch --flake .` finds the configuration by
+   that name. On a Mac where nix-darwin is not installed yet, the first
+   switch is nix-darwin's own bootstrap,
+   `sudo nix run nix-darwin/master#darwin-rebuild -- switch --flake .#<hostname>`.
+
+### Where the state lands
+
+Three tracked files here (`modules/common.nix`, `.codex/hooks.json`,
+`hosts/<name>.nix`), two in nix-packages, and the machine's `LocalHostName`, which the switch
+writes with `scutil --set`.
+
+### What proves it worked
+
+```sh
+scutil --get LocalHostName              # the hostname in hosts/<name>.nix
+darwin-rebuild build --flake .          # builds without a #name
+bin/check-agent-guard.sh                # the Codex registration matches
+```
+
+### What makes it come undone
+
+- Renaming the Mac in System Settings changes `LocalHostName`, so
+  `--flake .` finds no configuration until the next switch sets it back. That
+  switch has to name the host (`.#<hostname>`).
+- Changing `hostname` in the host file: the same, once, until a switch with
+  `.#<new name>` sets the new one.
+- Moving the checkout: the payload links dangle until `checkoutPath` and
+  `.codex/hooks.json` follow.
+
 ## macSKK — the system input method
 
 Declared: the cask, in hypatia-tile/nix-packages' `modules/darwin/homebrew.nix`

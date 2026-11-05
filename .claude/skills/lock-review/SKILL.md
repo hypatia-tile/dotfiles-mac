@@ -65,7 +65,7 @@ package change there (`config-change`).
    `! gh pr merge <n> --rebase`
 
 6. **Name the post-switch check.** After the owner's
-   `sudo darwin-rebuild switch --flake .#Kazukis-MacBook-Air`, the check is
+   `sudo darwin-rebuild switch --flake .`, the check is
    driven by *what moved*: start each daily tool whose version changed and
    confirm it runs — Neovim starts clean against its shipped `lazy-lock.json`,
    and the others report the new version. Use the actual names from step 4,

@@ -11,7 +11,7 @@ the 2026-07 migration.
 
 ## What this repository is
 
-The macOS configuration for `Kazukis-MacBook-Air`, as a single Nix flake:
+The macOS configuration for one Mac, the host in `hosts/`, as a single Nix flake:
 nix-darwin for the system layer, Home Manager (as a nix-darwin module) for
 everything user-facing. It has been the live single source of truth since the
 2026-07-14 cutover (ADR 0015, finalized by ADR 0018).

@@ -27,7 +27,7 @@ Run from the repository root.
    fix is the owner's step in `manual-setup`. A failing stage is the finding:
    report the check's own output.
 2. **Closure diff.** Link the closure step 1 built, for the host being
-   changed (currently `Kazukis-MacBook-Air`), and compare it with the running
+   changed (the `hostname` in its `hosts/*.nix`), and compare it with the running
    system:
    `nix build .#darwinConfigurations.<host>.system --no-update-lock-file -o result`
    then `nix store diff-closures /run/current-system ./result`.
