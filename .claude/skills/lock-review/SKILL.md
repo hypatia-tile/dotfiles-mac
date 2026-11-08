@@ -17,7 +17,8 @@ This lock moves three inputs: nix-darwin, Home Manager and
 [hypatia-tile/nix-packages](https://github.com/hypatia-tile/nix-packages)
 (ADR 0037). `nixpkgs` and the overlays are not pinned here: they follow
 nix-packages' own lock, whose updates are reviewed there with its own
-`lock-review`, including whether a bump fixes or brings a vulnerability.
+`lock-review`, or from here with `sibling-lock-review` (ADR 0039),
+including whether a bump fixes or brings a vulnerability.
 What this review decides is whether this host takes them. The same steps
 apply to a lock-only commit that moves `nix-packages` alone, after a
 package change there (`config-change`).
