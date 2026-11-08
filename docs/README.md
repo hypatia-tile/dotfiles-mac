@@ -18,6 +18,7 @@ different set, in `config/agents/skills/` (ADR 0028).
 | `config-change` | Installing or removing a package, adding or editing a tool's configuration, a Homebrew entry, an environment variable, a macOS default. **The default entry point.** |
 | `lock-review` | A weekly `chore(deps): update flake.lock` PR is open |
 | `sibling-lock-review` | emacs-flake's or nix-packages' weekly lock PR is open: reviewed from here without touching their checkouts (ADR 0039) |
+| `weekly-locks` | The owner asks for the weekly tasks: the round of lock PRs across emacs-flake, nix-packages and this repository, in chain order |
 | `preflight` | Verifying a change against the CI gates before pushing |
 | `take-issue` | The owner asks to work on an issue: it becomes committed branches, stacked when it has stages |
 | `ship-pr` | A committed branch, or a stack of them, needs to become a green, mergeable PR |
