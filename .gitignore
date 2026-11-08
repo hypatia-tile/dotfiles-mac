@@ -25,6 +25,7 @@ result-*
 !.claude/skills/lock-review
 !.claude/skills/manual-setup
 !.claude/skills/sibling-lock-review
+!.claude/skills/weekly-locks
 !.claude/skills/inbox
 !.claude/skills/take-issue
 !.claude/skills/session-close
