@@ -51,8 +51,9 @@ package change there (`config-change`).
    - **a gate that fails in `preflight`'s first step is usually the new
      toolchain at work, and still a finding.** The linters come from the check
      devShell, which the lock pins (ADR 0032), so a formatter or linter bump
-     can make previously-clean files fail. That run is the evidence this PR
-     has, since the workflow's PRs get no CI.
+     can make previously-clean files fail. That run comes before CI's: a
+     PR the workflow opens starts no CI run until it is closed and reopened
+     (step 5).
 
 4. **Record the notable bumps.** Name the packages the owner actually uses
    daily with old → new versions. A wall of 150 nodes is not reviewable; a
@@ -60,10 +61,16 @@ package change there (`config-change`).
    PRs that brought them, and the `vulnerability` issues there that the
    switch will close.
 
-5. **Report, and leave the merge to the owner.** Merge with **`--rebase`,
-   never `--squash`**: ADR 0011 requires the lock update to survive as its own
-   dedicated commit.
-   `! gh pr merge <n> --rebase`
+5. **Report, and leave the merge to the owner.**
+   - **Start CI first.** The workflow opens the PR with a token whose PRs
+     start no CI run, and `main` requires the checks, so the merge is
+     refused until they ran (#345, 2026-11-08). If
+     `gh pr checks <n>` reports none, check that the merge ref is current
+     as `ship-pr` describes for a failed title, then hand the owner
+     `! gh pr close <n> && gh pr reopen <n>`, and watch the run.
+   - Merge with **`--rebase`, never `--squash`**: ADR 0011 requires the
+     lock update to survive as its own dedicated commit.
+     `! gh pr merge <n> --rebase`
 
 6. **Name the post-switch check.** After the owner's
    `sudo darwin-rebuild switch --flake .`, the check is

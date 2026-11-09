@@ -22,9 +22,10 @@ cannot be reviewed from here today:
 - nix-packages' `lock-review` starts with `gh pr checkout`, and its gates run
   through `bin/preflight.sh`, which needs a working tree with that
   repository's hooks installed. Both write into the checkout, which ADR 0038
-  keeps from the main session. That repository's lock PRs get no CI, so its
-  preflight run is the only evidence one of them has: hypatia-tile/nix-packages#19,
-  opened by its workflow, reports no checks.
+  keeps from the main session. A lock PR its workflow opens starts no CI
+  run: hypatia-tile/nix-packages#19 reported no checks. Closing and reopening
+  it starts `ci.yml`, which its `main` requires before a merge anyway; that
+  is how #19 and this repository's #345 were merged on 2026-11-08.
 - A throwaway clone does not help. Installing its hooks means setting
   `core.hooksPath`, which `agent-guard` refuses anywhere (ADR 0032; measured
   on 2026-11-08).
@@ -64,7 +65,8 @@ nix-packages' gates moved into its weekly workflow.
   opened,** as emacs-flake's `update.yml` already does. nix-packages' weekly
   workflow is to do the same (hypatia-tile/nix-packages#20). A review here
   reads that run's result as the gates' evidence. Until the workflow does,
-  a nix-packages lock PR reviewed here is reported as having unchecked gates.
+  the owner closes and reopens a nix-packages lock PR to start its CI, and
+  the review reads that run.
 - **A review here adds this host's view and restates nothing.** It applies
   the sibling repository's own review procedure where one exists, read from
   that repository, with the substitutions above. For nix-packages, what it
@@ -95,9 +97,9 @@ ADR 0038 stays in force. This extends it to emacs-flake and to reviews.
   emacs-flake opens its PR to the switch. A cache miss, which would put a
   twenty-minute Emacs build into the switch, is found at the nix-packages
   review instead.
-- A nix-packages lock PR gets gates it has never had, in CI, where every
-  reader can see them, instead of a local run only the reviewer saw. Until
-  hypatia-tile/nix-packages#20 is done, a review here cannot supply them.
+- A nix-packages lock PR has its gates run before it is opened, instead of
+  after a manual close and reopen. Until hypatia-tile/nix-packages#20 is
+  done, the reopen is one more step for the owner each week.
 - The owner's checkouts are left alone: a review reads and builds from
   GitHub, so it works whatever branch either checkout is on.
 - The skills here depend on the siblings' procedures as written there. A

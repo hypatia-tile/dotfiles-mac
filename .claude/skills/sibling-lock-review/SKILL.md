@@ -72,12 +72,15 @@ here pass `--no-write-lock-file`.
    replaced by the steps below; do not run them there.
 3. **Confirm the diff is lock-only**, as for emacs-flake:
    `gh pr diff <n> -R hypatia-tile/nix-packages --name-only`.
-4. **The gates.** Its lock PRs get no CI run of their own. Once its weekly
-   workflow runs the gates before opening the PR
+4. **The gates.** A PR its workflow opens starts no CI run, and its `main`
+   requires the checks, so a merge is refused until they ran. Once its
+   weekly workflow runs the gates before opening the PR
    (hypatia-tile/nix-packages#20), read that run's conclusion as in the
-   emacs-flake section. Until then, report the gates as **unchecked**, and
-   say that its `lock-review`, from a session in that checkout, is what runs
-   them.
+   emacs-flake section. Until then, if `gh pr checks <n> -R hypatia-tile/nix-packages`
+   reports none, hand the owner
+   `! gh pr close <n> -R hypatia-tile/nix-packages && gh pr reopen <n> -R hypatia-tile/nix-packages`,
+   which starts `ci.yml`, and read that run. Report the gates as
+   **unchecked** until it has passed (#19, 2026-11-08).
 5. **Diff its check system's closure** by flake reference, in a temporary
    directory, never in either checkout:
 

@@ -50,9 +50,12 @@ review: it decides which to run, and on what.
    ```
 
    The input is `emacs-flake` in nix-packages and `nix-packages` here.
-   - **Equal:** the later PR carries everything merged upstream.
-   - **Different, and the earlier PR is still open:** review the earlier one
-     first; the later one is re-run after that merge.
+   - **Equal, and the earlier PR is merged or there is none:** the later PR
+     carries everything merged upstream.
+   - **The earlier PR is still open,** equal or not: review the earlier one
+     first. Its merge moves the earlier `main`, so the later PR is re-run
+     after it and reviewed only then. A review before that is wasted
+     (2026-11-08: #345 matched nix-packages' `main` until #19 merged).
    - **Different, and the earlier PR is merged:** the later PR is stale.
      Hand the owner the re-run, which updates the same PR in place:
      `! gh workflow run <workflow> -R <later repo>`. Review it after the new
