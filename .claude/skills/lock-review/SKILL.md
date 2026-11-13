@@ -25,17 +25,38 @@ package change there (`config-change`).
 
 ## Steps
 
-1. **Find the PR and check it out.**
-   `gh pr list --state open --label dependencies`, then
-   `gh pr checkout <n>`. The workflow reuses the branch
+1. **Find the PR, and open its head in a detached worktree.**
+   `gh pr list --state open --label dependencies --json number,headRefOid`
+   gives the number and the head's hash. The workflow reuses the branch
    `update_flake_lock_action` each week.
 
-2. **Confirm the diff is lock-only.**
-   `git diff main... --stat` must show `flake.lock` and nothing else. Anything
-   else on the branch means the workflow misfired — stop and report.
+   **Never `gh pr checkout` it.** This checkout is the live configuration:
+   payloads link into it (ADR 0034), and `bin/agent-guard.sh`,
+   `config/bin/vulns` and the user-scope skills are live from it. The
+   workflow's branch starts from whatever `main` was when it ran, so checking
+   it out puts older versions of all of these live, in every session on the
+   machine (#334; #319 was three stages behind `main`, #328 lacked the guard
+   change of #331). Instead:
 
-3. **Verify with `preflight`, with one criterion inverted.** Run the skill; do
-   not restate its steps. Its closure diff treats a package version change as
+   ```sh
+   git fetch origin "pull/<n>/head"
+   git worktree add --detach <dir> <headRefOid>
+   ```
+
+   with `<dir>` a temporary directory outside the checkout. Name the head by
+   its hash, not `FETCH_HEAD`: that ref belongs to the main checkout. Every
+   later step runs in `<dir>`; this checkout stays on its own branch.
+
+2. **Confirm the diff is lock-only.**
+   `git -C <dir> diff main... --stat` must show `flake.lock` and nothing
+   else. Anything else on the branch means the workflow misfired — stop and
+   report.
+
+3. **Verify with `preflight` in `<dir>`, with one criterion inverted.** Run
+   the skill; do not restate its steps. **In a worktree the `nvim` and `luals`
+   checks fail** whatever the lock: `~/.config/nvim-dev` points at the main
+   checkout. Their evidence is CI's run (step 5); when nothing in their scope
+   moved, say so. Its closure diff treats a package version change as
    a red flag, because nothing should move when the lock is untouched. Here the lock
    *is* the change, so version movement across the closure is the expected
    outcome. Judge these instead:
@@ -44,7 +65,7 @@ package change there (`config-change`).
    - **when `nix-packages` moved,** every package change is accounted for
      by what nix-packages merged between the two revisions. List them with
      `git -C "$(ghq list -p hypatia-tile/nix-packages)" log --oneline <old>..<new>`,
-     taking `<old>` and `<new>` from `git diff main... -- flake.lock`. A
+     taking `<old>` and `<new>` from `git -C <dir> diff main... -- flake.lock`. A
      package change no merged commit there explains is the finding;
    - the net closure size change is plausible. Bootstrap paths dropping out is
      normal (#41 was ~150 nodes and −0.5 GiB); a large unexplained gain is not;
@@ -71,6 +92,8 @@ package change there (`config-change`).
    - Merge with **`--rebase`, never `--squash`**: ADR 0011 requires the
      lock update to survive as its own dedicated commit.
      `! gh pr merge <n> --rebase`
+   - Remove the worktree once the review is reported:
+     `git worktree remove <dir>`.
 
 6. **Name the post-switch check.** After the owner's
    `sudo darwin-rebuild switch --flake .`, the check is
