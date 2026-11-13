@@ -33,9 +33,11 @@
 # Deferrals carry a date and a reason and lapse on that date. In the owner's
 # repositories they are committed: osv-scanner.toml ([[IgnoredVulns]]) for
 # packages, .vulns-defer for runtimes. For any other clone they live under
-# ~/.local/state/vulns/. The host's runtime deferrals are nix-packages',
-# which declares what the host has installed (dotfiles-mac ADR 0037), read
-# from its checkout beside dotfiles-mac's. A .vulns-defer line is
+# ~/.local/state/vulns/. The host's runtime deferrals are those of the
+# repositories that declare what the host has installed, read from their
+# checkouts beside dotfiles-mac's: nix-packages (dotfiles-mac ADR 0037), and
+# on NixOS also nixos-config (#325). Without a nix-packages checkout they
+# are read from ~/.local/state/vulns/host/ as well. A .vulns-defer line is
 #   <name>@<version> <TAB> <YYYY-MM-DD> <TAB> <reason>
 set -euo pipefail
 
@@ -50,6 +52,8 @@ BLOCK_CVSS=7.0
 UNMARKED_LEVEL=block
 CACHE_DIR=${XDG_CACHE_HOME:-$HOME/.cache}/vulns
 STATE_DIR=${XDG_STATE_HOME:-$HOME/.local/state}/vulns
+# Present on NixOS only.
+NIXOS_MARKER=/etc/NIXOS
 CHANNEL=github:NixOS/nixpkgs/nixpkgs-unstable
 SYSTEM=$(uname -m | sed 's/arm64/aarch64/')-$(uname -s | tr '[:upper:]' '[:lower:]')
 TODAY=$(date +%Y-%m-%d)
@@ -100,15 +104,22 @@ defer_dir() {
   if owned "$1"; then printf '%s' "$1"; else state_dir_for "$1"; fi
 }
 
-# runtime_deferral DIR NAME VERSION: print "until<TAB>reason" if deferred.
+# runtime_deferral DIRS NAME VERSION: print "until<TAB>reason" if deferred.
+# DIRS is one directory, or several separated by newlines; the first that
+# defers the finding wins.
 runtime_deferral() {
-  local file=$1/.vulns-defer
-  [[ -f $file ]] || file=$1/vulns-defer
-  [[ -f $file ]] || return 1
-  awk -F'\t' -v key="$2@$3" -v today="$TODAY" '
-    /^#/ || NF < 2 { next }
-    $1 == key && $2 >= today { print $2 "\t" $3; found = 1; exit }
-    END { exit !found }' "$file"
+  local dir file
+  while IFS= read -r dir; do
+    [[ -n $dir ]] || continue
+    file=$dir/.vulns-defer
+    [[ -f $file ]] || file=$dir/vulns-defer
+    [[ -f $file ]] || continue
+    awk -F'\t' -v key="$2@$3" -v today="$TODAY" '
+      /^#/ || NF < 2 { next }
+      $1 == key && $2 >= today { print $2 "\t" $3; found = 1; exit }
+      END { exit !found }' "$file" && return 0
+  done <<<"$1"
+  return 1
 }
 
 # ---------------------------------------------------------------- runtimes
@@ -305,6 +316,30 @@ packages_root() {
   [[ -d $dir/.git ]] && owned "$dir" && printf '%s' "$dir"
 }
 
+# The nixos-config checkout beside dotfiles-mac's, which declares a NixOS
+# host's packages (#325). Fails if there is none.
+nixos_config_root() {
+  local root dir
+  root=$(dotfiles_root) || return 1
+  dir=${root%/*}/nixos-config
+  [[ -d $dir/.git ]] && owned "$dir" && printf '%s' "$dir"
+}
+
+# Where the host's runtime deferrals live, one directory per line. The scan
+# and the cache both read this, so a deferral written there invalidates the
+# cache (#325).
+host_defer_dirs() {
+  local dir
+  if dir=$(packages_root); then
+    printf '%s\n' "$dir"
+  else
+    printf '%s\n' "$(state_dir_for host)"
+  fi
+  if [[ -e $NIXOS_MARKER ]] && dir=$(nixos_config_root); then
+    printf '%s\n' "$dir"
+  fi
+}
+
 scan_repo() {
   local repo=$1 ddir shell entry
   ddir=$(defer_dir "$repo")
@@ -319,7 +354,7 @@ scan_repo() {
 
 scan_host() {
   local ddir profile p
-  ddir=$(packages_root) || ddir=$(state_dir_for host)
+  ddir=$(host_defer_dirs)
   for profile in /etc/profiles/per-user/"$USER" /run/current-system/sw; do
     [[ -e $profile ]] || continue
     # A profile is an environment whose references are the packages; the
@@ -394,12 +429,18 @@ hook() {
     '{hookSpecificOutput: {hookEventName: "SessionStart", additionalContext: $t}}'
 }
 
+# set_defer_files [REPO]: the deferral files a cached result depends on,
+# REPO's if given and always the host's.
 set_defer_files() {
   local ddir
-  ddir=$(defer_dir "$1")
-  DEFER_FILES=("$ddir/osv-scanner.toml" "$ddir/.vulns-defer" "$ddir/vulns-defer")
-  local root
-  if root=$(packages_root); then DEFER_FILES+=("$root/.vulns-defer"); fi
+  DEFER_FILES=()
+  if [[ -n ${1:-} ]]; then
+    ddir=$(defer_dir "$1")
+    DEFER_FILES+=("$ddir/osv-scanner.toml" "$ddir/.vulns-defer" "$ddir/vulns-defer")
+  fi
+  while IFS= read -r ddir; do
+    [[ -n $ddir ]] && DEFER_FILES+=("$ddir/.vulns-defer" "$ddir/vulns-defer")
+  done < <(host_defer_dirs)
 }
 
 TSV=0 FRESH=0 DEFER_FILES=()
@@ -427,7 +468,7 @@ case ${1:-} in
     rows=$(cached "repo:$repo" scan_repo "$repo")
     ;;
   host)
-    set_defer_files /
+    set_defer_files
     rows=$(cached host scan_host)
     ;;
   hook)
