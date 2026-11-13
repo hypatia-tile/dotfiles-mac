@@ -51,7 +51,9 @@ if [[ ${1-} == --commands ]]; then
   shift
 fi
 
-scope "$ABBREVIATIONS" "$MODULE" "$PAYLOADS"
+# The flake and its lock pin the zsh and, off the machine, the zsh-abbr this
+# loads the payload with, so a change to either re-runs it (#247).
+scope "$ABBREVIATIONS" "$MODULE" "$PAYLOADS" flake.nix flake.lock
 check_gate "$@"
 
 fail=0
