@@ -89,6 +89,14 @@ expect deny "flake ref with # before git push" "$(bash_call 'nix build .#my-mac 
 expect deny "# inside a word before sudo"  "$(bash_call 'echo a#b; sudo true')"
 expect deny "comment line then sudo"       "$(bash_call $'ls # just listing\nsudo true')"
 expect deny "line-start comment, then git push" "$(bash_call $'echo hi\n# note\ngit push')"
+# A # after an escaped separator is part of a word, not a comment (#263).
+expect deny "# after escaped ; before git push"     "$(bash_call 'echo \;#; git push')"
+expect deny "# after escaped & before git push"     "$(bash_call 'echo \&#; git push')"
+expect deny "# after escaped | before git push"     "$(bash_call 'echo \|#; git push')"
+expect deny "# after escaped ( before git push"     "$(bash_call 'echo \(#; git push')"
+expect deny "# after escaped ) before git push"     "$(bash_call 'echo \)#; git push')"
+expect deny "# after escaped space before git push" "$(bash_call 'echo \ #; git push')"
+expect deny "# after escaped tab before git push"   "$(bash_call $'echo \\\t#; git push')"
 expect deny "sudo on a second line"        "$(bash_call $'ls\nsudo true')"
 expect deny "sudo after a line continuation" "$(bash_call $'ls \\\n && sudo true')"
 expect deny "sudo after a substitution word" "$(bash_call 'echo $(date)/x && sudo true')"
@@ -288,6 +296,8 @@ expect allow "unbalanced close paren in a substitution" "$(bash_call $'x=$(jq -r
 expect allow "backslash-paren in double quotes in a substitution" "$(bash_call 'x=$(jq -r "\(.a)")')"
 expect allow "substitution nested in double quotes, quoted parens" "$(bash_call $'x=$(echo "$(echo \'")"\')")')"
 expect allow "comment mentioning sudo"    "$(bash_call 'ls # not sudo')"
+# An escaped backslash ends with a real separator, so the # is a comment (#263).
+expect allow "comment after escaped backslash and ;" "$(bash_call 'echo \\;# git push')"
 # A comment that starts a line after the first is dropped like any other,
 # backticks included; it used to be checked as code (#245).
 expect allow "line-start comment with backticked git push" "$(bash_call $'echo hi\n# `git push`')"
