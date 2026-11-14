@@ -333,6 +333,10 @@ def strip_heredocs(text):
         i += 1
     return "\n".join(out), shell_bodies, expanding
 
+def is_escape(element):
+    """Whether ELEMENT of normalise()'s output is an unquoted escape."""
+    return len(element) == 2 and element[0] == "\\"
+
 def normalise(script):
     """Drop comments and turn unquoted newlines into `;`, quote-aware.
 
@@ -359,15 +363,19 @@ def normalise(script):
             if script[i + 1] == "\n":
                 i += 1
             else:
-                out.append(c)
-                out.append(script[i + 1])
+                # One element, so that the comment test below can tell an
+                # escaped separator from a real one (#263).
+                out.append(c + script[i + 1])
                 i += 1
         elif c in "'\"":
             quote = c
             out.append(c)
         # The last character, not the last element: a newline is appended
-        # as " ; ", which is not a member of the string below (#245).
-        elif c == "#" and (not out or out[-1][-1:] in " \t\r\n;&|()"):
+        # as " ; ", which is not a member of the string below (#245). An
+        # escape such as `\;` ends in a separator character but is part of a
+        # word, so bash reads a `#` after it as part of that word (#263).
+        elif c == "#" and (not out or (out[-1][-1:] in " \t\r\n;&|()"
+                                       and not is_escape(out[-1]))):
             while i < n and script[i] != "\n":
                 i += 1
             continue
