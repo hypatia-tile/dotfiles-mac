@@ -21,6 +21,15 @@ between.
 2. **Ask the owner to push** (never push yourself):
    suggest `! git push -u origin <branch>`. Start a background wait:
    `until git ls-remote origin <branch> | grep -q <head-sha>; do sleep 15; done`.
+
+   **A push that reports an error may still have landed.** Before asking
+   for a retry, compare `git ls-remote origin <branch>` with the local head.
+   If they match, the push landed: go on to step 3. During GitHub's incident
+   of 2026-11-04, a push failed with `remote: fatal error in commit_refs`
+   while the branch was on GitHub at the pushed commit, and the retry said
+   `Everything up-to-date` (#352). For `Permission denied (publickey)`,
+   check <https://www.githubstatus.com> before suspecting the keys: the same
+   incident refused about one SSH read in three.
 3. **Create the PR** with `gh pr create` once the push lands:
    - Title: a Conventional Commit subject, however many commits the branch
      has: the head commit's subject, or a summary in the same form. A squash
