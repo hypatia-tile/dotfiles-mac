@@ -134,11 +134,11 @@
         "rust-overlay": "rust-overlay"
       },
       "locked": {
-        "lastModified": 1794834756,
-        "narHash": "sha256-XlPAO5QNMvHkmYo4fGVYHDj9xaTwMoJtHY+ajl85ivU=",
+        "lastModified": 1794873819,
+        "narHash": "sha256-tBoES1PAFUHyj/UcmNi784/TMhr2/02tNG2tLdldLHg=",
         "owner": "hypatia-tile",
         "repo": "nix-packages",
-        "rev": "aef574ef696e2a235c913f63217f65e573952f21",
+        "rev": "d753413d748e6f2381ba015dab03f281c1a16404",
         "type": "github"
       },
       "original": {
