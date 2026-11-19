@@ -131,6 +131,7 @@ LSP uses the Neovim 0.11+ native API instead of lspconfig setup calls:
 | `<C-h/j/k/l>` | n | Tmux/Neovim pane navigation |
 | `<leader>tp` | n | Toggle transparent background |
 | `<leader>tc` | n | Toggle Copilot suggestions |
+| `<leader>tf` | n | Toggle the fm.nvim prompt window (`:Fm`, Apple Foundation Model) |
 | Arrow keys | n | Resize windows |
 | Arrow keys | i | Insert Unicode arrows (←↑→↓) |
 

@@ -5,6 +5,7 @@
   "conform.nvim": { "branch": "master", "commit": "016802de402556da54c36bd7359b441266b01cdd" },
   "denops.vim": { "branch": "main", "commit": "e82c5a94ca1154b05c9d74d6f6f58c9991b1424f" },
   "floating-note.nvim": { "branch": "main", "commit": "4acb8e49ccce4db4ee6a1a01197601ad0e961075" },
+  "fm.nvim": { "branch": "main", "commit": "05a8132a9849f1e2d39ad890e2df8c5a292f8015" },
   "friendly-snippets": { "branch": "main", "commit": "b4d01b0fdf3c9a549961c2f9ffe8dc09be166219" },
   "haskell-tools.nvim": { "branch": "main", "commit": "556c28dcfd7479270d557e3e73356411058005ea" },
   "lazy.nvim": { "branch": "main", "commit": "306a05526ada86a7b30af95c5cc81ffba93fef97" },
